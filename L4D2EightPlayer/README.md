@@ -50,7 +50,7 @@ The Steam lobby option needs Internet mode, so LAN only and Just me always use d
 
 | Group | Components |
 |---|---|
-| Core | Metamod:Source 1.12, SourceMod 1.12, L4DToolZ 2.5.x, Left 4 DHooks, Actions 3.9.2 (last build for SourceMod 1.12), Source Scramble, l4d_CreateSurvivorBot, l4dmultislots, l4d_unreservelobby (dedicated only), Items For 5+ Survivors (built in), Infected For 5+ Survivors (built in) |
+| Core | Metamod:Source 1.12, SourceMod 1.12, L4DToolZ 2.5.x, Left 4 DHooks, Actions 3.9.2 (last build for SourceMod 1.12), Source Scramble, l4d_CreateSurvivorBot, l4dmultislots, l4d_unreservelobby (dedicated only), Items For 5+ Survivors (built in), Infected For 5+ Survivors (built in), Campaign Rotation (built in, dedicated only) |
 | 5+ survivor fixes | Defib fix, AFK fix, AFK dead-bot fix, upgrade-pack fix, Charger collision, Witch target, trigger-flow fix, vocalize-by-model, changelevel fix, transition-info fix, command-buffer fix, map-tank fix, rescue-vehicle fix, ladder crash fix, mixed-character fix, full-slot bot fix, target-replace fix, Keep Verified Players (built in), Unique Survivors (built in) |
 | Optional (off by default) | Survivor Identity Fix (community build), save weapons, auto take-over, 8-survivor HUD (built in), 8-Player HUD add-on (installs into your own game) |
 
@@ -78,6 +78,21 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 - With **Copy campaigns and script mods to the server** on, campaigns you subscribe to in your game reach the dedicated server on the next Start server.
 - **Copy invite** adds "Needs the <campaign> campaign: <Workshop link>" when the server runs a custom campaign that came from the Workshop. It stays on the invite's single line, so friends can paste the whole invite into the Join app, which then links straight to that Workshop item.
 
+## After the finale (campaign rotation)
+
+**Play tab > After the finale** decides where a dedicated server goes once a campaign's rescue leaves (the built-in *Campaign Rotation* plugin, a required install):
+
+| Choice | What happens, a few seconds into the credits |
+|---|---|
+| **Stay** | Nothing: the game's own behaviour (the server sits on the finale) |
+| **Next** (default) | The next campaign in order: the 14 official campaigns, then your custom campaigns |
+| **Random** | Any other campaign |
+| **Vote** | The players vote between the next campaign, a few random ones and "Surprise me". Anyone can start it early by typing **!mapvote**; the result is kept for the finale. Nobody voting means Next |
+
+- The list is rewritten on every **Start server**. Custom campaigns only join it when the server has their maps (see [Custom campaigns](#custom-campaigns)); any it can't load are skipped.
+- **Moving on after wipes** is off by default. `l4d2_8p_rotation_wipes 3` in `cfg/sourcemod/l4d2_8p_rotation.cfg` moves on after 3 wipes on a finale (wipes on other chapters don't count). `l4d2_8p_rotation_delay` sets the seconds after the rescue (default 15).
+- Admins can type `sm_nextcampaign` to move on now (in Vote mode it starts the vote), and `sm_8protation` shows the list and what comes next.
+- Co-op and realism only. Listen servers (Host from my game) don't use it.
 ## Working with mods you already have
 
 - **Existing SourceMod/Metamod/plugins are kept.** The tool records every file it writes. Before replacing a file it didn't create, it saves a backup, and **Remove everything** restores the originals. Your admin lists and plugin configs are never overwritten.

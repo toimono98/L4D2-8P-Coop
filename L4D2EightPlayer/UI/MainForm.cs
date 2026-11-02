@@ -112,6 +112,8 @@ namespace L4D2EightPlayer.UI
             if (cmbItemsMode.SelectedIndex < 0) cmbItemsMode.SelectedIndex = 1;
             cmbInfectedMode.SelectedItem = settings.InfectedMode;
             if (cmbInfectedMode.SelectedIndex < 0) cmbInfectedMode.SelectedIndex = 1;
+            cmbRotation.SelectedItem = settings.RotationMode;
+            if (cmbRotation.SelectedIndex < 0) cmbRotation.SelectedIndex = 1;
             UpdateRulesLinks();
             UpdateHudAddonLink();
             cmbMode.SelectedItem = settings.GameMode;
@@ -141,6 +143,7 @@ namespace L4D2EightPlayer.UI
             settings.HudAddonLook = chkHudLook.Checked;
             settings.ItemsMode = cmbItemsMode.SelectedItem as string ?? "auto";
             settings.InfectedMode = cmbInfectedMode.SelectedItem as string ?? "auto";
+            settings.RotationMode = cmbRotation.SelectedItem as string ?? "next";
             UpdateRulesLinks();
             UpdateHudAddonLink();
             settings.GameMode = cmbMode.SelectedItem as string ?? "coop";
@@ -468,7 +471,7 @@ namespace L4D2EightPlayer.UI
                     }
                 }
                 inst.ApplySourceModGuard(manifest);
-                ServerConfig.Apply(settings, target);
+                ServerConfig.Apply(settings, target, customCampaigns);
                 Info("Wrote 8-player settings to cfg\\" + (settings.Mode == "listen" ? "listenserver.cfg" : "server.cfg") + " and cfg\\sourcemod\\l4dmultislots.cfg.");
                 if (settings.Mode == "listen")
                 {
@@ -840,7 +843,7 @@ namespace L4D2EightPlayer.UI
             bool ok = await RunBusy("Preparing server", async ct =>
             {
                 if (settings.UpdateServerOnStart) await SteamCmd.UpdateServer(settings.ServerRoot, settings.ServerInstallDir, this, ct);
-                ServerConfig.Apply(settings, settings.TargetGameDir);
+                ServerConfig.Apply(settings, settings.TargetGameDir, customCampaigns);
                 new Installer(settings.TargetGameDir, this).ApplySourceModGuard(manifest);
                 if (settings.SyncAddons && GameLocator.IsGameDir(settings.GamePath))
                     await Task.Run(() => AddonSync.Sync(settings.ClientGameDir, settings.TargetGameDir, InstallState.Load(settings.TargetGameDir), this), ct);
@@ -928,7 +931,7 @@ namespace L4D2EightPlayer.UI
 
             if (settings.Mode == "listen")
             {
-                ServerConfig.Apply(settings, settings.ClientGameDir);
+                ServerConfig.Apply(settings, settings.ClientGameDir, customCampaigns);
                 if (!await PreflightScan()) return;
                 var inst = new Installer(settings.ClientGameDir, this);
                 inst.SetLoaders(manifest, true);

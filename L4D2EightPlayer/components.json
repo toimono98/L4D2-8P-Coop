@@ -287,6 +287,23 @@
       ]
     },
     {
+      "id": "rotation8",
+      "name": "Campaign Rotation (built in)",
+      "group": "Core",
+      "required": true,
+      "modes": [
+        "dedicated"
+      ],
+      "requires": [
+        "sourcemod",
+        "left4dhooks"
+      ],
+      "description": "A dedicated server sits on the finale after the rescue. This moves on to another campaign a few seconds into the credits: the next one in order, a random one, or one the players vote for (also any time with !mapvote), set with 'After the finale' on the Play tab. Custom campaigns installed on the server join the rotation after the official ones. Optional: move on after a number of finale wipes (l4d2_8p_rotation_wipes). Admins can skip ahead with sm_nextcampaign. Co-op and realism.",
+      "compile": [
+        "embedded:l4d2_8p_rotation.sp"
+      ]
+    },
+    {
       "id": "defibfix",
       "name": "Defib Fix (Lux)",
       "group": "5+ survivor fixes",

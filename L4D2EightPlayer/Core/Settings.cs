@@ -31,6 +31,10 @@ namespace L4D2EightPlayer.Core
         public int InfectedCustomRespawn { get; set; } = 0;
 
         public static readonly string[] ScalingModes = { "off", "auto", "half", "custom" };
+
+        // After a finale (Campaign Rotation): "stay" | "next" | "random" | "vote"
+        public string RotationMode { get; set; } = "next";
+        public static readonly string[] RotationModes = { "stay", "next", "random", "vote" };
         public string ItemsModeOrDefault => ItemsMode ?? (ScaleItems ? "auto" : "off");
         public string GameMode { get; set; } = "coop";
         public string Difficulty { get; set; } = "Normal";

@@ -26,7 +26,7 @@ namespace L4D2EightPlayer.UI
         CheckBox chkWatch, chkSync, chkUpdateOnStart, chkScanFirst;
         ToggleSwitch chkFill, chkHudLook;
         LinkLabel lnkHudAddon, lnkItemsRules, lnkInfectedRules, lnkHealth;
-        Pills cmbItemsMode, cmbInfectedMode;
+        Pills cmbItemsMode, cmbInfectedMode, cmbRotation;
         Stepper numPlayers;
         NumericUpDown numPort;
         ComboBox cmbMode, cmbMap;
@@ -515,7 +515,7 @@ namespace L4D2EightPlayer.UI
             var right = Stack(P(0));
             right.AutoScroll = true;
             Theme.DarkScrollbars(right);
-            for (int i = 0; i < 9; i++) right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            for (int i = 0; i < 10; i++) right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var camp = new Card("Campaign") { Dock = DockStyle.Fill, AutoSize = true };
             var cc = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, Margin = P(0) };
@@ -556,13 +556,19 @@ namespace L4D2EightPlayer.UI
                 "Auto: x survivors / 4, so 8 survivors face 4 specials at once instead of 2, hordes of 60 instead of 30 and an 8000 HP Tank on Normal.\n" +
                 "Half: half that (8 survivors: 1.5x). Custom: your own % rules, including faster special respawns. Off: the game's own director.\n" +
                 "Co-op, realism and survival."), 0, 5);
+            right.Controls.Add(ChoiceRow("After the finale", "Where the server goes after the rescue", Settings.RotationModes,
+                new[] { "Stay", "Next", "Random", "Vote" }, out cmbRotation, out _,
+                "Stay: the game's own behaviour (the server sits on the finale).\n" +
+                "Next: the next campaign in order (Dead Center, Dark Carnival, … then your custom campaigns).\n" +
+                "Random: any other campaign. Vote: the players choose between a few, and can start the vote early with !mapvote.\n" +
+                "The change comes a few seconds after the rescue, once the credits start. Co-op and realism.", false), 0, 6);
             lnkItemsRules.LinkClicked += (s, e) => EditItemRules();
             lnkInfectedRules.LinkClicked += (s, e) => EditInfectedRules();
 
             lnkHudAddon = new LinkLabel { AutoSize = true, Font = Theme.BodySemi(9f), Margin = P(0, 4, 0, 0) };
             lnkHudAddon.LinkClicked += (s, e) => ToggleHudAddon();
             right.Controls.Add(SettingRow("HUD bars + icons", "Every player needs the HUD add-on",
-                chkHudLook = new ToggleSwitch { AccessibleName = "HUD bars and icons" }, lnkHudAddon), 0, 6);
+                chkHudLook = new ToggleSwitch { AccessibleName = "HUD bars and icons" }, lnkHudAddon), 0, 7);
             new ToolTip().SetToolTip(chkHudLook, "On: the 8-Player HUD shows survivors without a stock panel as dark boxes with a health bar coloured by state and the game's own kit/pills icons.\n" +
                 "Everyone needs the HUD add-on (the Join app installs it); without it they see stray boxes.\nOff: plain text that works for everyone.");
 
@@ -579,14 +585,14 @@ namespace L4D2EightPlayer.UI
             sg.Controls.Add(Caption("Port"), 0, 1); sg.Controls.Add(numPort, 1, 1);
             var pwCap = Caption("Password"); pwCap.Margin = P(14, 8, 12, 6); sg.Controls.Add(pwCap, 2, 1); sg.Controls.Add(txtPassword, 3, 1);
             grpServer.Controls.Add(sg);
-            right.Controls.Add(grpServer, 0, 7);
+            right.Controls.Add(grpServer, 0, 8);
 
             var opts = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 0, 0, 4) };
             chkSync = new GameCheck { Text = "Copy campaigns and script mods to the server", AutoSize = true, Font = Theme.Body(9.5f) };
             chkUpdateOnStart = new GameCheck { Text = "Update the server before starting", AutoSize = true, Font = Theme.Body(9.5f) };
             chkScanFirst = new GameCheck { Text = "Check compatibility before launching", AutoSize = true, Font = Theme.Body(9.5f) };
             opts.Controls.AddRange(new Control[] { chkSync, chkUpdateOnStart, chkScanFirst });
-            right.Controls.Add(opts, 0, 8);
+            right.Controls.Add(opts, 0, 9);
             outer.Controls.Add(right, 1, 0);
 
             // ---- footer
@@ -637,6 +643,7 @@ namespace L4D2EightPlayer.UI
             foreach (var c in new CheckBox[] { chkFill, chkHudLook, chkSync, chkUpdateOnStart, chkScanFirst }) c.CheckedChanged += (s, e) => ReadPlaySettings();
             cmbItemsMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbInfectedMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
+            cmbRotation.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             rbDirect.CheckedChanged += (s, e) => ReadPlaySettings();
             rbLobby.CheckedChanged += (s, e) => ReadPlaySettings();
 
@@ -662,7 +669,11 @@ namespace L4D2EightPlayer.UI
         }
 
         /// <summary>A scaling setting: title and detail, the Off/Auto/Half/Custom pills, and a link to the Custom rules.</summary>
-        static Card ModeRow(string title, string detail, out Pills pills, out LinkLabel rules, string tip)
+        static Card ModeRow(string title, string detail, out Pills pills, out LinkLabel rules, string tip) =>
+            ChoiceRow(title, detail, Settings.ScalingModes, new[] { "Off", "Auto", "Half", "Custom" }, out pills, out rules, tip, true);
+
+        /// <summary>A setting with a row of pills under its title, and optionally a "Custom rules…" link.</summary>
+        static Card ChoiceRow(string title, string detail, string[] values, string[] labels, out Pills pills, out LinkLabel rules, string tip, bool withRules)
         {
             var card = new Card { Dock = DockStyle.Fill, AutoSize = true, Padding = P(14, 8, 14, 10), Margin = P(0, 0, 0, 10) };
             var text = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0), Dock = DockStyle.Fill };
@@ -670,10 +681,14 @@ namespace L4D2EightPlayer.UI
             text.Controls.Add(head);
             text.Controls.Add(new Label { Text = detail, AutoSize = true, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 2, 0, 8) });
             // narrower than the Difficulty pills: this sits inside a card's padding
-            pills = new Pills(Settings.ScalingModes, new[] { "Off", "Auto", "Half", "Custom" }, 318) { AccessibleName = title };
+            pills = new Pills(values, labels, 318) { AccessibleName = title };
             text.Controls.Add(pills);
-            rules = new LinkLabel { Text = "Custom rules…", AutoSize = true, Font = Theme.BodySemi(9f), Margin = P(0, 6, 0, 0) };
-            text.Controls.Add(rules);
+            rules = null;
+            if (withRules)
+            {
+                rules = new LinkLabel { Text = "Custom rules…", AutoSize = true, Font = Theme.BodySemi(9f), Margin = P(0, 6, 0, 0) };
+                text.Controls.Add(rules);
+            }
             var tt = new ToolTip();
             tt.SetToolTip(head, tip);
             tt.SetToolTip(pills, tip);

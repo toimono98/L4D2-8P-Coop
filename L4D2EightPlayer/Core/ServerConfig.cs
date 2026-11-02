@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -42,8 +43,11 @@ namespace L4D2EightPlayer.Core
 
         static string Q(string s) => "\"" + (s ?? "").Replace("\"", "'") + "\"";
 
-        /// <summary>Writes server.cfg (or listenserver.cfg) and the l4dmultislots overrides.</summary>
-        public static void Apply(Settings s, string gameDir)
+        /// <summary>
+        /// Writes server.cfg (or listenserver.cfg), the l4dmultislots overrides and the built-in plugins' settings.
+        /// <paramref name="custom"/> adds custom campaigns to the rotation list after the official ones.
+        /// </summary>
+        public static void Apply(Settings s, string gameDir, IEnumerable<Campaigns.Campaign> custom = null)
         {
             bool listen = s.Mode == "listen";
             int slots = listen ? Math.Min(s.MaxPlayers, 8) : s.MaxPlayers;
@@ -125,7 +129,40 @@ namespace L4D2EightPlayer.Core
                 "l4d2_8p_infected_custom_tank " + s.InfectedCustomTank,
                 "l4d2_8p_infected_custom_respawn " + s.InfectedCustomRespawn,
             });
+
+            // Campaign Rotation: what happens after a finale, and the campaigns to rotate through
+            int rot = Array.IndexOf(Settings.RotationModes, s.RotationMode);
+            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_rotation.cfg"), new[] { "l4d2_8p_rotation_mode " + (rot < 0 ? 1 : rot) });
+            WriteRotationList(gameDir, custom);
         }
+
+        /// <summary>addons/sourcemod/data/l4d2_8p_rotation.txt: official campaigns by map prefix, then custom ones by their maps.</summary>
+        static void WriteRotationList(string gameDir, IEnumerable<Campaigns.Campaign> custom)
+        {
+            var sb = new StringBuilder();
+            sb.Append("// Written by the 8-Player Manager on every server start. The order is the rotation order.\r\n\"rotation\"\r\n{\r\n");
+            int n = 0;
+            for (int i = 0; i < Maps.Length; i++)
+            {
+                var prefix = Regex.Match(Maps[i], @"^c\d+m").Value;
+                sb.Append($"\t\"{++n}\"\r\n\t{{\r\n\t\t\"title\"\t{Q(CampaignTitles[i])}\r\n\t\t\"map\"\t{Q(Maps[i])}\r\n\t\t\"prefix\"\t{Q(prefix)}\r\n\t}}\r\n");
+            }
+            foreach (var c in custom ?? Enumerable.Empty<Campaigns.Campaign>())
+            {
+                if (c.FirstMap == null || n >= 64) continue;
+                sb.Append($"\t\"{++n}\"\r\n\t{{\r\n\t\t\"title\"\t{Q(c.Title)}\r\n\t\t\"map\"\t{Q(c.FirstMap)}\r\n\t\t\"maps\"\t{Q(string.Join(" ", c.Maps))}\r\n\t}}\r\n");
+            }
+            sb.Append("}\r\n");
+            var file = Path.Combine(gameDir, "addons", "sourcemod", "data", "l4d2_8p_rotation.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            File.WriteAllText(file, sb.ToString(), new UTF8Encoding(false));
+        }
+
+        public static readonly string[] CampaignTitles =
+        {
+            "Dead Center", "Dark Carnival", "Swamp Fever", "Hard Rain", "The Parish", "The Passing", "The Sacrifice",
+            "No Mercy", "Crash Course", "Death Toll", "Dead Air", "Blood Harvest", "Cold Stream", "The Last Stand",
+        };
 
         /// <summary>Plugin mode number for a Settings.ScalingModes name (unknown = auto).</summary>
         static int ModeIndex(string mode)
