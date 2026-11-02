@@ -93,7 +93,14 @@ namespace L4D2EightPlayer.Join
             RefreshRecent();
             ShowEmpty("No server checked yet", "Paste your host's invite (it looks like steam://connect/1.2.3.4:27015) and click Check server. You don't need any mods to join.");
             if (JoinTarget.Parse(initial) != null) txtTarget.Text = initial;
-            Shown += async (s, e) => { ActiveControl = txtTarget; if (txtTarget.Text.Length > 0) await Check(); };
+            Shown += async (s, e) =>
+            {
+                ActiveControl = txtTarget;
+                if (txtTarget.Text.Length > 0) await Check();
+                // "Version X is out" in the header (GitHub, checked once a day; silent offline)
+                var v = await UpdateCheck.Newer();
+                if (v != null && !IsDisposed) header.Notice = $"VERSION {v} IS OUT · DOWNLOAD";
+            };
         }
 
         // ================================================================== layout
@@ -101,6 +108,7 @@ namespace L4D2EightPlayer.Join
         void BuildUi()
         {
             header = new NavBar() { Title = "JOIN YOUR GROUP", Subtitle = "L4D2 8-PLAYER CO-OP" };
+            header.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
 
             var g = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = P(24, 18, 24, 18) };
             g.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

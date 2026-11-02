@@ -201,6 +201,7 @@ The **4. Internet hosting** tab handles the network side:
 
 ## Keeping it current
 
+- **New versions of the Manager and the Join app** are announced in the window's header ("Version X is out · Download", which opens the release page). Both apps ask GitHub at most once a day and stay quiet when offline.
 - **Check for updates** compares SourceMod, Metamod, L4DToolZ and Source Scramble with their latest releases. It also warns when the dedicated server is behind your game version.
 - **Download & install selected** always pulls the latest plugin builds and gamedata from GitHub. Run it after every L4D2 update, because outdated gamedata is the usual cause of crashes.
 - **Server check after every start.** Once the server answers, the Manager reads SourceMod's error log for that start. Any plugin or extension that failed to load or hit an error is listed in the Radio log by component name, with a warning under the Start button (**Details** opens the list and the log folder). Nothing listed means every plugin loaded cleanly. A game update that changes the server's code is the usual cause; the built-in plugins log a plain message when their hook can't be found (Unique Survivors keeps working, only the L4D1 ready pose is lost).

@@ -64,6 +64,17 @@ namespace L4D2EightPlayer.UI
             SetupWatchers();
             if (settings.TargetGameDir != null) await RunScan(auto: true, quiet: true);
             await CleanupStaleForward();
+            await CheckForNewVersion();
+        }
+
+        /// <summary>Shows "Version X is out" in the header when GitHub has a newer release (checked once a day).</summary>
+        async Task CheckForNewVersion()
+        {
+            if (Preview) return;
+            var v = await UpdateCheck.Newer();
+            if (v == null || IsDisposed) return;
+            nav.Notice = $"VERSION {v} IS OUT · DOWNLOAD";
+            Info($"Version {v} of the Manager is out (you have {AppInfo.Version}): {UpdateCheck.ReleasePage}");
         }
 
         List<Campaigns.Campaign> customCampaigns = new List<Campaigns.Campaign>();

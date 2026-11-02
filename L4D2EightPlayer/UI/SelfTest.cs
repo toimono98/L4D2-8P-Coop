@@ -187,6 +187,9 @@ namespace L4D2EightPlayer.UI
                         var pills = (Themes.Pills)typeof(MainForm).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(form);
                         pills.SelectedItem = "custom";
                     }
+                    // the header's "new version" notice
+                    var navBar = (Themes.NavBar)typeof(MainForm).GetField("nav", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(form);
+                    navBar.Notice = "VERSION 9.9.9 IS OUT · DOWNLOAD";
                     // and the warning a failed plugin leaves under the Start button
                     typeof(MainForm).GetField("healthIssues", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                         .SetValue(form, new List<ServerHealth.Issue> { new ServerHealth.Issue { File = "l4d2_8p_characters.smx", Component = "Unique Survivors (built in)", Problem = "example" } });
@@ -221,6 +224,13 @@ namespace L4D2EightPlayer.UI
                     }
                     form.Close();
                     log.Info("screenshots saved to " + dir);
+                }
+
+                if (args.Contains("--update-check"))
+                {
+                    log.Info($"update: this is {AppInfo.Version}; newer: {UpdateCheck.Newer().GetAwaiter().GetResult() ?? "none"}");
+                    foreach (var (a, b) in new[] { ("1.6.0", "1.5.0"), ("1.5.0", "1.5.0"), ("1.4.9", "1.5.0"), ("1.10.0", "1.9.0"), ("x", "1.0.0") })
+                        log.Info($"update: {a} newer than {b}? {UpdateCheck.IsNewer(a, b)}");
                 }
 
                 if (Arg("--campaigns") != null)

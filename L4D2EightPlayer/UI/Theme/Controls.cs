@@ -602,6 +602,12 @@ namespace L4D2EightPlayer.UI.Themes
         Color statusColor = Theme.Muted;
         public event EventHandler SelectedChanged;
 
+        /// <summary>A clickable amber line under the status (e.g. "Version 1.6 is out"); null hides it.</summary>
+        public string Notice { get => notice; set { notice = value; Invalidate(); } }
+        public event EventHandler NoticeClicked;
+        string notice;
+        Rectangle noticeHit;
+
         static Font TitleFont => Theme.Display(17f);
         static Font SubFont => Theme.BodyBold(7.5f);
         static Font ItemFont => Theme.Stencil(10.5f);
@@ -650,20 +656,34 @@ namespace L4D2EightPlayer.UI.Themes
             }
 
             // The status repeats what the page shows, so on a narrow window it gives way instead of clipping.
+            int roomAll = Width - x - S(46);
+            bool hasNotice = !string.IsNullOrEmpty(notice);
+            int shift = hasNotice ? S(9) : 0;
             if (!string.IsNullOrEmpty(status))
             {
                 var st = status.ToUpperInvariant();
                 var sf = Theme.BodyBold(8.5f);
-                int room = Width - x - S(46);
-                if (room >= Draw.Measure(st, sf).Width)
-                    Draw.Text(g, st, sf, statusColor, new Rectangle(x, 0, room, Height), TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+                if (roomAll >= Draw.Measure(st, sf).Width)
+                    Draw.Text(g, st, sf, statusColor, new Rectangle(x, -shift, roomAll, Height), TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+            }
+            noticeHit = Rectangle.Empty;
+            if (hasNotice)
+            {
+                var nf = Theme.BodyBold(8.5f);
+                var size = Draw.Measure(notice, nf);
+                if (roomAll >= size.Width)
+                {
+                    noticeHit = new Rectangle(x + roomAll - size.Width, Height / 2 + S(3), size.Width, size.Height);
+                    using (var f = new Font(nf, FontStyle.Underline))
+                        Draw.Text(g, notice, f, Theme.Amber, noticeHit, TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.SingleLine);
+                }
             }
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
             int h = hits.FindIndex(r => r.Contains(e.Location));
-            Cursor = h >= 0 ? Cursors.Hand : Cursors.Default;
+            Cursor = h >= 0 || noticeHit.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
             if (h != hover) { hover = h; Invalidate(); }
             base.OnMouseMove(e);
         }
@@ -674,6 +694,7 @@ namespace L4D2EightPlayer.UI.Themes
         {
             int h = hits.FindIndex(r => r.Contains(e.Location));
             if (h >= 0) { Focus(); Selected = h; }
+            else if (noticeHit.Contains(e.Location)) NoticeClicked?.Invoke(this, EventArgs.Empty);
             base.OnMouseClick(e);
         }
 

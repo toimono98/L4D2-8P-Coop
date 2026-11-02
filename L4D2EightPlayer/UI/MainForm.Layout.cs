@@ -82,6 +82,7 @@ namespace L4D2EightPlayer.UI
         {
             nav = new NavBar("Setup", "Mods", "Play", "Internet");
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
+            nav.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
 
             var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, FixedPanel = FixedPanel.Panel2, SplitterWidth = 1 };
 

@@ -29,6 +29,7 @@ GOOD TO KNOW
   and links to it on the Workshop.
 - Playing on the same home network? Use "Find games on my network".
 - The app remembers the servers you've joined under "Recent groups".
+- When a new version is out, the top of the app says so; click it to download.
 - Settings are stored in %LOCALAPPDATA%\L4D2-8P-Manager.
   Delete that folder to reset them.
 
