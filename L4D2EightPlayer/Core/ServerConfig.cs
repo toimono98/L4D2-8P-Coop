@@ -109,9 +109,29 @@ namespace L4D2EightPlayer.Core
             WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_hud.cfg"),
                 new[] { "l4d2_8p_hud_style " + (s.HudAddonLook ? 1 : 0) });
 
-            // Items For 5+ Survivors: item spawns scale with survivors / 4. The per-category cvars stay the user's.
-            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_items.cfg"),
-                new[] { "l4d2_8p_items_enable " + (s.ScaleItems ? 1 : 0) });
+            // Scaling for 5+ survivors (Play tab). The per-category on/off and the caps stay the user's.
+            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_items.cfg"), new[]
+            {
+                "l4d2_8p_items_mode " + ModeIndex(s.ItemsModeOrDefault),
+                "l4d2_8p_items_custom_weapons " + s.ItemsCustomWeapons,
+                "l4d2_8p_items_custom_throwables " + s.ItemsCustomThrowables,
+                "l4d2_8p_items_custom_healing " + s.ItemsCustomHealing,
+            });
+            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_infected.cfg"), new[]
+            {
+                "l4d2_8p_infected_mode " + ModeIndex(s.InfectedMode),
+                "l4d2_8p_infected_custom_specials " + s.InfectedCustomSpecials,
+                "l4d2_8p_infected_custom_horde " + s.InfectedCustomHorde,
+                "l4d2_8p_infected_custom_tank " + s.InfectedCustomTank,
+                "l4d2_8p_infected_custom_respawn " + s.InfectedCustomRespawn,
+            });
+        }
+
+        /// <summary>Plugin mode number for a Settings.ScalingModes name (unknown = auto).</summary>
+        static int ModeIndex(string mode)
+        {
+            int i = Array.IndexOf(Settings.ScalingModes, mode);
+            return i < 0 ? 1 : i;
         }
 
         public static readonly string[] Maps =

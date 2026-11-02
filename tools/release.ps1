@@ -3,7 +3,8 @@ Builds, checks and packages a release of the Manager and the Join app.
 
   tools\release.ps1                     build + check + package into release\, copy to Documents\L4D2 8 Player
   tools\release.ps1 -Version 1.2.0      same, after raising the version in Directory.Build.props
-  tools\release.ps1 -Publish            also tag v<version>, push, and create the GitHub release (needs gh, signed in)
+  tools\release.ps1 -Publish            also tag v<version>, push, and create the GitHub release (needs gh, signed in);
+                                        raise the version and commit before publishing
   tools\release.ps1 -NoDeploy           skip the copy to Documents\L4D2 8 Player
 
 Checks: every built-in plugin compiles with the Manager's SourcePawn toolchain, both apps build, the Manager's
@@ -25,6 +26,7 @@ function Fail($m) { Write-Host "FAILED: $m" -ForegroundColor Red; exit 1 }
 
 # ---- version
 $props = Join-Path $root 'Directory.Build.props'
+if ($Version -and $Publish) { Fail "raise the version with -Version, commit, then run -Publish on its own" }
 if ($Version) {
     if ($Version -notmatch '^\d+\.\d+\.\d+$') { Fail "version must look like 1.2.0" }
     (Get-Content $props -Raw) -replace '<Version>[^<]*</Version>', "<Version>$Version</Version>" | Set-Content $props -NoNewline -Encoding utf8

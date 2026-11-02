@@ -151,6 +151,7 @@ namespace L4D2EightPlayer.UI
                     var dir = Paths.Ensure(Arg("--shot"));
                     System.Windows.Forms.Application.EnableVisualStyles();
                     MainForm.Preview = true;
+                    Settings.ReadOnly = true;   // the Custom screenshot below flips settings; never save them
                     var form = new MainForm { StartPosition = System.Windows.Forms.FormStartPosition.Manual, Location = new System.Drawing.Point(-30000, -30000), ShowInTaskbar = false };
                     form.Show();
                     var until = DateTime.Now.AddSeconds(12);
@@ -178,6 +179,41 @@ namespace L4D2EightPlayer.UI
                                 bmp.Save(Path.Combine(dir, "tab1-end.png"), System.Drawing.Imaging.ImageFormat.Png);
                             }
                         }
+                    }
+                    // the Play tab with both scaling settings on Custom (shows the rules links), and the rules dialog
+                    tabs.SelectedIndex = 2;
+                    foreach (var name in new[] { "cmbItemsMode", "cmbInfectedMode" })
+                    {
+                        var pills = (Themes.Pills)typeof(MainForm).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(form);
+                        pills.SelectedItem = "custom";
+                    }
+                    var t3 = DateTime.Now.AddSeconds(1);
+                    while (DateTime.Now < t3) { System.Windows.Forms.Application.DoEvents(); Thread.Sleep(20); }
+                    using (var bmp = new System.Drawing.Bitmap(form.Width, form.Height))
+                    {
+                        form.DrawToBitmap(bmp, new System.Drawing.Rectangle(0, 0, form.Width, form.Height));
+                        bmp.Save(Path.Combine(dir, "tab3-custom.png"), System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    var rules = new[]
+                    {
+                        new RulesDialog.Rule { Title = "Specials at once", Detail = "How many special infected can be alive together", Value = 25 },
+                        new RulesDialog.Rule { Title = "Horde size", Detail = "Common infected limit, mobs and panic hordes", Value = 25 },
+                        new RulesDialog.Rule { Title = "Tank health", Detail = "Set when each Tank spawns", Value = 100 },
+                        new RulesDialog.Rule { Title = "Faster specials", Detail = "How much sooner a dead special's slot refills", Value = 0, Max = 75 },
+                    };
+                    using (var d = new RulesDialog("Harder infected for 5+: custom rules",
+                        "Each rule is % more for every survivor beyond 4. 25% matches Auto: with 8 survivors, 4 x 25% = twice the normal amount. Bots count as survivors. Applies the next time you start the server.", rules)
+                        { StartPosition = System.Windows.Forms.FormStartPosition.Manual, Location = new System.Drawing.Point(-30000, -30000), ShowInTaskbar = false })
+                    {
+                        d.Show(form);
+                        var t4 = DateTime.Now.AddSeconds(1);
+                        while (DateTime.Now < t4) { System.Windows.Forms.Application.DoEvents(); Thread.Sleep(20); }
+                        using (var bmp = new System.Drawing.Bitmap(d.Width, d.Height))
+                        {
+                            d.DrawToBitmap(bmp, new System.Drawing.Rectangle(0, 0, d.Width, d.Height));
+                            bmp.Save(Path.Combine(dir, "rules.png"), System.Drawing.Imaging.ImageFormat.Png);
+                        }
+                        d.Close();
                     }
                     form.Close();
                     log.Info("screenshots saved to " + dir);

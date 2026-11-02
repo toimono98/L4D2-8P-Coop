@@ -50,18 +50,19 @@ The Steam lobby option needs Internet mode, so LAN only and Just me always use d
 
 | Group | Components |
 |---|---|
-| Core | Metamod:Source 1.12, SourceMod 1.12, L4DToolZ 2.5.x, Left 4 DHooks, Actions 3.9.2 (last build for SourceMod 1.12), Source Scramble, l4d_CreateSurvivorBot, l4dmultislots, l4d_unreservelobby (dedicated only), Items For 5+ Survivors (built in) |
+| Core | Metamod:Source 1.12, SourceMod 1.12, L4DToolZ 2.5.x, Left 4 DHooks, Actions 3.9.2 (last build for SourceMod 1.12), Source Scramble, l4d_CreateSurvivorBot, l4dmultislots, l4d_unreservelobby (dedicated only), Items For 5+ Survivors (built in), Infected For 5+ Survivors (built in) |
 | 5+ survivor fixes | Defib fix, AFK fix, AFK dead-bot fix, upgrade-pack fix, Charger collision, Witch target, trigger-flow fix, vocalize-by-model, changelevel fix, transition-info fix, command-buffer fix, map-tank fix, rescue-vehicle fix, ladder crash fix, mixed-character fix, full-slot bot fix, target-replace fix, Keep Verified Players (built in), Unique Survivors (built in) |
 | Optional (off by default) | Survivor Identity Fix (community build), save weapons, auto take-over, 8-survivor HUD (built in), 8-Player HUD add-on (installs into your own game) |
 
 ### Built-in plugins
 
-Two plugins are written for this tool and ship inside the exe (source in `Plugins/`). They compile on install like the other fixes.
+These plugins are written for this tool and ship inside the exe (source in `Plugins/`). They compile on install like the other fixes.
 
 - **Keep Verified Players** (`l4d2_8p_steamauth`): when the dedicated server runs on the same PC as your game, both sign in to that PC's Steam client as Left 4 Dead 2. About a minute after you join, Steam then reports your ticket as invalid and the server drops you with "No Steam logon" (STEAMAUTH failure code 8). This plugin keeps a player Steam already verified when they joined. A player whose ticket was never valid is still dropped, and so are VAC bans. The engine hook is adapted from blueblur's [Block No Steam Logon](https://github.com/blueblur0730/modified-plugins) (GPL-3.0).
 - **Unique Survivors** (`l4d2_8p_characters`): bot fill copies the map's four survivors, so 8 survivors come out as three Rochelles and two Coaches. This gives everyone their own character, the L4D1 cast included: Nick, Rochelle, Coach, Ellis, Bill, Zoey, Francis and Louis. Players keep their character across chapters. On L4D1-cast maps the L4D2 cast is told apart by model (names and voices follow the model through the mixed-character and vocalize fixes). On The Passing, where Bill's group are scripted NPCs, survivors wearing L4D1 models borrow an L4D2 counterpart's character number so the map's scripts still find the NPCs. `l4d2_8p_characters_other_cast 0` limits it to the map's own four. It also keeps the L4D1 cast out of their calm animations (the relaxed idle and walk survivors fall into when nothing is around): Valve's L4D1 models hold several weapons straight up through the body in those, where the L4D2 cast hold them across the chest. They stay in their ready pose instead (`l4d2_8p_characters_l4d1_ready_pose`, on by default; it hooks the game's calm check through `gamedata/l4d2_8p_characters.txt`).
 - **8-survivor HUD** (`l4d2_8p_hud`): the stock HUD shows you plus the first four other survivors (by player slot); anyone after that has no panel. This lists exactly those survivors, with name, health (+temporary health), a health bar and DOWN / LEDGE / B&W / DEAD, in a column on the right just below the weapon slots. It stays visible on the Tab screen. By default it's plain text and nobody needs to install anything: each game draws it from the server. Settings are in `cfg/sourcemod/l4d2_8p_hud.cfg`: `l4d2_8p_hud_enable`, `l4d2_8p_hud_show` (0 = only survivors without a stock panel, 1 = everyone), `l4d2_8p_hud_layout` (1 = right-hand column, 0 = rows above the bottom panels), `l4d2_8p_hud_x` / `l4d2_8p_hud_y` (position) and `l4d2_8p_hud_background`. The game only draws scripted HUD text inside a centred 4:3 area, so on wide screens the plain column sits just left of the weapon slots rather than under them. It also only draws it in "challenge mode" (the state a mutation sets), so the plugin turns that on while the list is shown; like a mutation, that can stop some achievements.
 - **HUD bars + icons** (Play tab, `l4d2_8p_hud_style 1`): the same list as dark boxes right under the weapon slots. Each shows the survivor's name and health (or what's happening to them: SMOKED, POUNCED, RIDDEN for a Jockey, CHARGED, BILED, LEDGE, DOWN, DEAD), a health bar coloured by state (green, yellow, red; red while pinned, hanging or down) and the game's own icon for everything they carry: molotov, pipe bomb or bile jar; first aid kit, defibrillator or an ammo pack; pills or adrenaline. Long names are shortened to fit beside the icons. Every player needs the small **8-Player HUD add-on** (`left4dead2\addons\l4d2_8p_hud.vpk`): click the link under the setting in the Manager, or "Install the 8-player HUD add-on" at the bottom of the Join app, with the game closed. Players without it see stray grey boxes, so only turn it on when everyone has it. Things the game won't let an add-on change: the text font and its size (it's always the scripted HUD's own font). The add-on also makes the scripted-HUD area cover the whole screen, which other HUD mods that replace `scripts/hudlayout.res` or `hudscriptedmode.res` will clash with. The game has 15 HUD boxes in all, so up to 4 survivors fit and, with 3 survivors listed, about 9 item icons at once; when several survivors carry the same item and its boxes run out, the row ends with "+1" (or +2) for the items it couldn't show. `l4d2_8p_hud_addon_x` / `l4d2_8p_hud_addon_y` move the column (the default lines up with the weapon slots on 16:9 screens).
+- **Items For 5+ Survivors** (`l4d2_8p_items`) and **Infected For 5+ Survivors** (`l4d2_8p_infected`): scale the map's items and the director's infected to the number of survivors. See [Scaling for 5+ survivors](#scaling-for-5-survivors-items-and-infected).
 
 **Fixed (October 2026): LAN / "Just me" servers crashed on the second map change.** The server connects to Steam when the first map loads, so a `sv_lan 1` that only arrives with `server.cfg` makes it reconnect at the next map. At the end of the map after that, the game uploads its per-map Steam stats (`L4D2MapData`) through the Steam interface it got before the reconnect, which no longer exists, and the server crashes (Windows then blames `sourcemod.2.l4d2.dll`, which faults while the process exits). The Manager now puts `+sv_lan` on the server's launch line (and on your game's when you host from it), so Steam starts in the right mode and nothing changes later. If you start srcds yourself, put `+sv_lan 1` before `+map` for a LAN server. Internet servers were never affected (`sv_lan 0` is the default). SourceMod 1.12 git7259 also fixes a separate entity-output crash ([alliedmodders/sourcemod#2589](https://github.com/alliedmodders/sourcemod/issues/2589)); **Setup > Check for updates** installs new builds.
 
@@ -103,23 +104,50 @@ The game doesn't do this by itself. l4dmultislots does it through `l4d_multislot
 
 Survivors 5+ always start with the starting pistol, a first aid kit and 100 health (no temporary health), instead of l4dmultislots' default random tier 2 gun, secondary, throwable and 80+20 health. The Manager sets this in the same block of `l4dmultislots.cfg` (`l4d_multislots_firstweapon 0`, `secondweapon 0`, `thirdweapon 0`, `forthweapon 1`, `fifthweapon 0`, `respawnhp 100`, `respawnbuffhp 0`).
 
-## More items for 5+
+## Scaling for 5+ survivors: items and infected
 
-**Play tab > More items for 5+ (on by default).** Maps are stocked for 4 survivors, so the built-in *Items For 5+ Survivors* plugin is a required install (Core group). It multiplies every item spawn by survivors ÷ 4, bots included:
+The game is tuned for 4 survivors. Two built-in plugins, both required installs (Core group), scale it to the team you actually have, bots included. Each has its own row on the **Play tab** with four modes:
 
-| Survivors | Multiplier | Weapon pile of 5 | Each kit, pills or throwable spawn |
+| Mode | What it does (S = survivors) | 6 survivors | 8 survivors |
 |---|---|---|---|
-| 4 or fewer | 1× | 5 | 1 |
-| 6 | 1.5× | 7 or 8 | 1 or 2 (about half get a second) |
-| 8 | 2× | 10 | 2 |
+| **Auto** (default) | × S ÷ 4 | 1.5× | 2× |
+| **Half** | half of Auto's increase | 1.25× | 1.5× |
+| **Custom** | your own % per survivor beyond 4, for each rule (**Custom rules…**) | 2 × your % | 4 × your % |
+| **Off** | the game's normal amounts for 4 | 1× | 1× |
+
+With 4 or fewer survivors nothing changes. In Custom, 25% per survivor beyond 4 matches Auto. Changes apply the next time you click **Start server**.
+
+### More items for 5+ (*Items For 5+ Survivors*)
+
+| Survivors (Auto) | Weapon pile of 5 | Each kit, pills or throwable spawn |
+|---|---|---|
+| 4 or fewer | 5 | 1 |
+| 6 | 7 or 8 | 1 or 2 (about half get a second) |
+| 8 | 10 | 2 |
 
 - It covers weapon piles, pistols, melee weapons, the chainsaw, molotovs, pipe bombs, bile jars, first aid kits, pills, adrenaline and defibrillators. Ammo piles, upgrade packs and infinite spawns stay as they are.
+- Custom rules: weapons, throwables and healing, each with its own %.
 - A spawn still shows one item until it runs out. A doubled kit stays on the table after the first person takes it.
 - When survivors join mid-chapter, the spawns still on the map are topped up. Nothing is taken away when they leave, and spawns that are already empty don't come back.
 - The game removes a random share of item spawns when each map loads. That stays as it is; the plugin scales what's left.
 - Bots grab spare items quickly (the saferoom pistols especially), so they take a share of the extras too.
-- Per-category switches and the cap are in `cfg/sourcemod/l4d2_8p_items.cfg`: `l4d2_8p_items_weapons`, `_throwables`, `_healing` (1/0) and `l4d2_8p_items_max` (largest multiplier, default 4). Admins can type `sm_8pitems` in the console to see the current counts.
+- In `cfg/sourcemod/l4d2_8p_items.cfg`: `l4d2_8p_items_weapons`, `_throwables`, `_healing` (1/0) switch a category off entirely, and `l4d2_8p_items_max` caps the multiplier (default 4). Admins can type `sm_8pitems` in the console to see the counts.
 
+### Harder infected for 5+ (*Infected For 5+ Survivors*)
+
+| On Normal, Auto | 4 survivors | 6 survivors | 8 survivors |
+|---|---|---|---|
+| Specials alive at once | 2 | 3 | 4 |
+| Common infected limit | 30 | 45 | 60 |
+| Panic horde (mega mob) | 50 | 75 | 100 |
+| Tank health | 4000 | 6000 | 8000 |
+
+- It changes the director's own limits (through Left 4 DHooks), so the game still decides where and when infected come; there are just more of them. The per-class limits rise with the total so it can fill them.
+- Custom rules: specials at once, horde size, Tank health, and **faster specials** (how much sooner a dead special's slot refills; 0% by default, and not part of Auto or Half).
+- Tank health is set when each Tank spawns, from the game's own value for the difficulty.
+- The count is the most survivors seen this round, so a player leaving mid-round doesn't make it easier until the next map.
+- Co-op, realism and survival only. In versus and scavenge the infected are players, so nothing changes.
+- In `cfg/sourcemod/l4d2_8p_infected.cfg`: `l4d2_8p_infected_max_specials` (default 12) and `l4d2_8p_infected_max_common` (default 100) are hard caps. Admins can type `sm_8pinfected` to see every value it has changed.
 ## Internet hosting (port forwarding)
 
 The **4. Internet hosting** tab handles the network side:

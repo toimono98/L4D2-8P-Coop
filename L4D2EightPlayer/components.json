@@ -267,9 +267,23 @@
       "requires": [
         "sourcemod"
       ],
-      "description": "Maps are stocked for 4. This scales weapon piles, melee weapons, throwables and healing items (kits, pills, adrenaline, defibs) by survivors / 4, bots included: with 8 survivors a pile of 5 holds 10 and each kit or pills spawn can be taken twice. Survivors joining mid-chapter top up what's left; nothing is taken away when they leave. Switch it on or off with 'More items for 5+' on the Play tab; per-category settings in cfg/sourcemod/l4d2_8p_items.cfg.",
+      "description": "Maps are stocked for 4. This scales weapon piles, melee weapons, throwables and healing items (kits, pills, adrenaline, defibs) with the survivors, bots included. Auto: x survivors / 4, so with 8 survivors a pile of 5 holds 10 and each kit or pills spawn can be taken twice. Half, Custom (your own % per category) or Off are set with 'More items for 5+' on the Play tab. Survivors joining mid-chapter top up what's left; nothing is taken away when they leave. Per-category on/off and the cap in cfg/sourcemod/l4d2_8p_items.cfg.",
       "compile": [
         "embedded:l4d2_8p_items.sp"
+      ]
+    },
+    {
+      "id": "infected8",
+      "name": "Infected For 5+ Survivors (built in)",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "sourcemod",
+        "left4dhooks"
+      ],
+      "description": "The director is tuned for 4, so 8 survivors walk through it. This scales how many special infected can be alive at once, the common horde and mob sizes, and Tank health with the survivors, bots included. Auto: x survivors / 4 (8 survivors: 4 specials at once instead of 2, hordes of 60 instead of 30, an 8000 HP Tank on Normal). Half, Custom (your own % rules, including faster special respawns) or Off are set with 'Harder infected for 5+' on the Play tab. Co-op, realism and survival only. Caps in cfg/sourcemod/l4d2_8p_infected.cfg.",
+      "compile": [
+        "embedded:l4d2_8p_infected.sp"
       ]
     },
     {

@@ -78,7 +78,11 @@ namespace L4D2EightPlayer.UI
             numPlayers.Value = Math.Max(numPlayers.Minimum, Math.Min(numPlayers.Maximum, settings.MaxPlayers));
             chkFill.Checked = settings.FillWithBots;
             chkHudLook.Checked = settings.HudAddonLook;
-            chkItems.Checked = settings.ScaleItems;
+            cmbItemsMode.SelectedItem = settings.ItemsModeOrDefault;
+            if (cmbItemsMode.SelectedIndex < 0) cmbItemsMode.SelectedIndex = 1;
+            cmbInfectedMode.SelectedItem = settings.InfectedMode;
+            if (cmbInfectedMode.SelectedIndex < 0) cmbInfectedMode.SelectedIndex = 1;
+            UpdateRulesLinks();
             UpdateHudAddonLink();
             cmbMode.SelectedItem = settings.GameMode;
             if (cmbMode.SelectedIndex < 0) cmbMode.SelectedIndex = 0;
@@ -105,7 +109,9 @@ namespace L4D2EightPlayer.UI
             settings.MaxPlayers = (int)numPlayers.Value;
             settings.FillWithBots = chkFill.Checked;
             settings.HudAddonLook = chkHudLook.Checked;
-            settings.ScaleItems = chkItems.Checked;
+            settings.ItemsMode = cmbItemsMode.SelectedItem as string ?? "auto";
+            settings.InfectedMode = cmbInfectedMode.SelectedItem as string ?? "auto";
+            UpdateRulesLinks();
             UpdateHudAddonLink();
             settings.GameMode = cmbMode.SelectedItem as string ?? "coop";
             settings.Difficulty = cmbDifficulty.SelectedItem as string ?? "Normal";
@@ -118,6 +124,57 @@ namespace L4D2EightPlayer.UI
             settings.ScanBeforeLaunch = chkScanFirst.Checked;
             settings.Save();
             UpdatePlayState();
+        }
+
+        /// <summary>The "Custom rules…" links only show while their setting is on Custom.</summary>
+        void UpdateRulesLinks()
+        {
+            lnkItemsRules.Visible = settings.ItemsModeOrDefault == "custom";
+            lnkInfectedRules.Visible = settings.InfectedMode == "custom";
+        }
+
+        void EditItemRules()
+        {
+            var rules = new[]
+            {
+                new RulesDialog.Rule { Title = "Weapons", Detail = "Weapon piles, pistols, melee weapons", Value = settings.ItemsCustomWeapons },
+                new RulesDialog.Rule { Title = "Throwables", Detail = "Molotovs, pipe bombs, bile jars", Value = settings.ItemsCustomThrowables },
+                new RulesDialog.Rule { Title = "Healing", Detail = "First aid kits, pills, adrenaline, defibrillators", Value = settings.ItemsCustomHealing },
+            };
+            if (!EditRules("More items for 5+: custom rules", rules)) return;
+            settings.ItemsCustomWeapons = rules[0].Value;
+            settings.ItemsCustomThrowables = rules[1].Value;
+            settings.ItemsCustomHealing = rules[2].Value;
+            settings.Save();
+        }
+
+        void EditInfectedRules()
+        {
+            var rules = new[]
+            {
+                new RulesDialog.Rule { Title = "Specials at once", Detail = "How many special infected can be alive together", Value = settings.InfectedCustomSpecials },
+                new RulesDialog.Rule { Title = "Horde size", Detail = "Common infected limit, mobs and panic hordes", Value = settings.InfectedCustomHorde },
+                new RulesDialog.Rule { Title = "Tank health", Detail = "Set when each Tank spawns", Value = settings.InfectedCustomTank },
+                new RulesDialog.Rule { Title = "Faster specials", Detail = "How much sooner a dead special's slot refills", Value = settings.InfectedCustomRespawn, Max = 75 },
+            };
+            if (!EditRules("Harder infected for 5+: custom rules", rules)) return;
+            settings.InfectedCustomSpecials = rules[0].Value;
+            settings.InfectedCustomHorde = rules[1].Value;
+            settings.InfectedCustomTank = rules[2].Value;
+            settings.InfectedCustomRespawn = rules[3].Value;
+            settings.Save();
+        }
+
+        bool EditRules(string title, RulesDialog.Rule[] rules)
+        {
+            const string intro = "Each rule is % more for every survivor beyond 4. 25% matches Auto: with 8 survivors, 4 x 25% = twice the normal amount. " +
+                "Bots count as survivors. Applies the next time you start the server.";
+            using (var d = new RulesDialog(title, intro, rules))
+            {
+                if (d.ShowDialog(this) != DialogResult.OK) return false;
+                d.Save();
+                return true;
+            }
         }
 
         /// <summary>The add-on link under the HUD setting: what this PC has, and the one thing to do about it.</summary>

@@ -16,7 +16,22 @@ namespace L4D2EightPlayer.Core
         public int MaxPlayers { get; set; } = 8;
         public bool FillWithBots { get; set; } = false;
         public bool HudAddonLook { get; set; } = false;           // 8-Player HUD: health bars + icons (everyone needs the add-on)
-        public bool ScaleItems { get; set; } = true;              // Items For 5+ Survivors: item spawns scale with the survivor count
+        public bool ScaleItems { get; set; } = true;              // before 1.2: the items on/off switch (read once into ItemsMode)
+
+        // Scaling for 5+ survivors: "off" | "auto" (x survivors / 4) | "half" | "custom" (the % rules below,
+        // each per survivor beyond 4). Items: Items For 5+ Survivors. Infected: Infected For 5+ Survivors.
+        public string ItemsMode { get; set; }
+        public int ItemsCustomWeapons { get; set; } = 25;
+        public int ItemsCustomThrowables { get; set; } = 25;
+        public int ItemsCustomHealing { get; set; } = 25;
+        public string InfectedMode { get; set; } = "auto";
+        public int InfectedCustomSpecials { get; set; } = 25;
+        public int InfectedCustomHorde { get; set; } = 25;
+        public int InfectedCustomTank { get; set; } = 25;
+        public int InfectedCustomRespawn { get; set; } = 0;
+
+        public static readonly string[] ScalingModes = { "off", "auto", "half", "custom" };
+        public string ItemsModeOrDefault => ItemsMode ?? (ScaleItems ? "auto" : "off");
         public string GameMode { get; set; } = "coop";
         public string Difficulty { get; set; } = "Normal";
         public string Map { get; set; } = "c1m1_hotel";

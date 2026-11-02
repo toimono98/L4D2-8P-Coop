@@ -396,7 +396,18 @@ namespace L4D2EightPlayer.UI.Themes
         public event EventHandler ValueChanged;
 
         public decimal Minimum { get => min; set { min = value; Value = this.value; } }
-        public decimal Maximum { get => max; set { max = value; Value = this.value; } }
+        public decimal Maximum
+        {
+            get => max;
+            set
+            {
+                max = value;
+                number.Width = Math.Max(number.Width, Draw.Measure(max.ToString("0"), number.Font).Width + S(12));
+                Value = this.value;
+            }
+        }
+        /// <summary>How much − and + change the value.</summary>
+        public decimal Step { get; set; } = 1;
         public decimal Value
         {
             get => value;
@@ -417,8 +428,8 @@ namespace L4D2EightPlayer.UI.Themes
             minus = new GameButton("−", ButtonKind.Ghost, 13f) { Size = Sz(44, 44), AutoSizeLocked = true, Margin = P(0), AccessibleName = "Fewer " + label.ToLowerInvariant() };
             plus = new GameButton("+", ButtonKind.Ghost, 13f) { Size = Sz(44, 44), AutoSizeLocked = true, Margin = P(0), AccessibleName = "More " + label.ToLowerInvariant() };
             number = new Label { Font = Theme.Display(17f), ForeColor = Theme.Bone, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(Math.Max(S(48), Draw.Measure("16", Theme.Display(17f)).Width + S(12)), S(44)), Margin = P(0) };
-            minus.Click += (s, e) => Value -= 1;
-            plus.Click += (s, e) => Value += 1;
+            minus.Click += (s, e) => Value -= Step;
+            plus.Click += (s, e) => Value += Step;
             WrapContents = false;
             Margin = P(0);
             Padding = P(0);
