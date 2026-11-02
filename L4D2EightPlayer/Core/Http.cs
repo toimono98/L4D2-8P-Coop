@@ -34,6 +34,17 @@ namespace L4D2EightPlayer.Core
             }
         }
 
+        /// <summary>POSTs a JSON body. The error names only the status, never the URL (webhook URLs are secrets).</summary>
+        public static async Task PostJson(string url, string json, CancellationToken ct = default)
+        {
+            using (var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"))
+            using (var resp = await Client.PostAsync(url, content, ct).ConfigureAwait(false))
+            {
+                if (!resp.IsSuccessStatusCode)
+                    throw new IOException($"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}");
+            }
+        }
+
         /// <summary>Downloads to <paramref name="dest"/> via a temp file, reporting progress.</summary>
         public static async Task Download(string url, string dest, ILog log, CancellationToken ct = default)
         {

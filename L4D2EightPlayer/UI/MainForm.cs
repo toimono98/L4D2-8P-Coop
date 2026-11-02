@@ -865,7 +865,7 @@ namespace L4D2EightPlayer.UI
             {
                 serverProcess = Launcher.StartServer(settings);
                 serverProcess.EnableRaisingEvents = true;
-                serverProcess.Exited += (s, e) => { if (!IsDisposed) BeginInvoke((Action)(async () => { Info("Server stopped."); UpdatePlayState(); await AutoForward(false); })); };
+                serverProcess.Exited += (s, e) => { if (!IsDisposed) BeginInvoke((Action)(async () => { Info("Server stopped."); UpdatePlayState(); await AutoForward(false); await AnnounceDiscord(stopped: true); })); };
                 Info($"Server starting on port {settings.Port} ({settings.GameMode}, {settings.Map}, up to {settings.MaxPlayers} players" + (settings.FillWithBots ? ", bot fill on" : "") + "). Its console window shows the log.");
                 _ = WatchServerHealth(serverProcess, DateTime.Now.AddSeconds(-2));
                 await AutoForward(true);
@@ -889,6 +889,7 @@ namespace L4D2EightPlayer.UI
                 try { up = await ServerQuery.Query(host, settings.Port) != null; } catch { }
             }
             if (!up || proc.HasExited) return;
+            await AnnounceDiscord(stopped: false);
             await Task.Delay(5000);   // plugins finish loading after the first map is up
             var issues = await Task.Run(() => ServerHealth.Check(settings.TargetGameDir, started, manifest));
             if (IsDisposed || proc.HasExited) return;

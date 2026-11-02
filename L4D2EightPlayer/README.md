@@ -182,6 +182,15 @@ The **4. Internet hosting** tab handles the network side:
 - **Copy invite for friends** gives a `steam://connect/...` link plus the console command.
 - If UPnP is off, the tab shows step-by-step manual forwarding instructions with your own values filled in.
 
+## Post to Discord
+
+**Internet tab > Post to Discord** posts your invite to a Discord channel when the server is up:
+
+1. In Discord: the channel's settings › **Integrations** › **Webhooks** › **New Webhook** › **Copy Webhook URL**.
+2. Paste it into the Manager. It's hidden like a password, because anyone with it can post to that channel.
+3. Click **Send a test post** to check.
+
+The post shows the server name, campaign, mode, difficulty and size, the `steam://connect` link and console command, a download link for the Join app, and the Workshop link when you run a custom campaign. **Post when it stops** (off by default) adds a short "has stopped" post. Nothing is posted for **Just me** servers or listen servers, and the post never mentions anyone. The webhook is stored only in `settings.json` and is never written to the log.
 ## Joining only (for friends): `L4D2-8P-Join.exe`
 
 1. Paste the host's invite. A `steam://connect/...` link, an `IP:port`, or a `connect ...` line all work.

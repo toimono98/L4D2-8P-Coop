@@ -106,6 +106,7 @@ namespace L4D2EightPlayer.UI
             var right = Stack(P(0));
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             // The invite card is "paper": bone background, dark ink.
@@ -123,17 +124,78 @@ namespace L4D2EightPlayer.UI
             ic.Controls.Add(copy, 0, 4);
             invite.Controls.Add(ic);
             right.Controls.Add(invite, 0, 0);
+            right.Controls.Add(BuildDiscordCard(), 0, 1);
 
-            right.Controls.Add(SmallCaps("Details"), 0, 1);
+            right.Controls.Add(SmallCaps("Details"), 0, 2);
             txtNetStatus = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical,
                                          Text = "Open this tab or click Check again to test your connection." };
-            right.Controls.Add(txtNetStatus, 0, 2);
+            right.Controls.Add(txtNetStatus, 0, 3);
             main.Controls.Add(right, 1, 0);
             g.Controls.Add(main, 0, 2);
 
             page.Controls.Add(g);
             UpdateNetHelp();
             return page;
+        }
+
+        TextBox txtWebhook;
+        CheckBox chkDiscordStart, chkDiscordStop;
+
+        /// <summary>"Post to Discord": a channel webhook, when to post, and a test button.</summary>
+        Card BuildDiscordCard()
+        {
+            var card = new Card("Post to Discord") { Dock = DockStyle.Fill, AutoSize = true, Margin = P(0, 0, 0, 14) };
+            var st = Stack(P(0), autoSize: true);
+            st.Controls.Add(new Label { Text = "Paste a channel webhook (in Discord: channel settings › Integrations › Webhooks › Copy Webhook URL). Treat it like a password.",
+                AutoSize = true, MaximumSize = Sz(390, 0), Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 0, 0, 8) }, 0, 0);
+            txtWebhook = new TextBox { Dock = DockStyle.Fill, Font = Theme.Mono(9.5f), UseSystemPasswordChar = true, Text = settings.DiscordWebhook ?? "", Margin = P(0, 0, 0, 8), AccessibleName = "Discord webhook URL" };
+            txtWebhook.TextChanged += (s, e) => { settings.DiscordWebhook = txtWebhook.Text.Trim(); settings.Save(); };
+            st.Controls.Add(txtWebhook, 0, 1);
+            chkDiscordStart = new GameCheck { Text = "Post the invite when the server starts", AutoSize = true, Font = Theme.Body(9.5f), Checked = settings.DiscordOnStart, Margin = P(0, 0, 0, 2) };
+            chkDiscordStop = new GameCheck { Text = "Post when it stops", AutoSize = true, Font = Theme.Body(9.5f), Checked = settings.DiscordOnStop, Margin = P(0, 0, 0, 8) };
+            chkDiscordStart.CheckedChanged += (s, e) => { settings.DiscordOnStart = chkDiscordStart.Checked; settings.Save(); };
+            chkDiscordStop.CheckedChanged += (s, e) => { settings.DiscordOnStop = chkDiscordStop.Checked; settings.Save(); };
+            st.Controls.Add(chkDiscordStart, 0, 2);
+            st.Controls.Add(chkDiscordStop, 0, 3);
+            var test = Btn("Send a test post", ButtonKind.Ghost, async (s, e) => await AnnounceDiscord(stopped: false, test: true), 10f);
+            test.Margin = P(0);
+            st.Controls.Add(test, 0, 4);
+            card.Controls.Add(st);
+            return card;
+        }
+
+        /// <summary>Posts the server's invite (or "stopped") to the Discord webhook, if one is set.</summary>
+        async Task AnnounceDiscord(bool stopped, bool test = false)
+        {
+            var hook = settings.DiscordWebhook;
+            if (string.IsNullOrWhiteSpace(hook)) { if (test) Warn("Discord: paste a channel webhook URL first."); return; }
+            if (!Discord.IsWebhook(hook)) { Warn("Discord: that doesn't look like a webhook URL (it starts with https://discord.com/api/webhooks/)."); return; }
+            if (!test && (stopped ? !settings.DiscordOnStop : !settings.DiscordOnStart)) return;
+            if (settings.Mode == "listen") { if (test) Warn("Discord posts are for the dedicated server."); return; }
+            if (settings.NetworkMode == "local" && !test) { Info("Discord: not posted, the server is set to Just me."); return; }
+            if (publicIp == null && settings.Internet) { try { publicIp = await Launcher.PublicAddress(); } catch { } }
+
+            var t = new JoinTarget { Host = ShareHost(), Port = HostPort, Password = settings.Password };
+            var camp = ServerQuery.IsOfficialMap(settings.Map) ? null : Campaigns.ForMap(customCampaigns, settings.Map);
+            var a = new Discord.Announcement
+            {
+                Server = (test ? "[test] " : "") + settings.ServerName,
+                Campaign = CampaignTitle(settings.Map) is string ct && ct != "CUSTOM MAP" ? System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(ct.ToLowerInvariant()) : settings.Map,
+                Mode = settings.GameMode,
+                Difficulty = settings.Difficulty,
+                MaxPlayers = settings.MaxPlayers,
+                SteamUrl = t.SteamUrl,
+                ConsoleCommand = t.ConsoleCommand,
+                NeedsTitle = camp?.Title,
+                NeedsUrl = camp?.WorkshopUrl,
+                Stopped = stopped,
+            };
+            try
+            {
+                await Discord.Post(hook, a);
+                Info(stopped ? "Posted to Discord: server stopped." : "Posted the invite to Discord.");
+            }
+            catch (Exception ex) { Warn("Discord post failed: " + ex.Message); }
         }
 
         /// <summary>Paints the route cards from the latest network check.</summary>

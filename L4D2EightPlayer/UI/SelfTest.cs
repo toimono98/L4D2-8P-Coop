@@ -226,6 +226,16 @@ namespace L4D2EightPlayer.UI
                     log.Info("screenshots saved to " + dir);
                 }
 
+                if (Arg("--discord-test") != null)
+                {
+                    // --discord-test <webhook or local test URL>: posts a sample announcement (the URL is not logged)
+                    var a = new Discord.Announcement { Server = "[test] L4D2 8-Player Co-op", Campaign = "Dead Center", Mode = "coop", Difficulty = "Normal", MaxPlayers = 8,
+                        SteamUrl = "steam://connect/203.0.113.5:27015", ConsoleCommand = "connect 203.0.113.5:27015", NeedsTitle = "ZZ Test Campaign", NeedsUrl = "https://steamcommunity.com/sharedfiles/filedetails/?id=1234567890" };
+                    try { Discord.Post(Arg("--discord-test"), a).GetAwaiter().GetResult(); log.Info("discord: posted"); }
+                    catch (Exception ex) { rc = 1; log.Error("discord: " + ex.Message); }
+                    log.Info("discord: valid webhook form? " + Discord.IsWebhook(Arg("--discord-test")));
+                }
+
                 if (args.Contains("--update-check"))
                 {
                     log.Info($"update: this is {AppInfo.Version}; newer: {UpdateCheck.Newer().GetAwaiter().GetResult() ?? "none"}");

@@ -32,6 +32,11 @@ namespace L4D2EightPlayer.Core
 
         public static readonly string[] ScalingModes = { "off", "auto", "half", "custom" };
 
+        // Discord announcements (Internet tab). The webhook URL is a secret: kept here only, never logged.
+        public string DiscordWebhook { get; set; } = "";
+        public bool DiscordOnStart { get; set; } = true;
+        public bool DiscordOnStop { get; set; } = false;
+
         // After a finale (Campaign Rotation): "stay" | "next" | "random" | "vote"
         public string RotationMode { get; set; } = "next";
         public static readonly string[] RotationModes = { "stay", "next", "random", "vote" };
