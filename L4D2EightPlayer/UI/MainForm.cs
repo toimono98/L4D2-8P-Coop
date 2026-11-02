@@ -823,10 +823,60 @@ namespace L4D2EightPlayer.UI
                 serverProcess.EnableRaisingEvents = true;
                 serverProcess.Exited += (s, e) => { if (!IsDisposed) BeginInvoke((Action)(async () => { Info("Server stopped."); UpdatePlayState(); await AutoForward(false); })); };
                 Info($"Server starting on port {settings.Port} ({settings.GameMode}, {settings.Map}, up to {settings.MaxPlayers} players" + (settings.FillWithBots ? ", bot fill on" : "") + "). Its console window shows the log.");
+                _ = WatchServerHealth(serverProcess, DateTime.Now.AddSeconds(-2));
                 await AutoForward(true);
             }
             catch (Exception ex) { Error(ex.Message); MessageBox.Show(this, ex.Message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error); }
             UpdatePlayState();
+        }
+
+        List<ServerHealth.Issue> healthIssues;
+
+        /// <summary>Once the server answers, checks SourceMod's logs for plugins that failed to load or broke.</summary>
+        async Task WatchServerHealth(System.Diagnostics.Process proc, DateTime started)
+        {
+            healthIssues = null;
+            UpdateHealthLink();
+            var host = Launcher.LocalServerAddress();
+            bool up = false;
+            for (int i = 0; i < 60 && !proc.HasExited && !up; i++)
+            {
+                await Task.Delay(2000);
+                try { up = await ServerQuery.Query(host, settings.Port) != null; } catch { }
+            }
+            if (!up || proc.HasExited) return;
+            await Task.Delay(5000);   // plugins finish loading after the first map is up
+            var issues = await Task.Run(() => ServerHealth.Check(settings.TargetGameDir, started, manifest));
+            if (IsDisposed || proc.HasExited) return;
+            healthIssues = issues;
+            if (issues.Count == 0) Info("Server check: every plugin loaded cleanly.");
+            else
+            {
+                Warn($"Server check: {issues.Count} plugin problem(s) on this start.");
+                foreach (var i in issues) Warn("  " + i);
+                Warn("This usually follows a game update. Check for updates on the Setup tab, then Download & install.");
+            }
+            UpdateHealthLink();
+        }
+
+        void UpdateHealthLink()
+        {
+            int n = healthIssues?.Count ?? 0;
+            lnkHealth.Visible = n > 0;
+            lnkHealth.Text = $"⚠ PLUGIN PROBLEMS ON THE LAST START ({n}) · DETAILS";
+        }
+
+        void ShowHealthDetails()
+        {
+            if (healthIssues == null || healthIssues.Count == 0) return;
+            var text = string.Join(Environment.NewLine + Environment.NewLine, healthIssues.Select(i => "• " + i)) + Environment.NewLine + Environment.NewLine +
+                "These usually follow a Left 4 Dead 2 update that a plugin hasn't caught up with yet. Check for updates on the Setup tab, " +
+                "then Download & install. The rest of the server keeps running.\n\nOpen SourceMod's log folder?";
+            if (MessageBox.Show(this, text, "Plugin problems on the last start", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+            {
+                var logs = Path.Combine(settings.TargetGameDir ?? "", "addons", "sourcemod", "logs");
+                if (Directory.Exists(logs)) System.Diagnostics.Process.Start("explorer.exe", "\"" + logs + "\"");
+            }
         }
 
         void StopServer()

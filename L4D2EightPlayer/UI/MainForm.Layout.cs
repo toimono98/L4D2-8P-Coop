@@ -25,7 +25,7 @@ namespace L4D2EightPlayer.UI
         GameButton btnInstall, btnCheckUpdates, btnUninstall, btnUninstallAll, btnScan, btnFix, btnStart, btnStop, btnJoin, btnCancel, btnServerBrowse;
         CheckBox chkWatch, chkSync, chkUpdateOnStart, chkScanFirst;
         ToggleSwitch chkFill, chkHudLook;
-        LinkLabel lnkHudAddon, lnkItemsRules, lnkInfectedRules;
+        LinkLabel lnkHudAddon, lnkItemsRules, lnkInfectedRules, lnkHealth;
         Pills cmbItemsMode, cmbInfectedMode;
         Stepper numPlayers;
         NumericUpDown numPort;
@@ -605,6 +605,10 @@ namespace L4D2EightPlayer.UI
             var actionStack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0) };
             actionStack.Controls.Add(actions);
             actionStack.Controls.Add(lblServerState);
+            // plugins that failed on the last start (ServerHealth), hidden while there are none
+            lnkHealth = new LinkLabel { AutoSize = true, Font = Theme.BodyBold(9f), Margin = P(2, 4, 0, 0), Visible = false, LinkColor = Theme.Amber, ActiveLinkColor = Theme.Bone };
+            lnkHealth.LinkClicked += (s, e) => ShowHealthDetails();
+            actionStack.Controls.Add(lnkHealth);
             footer.Controls.Add(actionStack, 0, 0);
 
             var connectBox = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Margin = P(0), Anchor = AnchorStyles.Right };

@@ -187,6 +187,10 @@ namespace L4D2EightPlayer.UI
                         var pills = (Themes.Pills)typeof(MainForm).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(form);
                         pills.SelectedItem = "custom";
                     }
+                    // and the warning a failed plugin leaves under the Start button
+                    typeof(MainForm).GetField("healthIssues", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                        .SetValue(form, new List<ServerHealth.Issue> { new ServerHealth.Issue { File = "l4d2_8p_characters.smx", Component = "Unique Survivors (built in)", Problem = "example" } });
+                    typeof(MainForm).GetMethod("UpdateHealthLink", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(form, null);
                     var t3 = DateTime.Now.AddSeconds(1);
                     while (DateTime.Now < t3) { System.Windows.Forms.Application.DoEvents(); Thread.Sleep(20); }
                     using (var bmp = new System.Drawing.Bitmap(form.Width, form.Height))
@@ -217,6 +221,15 @@ namespace L4D2EightPlayer.UI
                     }
                     form.Close();
                     log.Info("screenshots saved to " + dir);
+                }
+
+                if (Arg("--health") != null)
+                {
+                    // --health <left4dead2 dir> [--minutes N]: the post-start plugin check over the last N minutes of logs
+                    int.TryParse(Arg("--minutes") ?? "60", out int minutes);
+                    var issues = ServerHealth.Check(Arg("--health"), DateTime.Now.AddMinutes(-minutes), manifest);
+                    log.Info($"health: {issues.Count} issue(s) in the last {minutes} min");
+                    foreach (var i in issues) log.Info($"  {i.File} | {i.Component} | {i.Problem}");
                 }
 
                 if (args.Contains("--net"))
