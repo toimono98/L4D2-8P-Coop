@@ -223,6 +223,14 @@ namespace L4D2EightPlayer.UI
                     log.Info("screenshots saved to " + dir);
                 }
 
+                if (Arg("--campaigns") != null)
+                {
+                    // --campaigns <left4dead2 dir>[;<dir>...]: the custom campaigns the Play tab would list
+                    foreach (var c in Campaigns.Find(Arg("--campaigns").Split(';')))
+                        log.Info($"campaign {c.Title} | maps {string.Join(",", c.Maps)} | workshop {c.WorkshopId ?? "-"} | {Path.GetFileName(c.File)}");
+                    log.Info("campaigns: done");
+                }
+
                 if (Arg("--health") != null)
                 {
                     // --health <left4dead2 dir> [--minutes N]: the post-start plugin check over the last N minutes of logs

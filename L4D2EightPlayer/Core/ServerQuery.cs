@@ -27,7 +27,10 @@ namespace L4D2EightPlayer.Core
         public string Host;
         public int Port = 27015;
         public string Password = "";
+        /// <summary>The Workshop item of the host's custom campaign, when the invite names one.</summary>
+        public string WorkshopId;
         public string Address => Host + ":" + Port;
+        static readonly Regex Workshop = new Regex(@"sharedfiles/filedetails/\?id=(\d+)", RegexOptions.IgnoreCase);
 
         static readonly Regex SteamLink = new Regex(@"steam://connect/([^/:\s]+)(?::(\d+))?(?:/([^\s]*))?", RegexOptions.IgnoreCase);
         static readonly Regex Console = new Regex(@"connect\s+([^\s:;]+)(?::(\d+))?(?:\s*;\s*password\s+""?([^"";]*)""?)?", RegexOptions.IgnoreCase);
@@ -43,6 +46,8 @@ namespace L4D2EightPlayer.Core
                 var t = new JoinTarget { Host = m.Groups[1].Value };
                 if (m.Groups[2].Success && int.TryParse(m.Groups[2].Value, out var p) && p > 0 && p < 65536) t.Port = p;
                 if (m.Groups.Count > 3 && m.Groups[3].Success) t.Password = Uri.UnescapeDataString(m.Groups[3].Value);
+                var w = Workshop.Match(text);
+                if (w.Success) t.WorkshopId = w.Groups[1].Value;
                 return t;
             }
             return null;

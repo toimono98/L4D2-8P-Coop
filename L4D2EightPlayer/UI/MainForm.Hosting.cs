@@ -368,14 +368,26 @@ namespace L4D2EightPlayer.UI
         string InviteText()
         {
             var target = new JoinTarget { Host = ShareHost(), Port = HostPort, Password = settings.Mode == "listen" ? "" : settings.Password };
-            return target.SteamUrl;
+            return target.SteamUrl + CampaignNeeds();
+        }
+
+        /// <summary>
+        /// "  ·  Needs <campaign>: <Workshop link>" when the server is on a custom campaign. Kept on the invite's one
+        /// line: the Join app's address box only takes the first line of a paste, and finds the link there.
+        /// </summary>
+        string CampaignNeeds()
+        {
+            if (settings.Mode == "listen" || ServerQuery.IsOfficialMap(settings.Map)) return "";
+            var c = Campaigns.ForMap(customCampaigns, settings.Map);
+            if (c == null) return "";
+            return $"  ·  Needs the {c.Title} campaign" + (c.WorkshopUrl != null ? ": " + c.WorkshopUrl : $" (map {c.FirstMap})");
         }
 
         async void CopyInvite()
         {
             if (publicIp == null) { try { publicIp = await Launcher.PublicAddress(); } catch { } }
             var t = new JoinTarget { Host = ShareHost(), Port = HostPort, Password = settings.Mode == "listen" ? "" : settings.Password };
-            var text = $"Join my L4D2 8-player game: {t.SteamUrl}   (or in the L4D2 console: {t.ConsoleCommand})";
+            var text = $"Join my L4D2 8-player game: {t.SteamUrl}   (or in the L4D2 console: {t.ConsoleCommand})" + CampaignNeeds();
             Clipboard.SetText(text);
             txtInvite.Text = text;
             Info("Copied invite: " + text + (publicIp == null ? "  (LAN address only; no internet address found)" : ""));

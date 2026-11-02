@@ -71,7 +71,7 @@ namespace L4D2EightPlayer.Join
         Card serverCard, emptyCard;
         Label lblFound, lblName, lblMap, lblCount, lblPing, lblVersion, lblMapState, lblNotes, lblEmptyTitle, lblEmptyBody;
         PipBar pips;
-        string missingMap;
+        string missingMap, missingWorkshopId;
 
         public JoinForm(string initial)
         {
@@ -153,7 +153,10 @@ namespace L4D2EightPlayer.Join
             stats.Controls.Add(last, 2, 0);
             lblNotes = new Label { AutoSize = true, MaximumSize = Sz(700, 0), Font = Theme.BodySemi(10f), ForeColor = Theme.Amber, Margin = P(0, 0, 0, 6) };
             lnkMap = new LinkLabel { AutoSize = true, Visible = false, Font = Theme.BodySemi(10f), Margin = P(0, 0, 0, 8) };
-            lnkMap.LinkClicked += (s, e) => Process.Start("https://steamcommunity.com/workshop/browse/?appid=550&searchtext=" + Uri.EscapeDataString(missingMap ?? ""));
+            // the host's invite names the exact Workshop item: open it in Steam, where Subscribe is one click
+            lnkMap.LinkClicked += (s, e) => Process.Start(missingWorkshopId != null
+                ? "steam://url/CommunityFilePage/" + missingWorkshopId
+                : "https://steamcommunity.com/workshop/browse/?appid=550&searchtext=" + Uri.EscapeDataString(missingMap ?? ""));
             btnJoin = new GameButton("Join game", ButtonKind.Primary, 15f) { Dock = DockStyle.Top, AutoSizeLocked = true, Margin = P(0, 4, 0, 0) };
             btnJoin.Click += async (s, e) => await JoinGame();
             sc.Controls.Add(lblFound, 0, 0);
@@ -368,10 +371,11 @@ namespace L4D2EightPlayer.Join
                     else
                     {
                         missingMap = info.Map;
+                        missingWorkshopId = t.WorkshopId;
                         lblMapState.Text = "Custom · missing";
                         lblMapState.ForeColor = Theme.Amber;
-                        notes.Add($"⚠ The host is on a custom map ({info.Map}) that you don't have. Subscribe to the same campaign first.");
-                        lnkMap.Text = $"Search the Workshop for '{info.Map}'";
+                        notes.Add($"⚠ The host is on a custom map ({info.Map}) that you don't have. Subscribe to the same campaign first, then start L4D2 once so it downloads.");
+                        lnkMap.Text = t.WorkshopId != null ? "Open the host's campaign on the Workshop (subscribe there)" : $"Search the Workshop for '{info.Map}'";
                         lnkMap.Visible = true;
                     }
                 }

@@ -60,9 +60,39 @@ namespace L4D2EightPlayer.UI
 
             LoadSettingsIntoUi();
             RefreshAll();
+            await LoadCampaigns();
             SetupWatchers();
             if (settings.TargetGameDir != null) await RunScan(auto: true, quiet: true);
             await CleanupStaleForward();
+        }
+
+        List<Campaigns.Campaign> customCampaigns = new List<Campaigns.Campaign>();
+
+        /// <summary>Adds the custom campaigns in the server's (and your game's) add-ons to the campaign list.</summary>
+        async Task LoadCampaigns()
+        {
+            var dirs = new[] { settings.TargetGameDir, settings.ClientGameDir };
+            customCampaigns = await Task.Run(() => Campaigns.Find(dirs));
+            var text = cmbMap.Text;
+            cmbMap.BeginUpdate();
+            cmbMap.Items.Clear();
+            cmbMap.Items.AddRange(ServerConfig.Maps);
+            foreach (var c in customCampaigns) cmbMap.Items.Add(c.FirstMap);
+            cmbMap.EndUpdate();
+            loading = true;
+            cmbMap.Text = text;
+            loading = false;
+            lblCampaign.Text = CampaignTitle(cmbMap.Text);
+            if (customCampaigns.Count > 0)
+                Info($"Custom campaigns: {string.Join(", ", customCampaigns.Select(c => c.Title + " (" + c.FirstMap + ")"))}.");
+        }
+
+        /// <summary>The campaign's name for a map: official, an installed custom campaign, or "CUSTOM MAP".</summary>
+        string CampaignTitle(string map)
+        {
+            if (ServerQuery.IsOfficialMap(map)) return CampaignName(map);
+            var c = Campaigns.ForMap(customCampaigns, map);
+            return c != null ? c.Title.ToUpperInvariant() : "CUSTOM MAP";
         }
 
         void LoadSettingsIntoUi()
@@ -695,7 +725,7 @@ namespace L4D2EightPlayer.UI
             nav.StatusColor = running || gameWatch.Enabled ? Theme.Amber : Theme.Muted;
             txtJoinInfo.Text = JoinInstructions(publicIp);
             lblConnect.Text = $"connect {ShareHost()}:{(listen ? 27015 : settings.Port)}";
-            lblCampaign.Text = CampaignName(cmbMap.Text);
+            lblCampaign.Text = CampaignTitle(cmbMap.Text);
             UpdateRoster();
         }
 

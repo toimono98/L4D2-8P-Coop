@@ -72,6 +72,12 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 
 **Client side:** the host should subscribe to the [8 Slots Lobby Mod](https://steamcommunity.com/sharedfiles/filedetails/?id=2754956355) to get 8-slot lobbies. Friends need nothing except the same custom campaigns.
 
+## Custom campaigns
+
+- **Play tab > Campaign** lists the official campaigns plus every custom campaign in the server's add-ons and your game's add-ons (read from each add-on's `missions` file), by their first chapter. The heading shows the campaign's own name.
+- With **Copy campaigns and script mods to the server** on, campaigns you subscribe to in your game reach the dedicated server on the next Start server.
+- **Copy invite** adds "Needs the <campaign> campaign: <Workshop link>" when the server runs a custom campaign that came from the Workshop. It stays on the invite's single line, so friends can paste the whole invite into the Join app, which then links straight to that Workshop item.
+
 ## Working with mods you already have
 
 - **Existing SourceMod/Metamod/plugins are kept.** The tool records every file it writes. Before replacing a file it didn't create, it saves a backup, and **Remove everything** restores the originals. Your admin lists and plugin configs are never overwritten.
@@ -168,7 +174,7 @@ The **4. Internet hosting** tab handles the network side:
    - a game version mismatch
    - a missing password
    - a full server
-   - a custom map you don't have, with a link that searches the Workshop for it
+   - a custom map you don't have. When the host's invite names the campaign, the link opens that exact Workshop item in Steam, where Subscribe is one click; otherwise it searches the Workshop for the map name
 3. **Join game** starts L4D2 already connecting. If the game is already running, it connects directly.
 
 **Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the same custom campaign if the host plays one.

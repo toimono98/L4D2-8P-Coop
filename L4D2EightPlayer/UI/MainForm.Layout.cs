@@ -633,7 +633,7 @@ namespace L4D2EightPlayer.UI
             cmbMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbDifficulty.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbNetwork.SelectedIndexChanged += (s, e) => ReadPlaySettings();
-            cmbMap.TextChanged += (s, e) => { lblCampaign.Text = CampaignName(cmbMap.Text); ReadPlaySettings(); };
+            cmbMap.TextChanged += (s, e) => { lblCampaign.Text = CampaignTitle(cmbMap.Text); ReadPlaySettings(); };
             foreach (var c in new CheckBox[] { chkFill, chkHudLook, chkSync, chkUpdateOnStart, chkScanFirst }) c.CheckedChanged += (s, e) => ReadPlaySettings();
             cmbItemsMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbInfectedMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();

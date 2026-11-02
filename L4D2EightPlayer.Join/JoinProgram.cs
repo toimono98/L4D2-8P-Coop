@@ -17,7 +17,7 @@ namespace L4D2EightPlayer.Join
                 var t = JoinTarget.Parse(args[1]);
                 var info = t == null ? null : ServerQuery.Query(t.Host, t.Port).GetAwaiter().GetResult();
                 File.WriteAllText(args[2], t == null ? "parse failed" :
-                    $"target {t.Address} pw='{t.Password}' steam={t.SteamUrl}\n" +
+                    $"target {t.Address} pw='{t.Password}' steam={t.SteamUrl} workshop={t.WorkshopId ?? "-"}\n" +
                     (info == null ? "no answer" : $"{info.Name} | {info.Map} | {info.Players}/{info.MaxPlayers} bots {info.Bots} | v{info.Version} | pw {info.Password} | {info.PingMs}ms") +
                     "\nplayers: " + string.Join(", ", ServerQuery.Players(t.Host, t.Port).GetAwaiter().GetResult() ?? new System.Collections.Generic.List<string> { "(no answer)" }));
                 return;
