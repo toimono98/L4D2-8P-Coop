@@ -1,0 +1,35 @@
+L4D2 8-PLAYER CO-OP - JOIN APP
+==============================
+
+This app joins a friend's 8-player Left 4 Dead 2 game.
+You don't need any mods, and it doesn't change your game.
+
+HOW TO JOIN
+1. Unzip this folder anywhere (Desktop is fine).
+2. Open L4D2-8P-Join.exe.
+3. Paste the invite your host sent you
+   (it looks like steam://connect/1.2.3.4:27015).
+4. Click "Check server", then "Join game".
+   L4D2 starts and connects you automatically.
+   If you end up spectating, type !join in chat.
+
+"WINDOWS PROTECTED YOUR PC"?
+The app isn't code-signed, so Windows may warn you the first time.
+Click "More info", then "Run anyway".
+
+OPTIONAL: 8-PLAYER HUD
+The link at the bottom of the app installs a small HUD add-on.
+It shows the extra survivors with health bars and item icons
+(without it you'd see plain text boxes, if your host uses that look).
+Close L4D2 before installing it. You can remove it from the same link.
+
+GOOD TO KNOW
+- Needs Windows 10 or 11 and Steam with Left 4 Dead 2 installed.
+- If the host plays a custom campaign, "Check server" tells you
+  and links to it on the Workshop.
+- Playing on the same home network? Use "Find games on my network".
+- The app remembers the servers you've joined under "Recent groups".
+- Settings are stored in %LOCALAPPDATA%\L4D2-8P-Manager.
+  Delete that folder to reset them.
+
+The licenses folder covers the fonts built into the app.

@@ -1,0 +1,28 @@
+"Games"
+{
+	"left4dead2"
+	{
+		"Functions"
+		{
+			// Whether a survivor is "calm" (no threat around), which picks the relaxed idle/walk animations.
+			// CTerrorPlayer::PostThink stores it in m_isCalm and then updates the animation.
+			"CTerrorPlayer::IsCalm"
+			{
+				"signature"	"CTerrorPlayer::IsCalm"
+				"callconv"	"thiscall"
+				"return"	"bool"
+				"this"		"entity"
+			}
+		}
+
+		"Signatures"
+		{
+			"CTerrorPlayer::IsCalm"
+			{
+				"library"	"server"
+				// push ebp; mov ebp,esp; push ecx; push esi; mov esi,ecx; call GetActiveWeapon...; ...; mov al,1
+				"windows"	"\x55\x8B\xEC\x51\x56\x8B\xF1\xE8\x2A\x2A\x2A\x2A\x50\xE8\x2A\x2A\x2A\x2A\x83\xC4\x04\x84\xC0\x0F\x84\x2A\x2A\x2A\x2A\x8B\x0D\x2A\x2A\x2A\x2A\xE8\x2A\x2A\x2A\x2A\x84\xC0\x74\x07\xB0\x01\x5E"
+			}
+		}
+	}
+}

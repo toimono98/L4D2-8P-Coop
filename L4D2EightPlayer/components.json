@@ -1,0 +1,860 @@
+{
+  "manifestVersion": 1,
+  "updated": "2026-10-25",
+  "notes": "Component list for the L4D2 8-Player Co-op Manager. Based on fbef0102's '8+ Survivors In Coop' guide (updated 2026-07-26). Put an edited copy named components.json next to the .exe to override this embedded one.",
+  "components": [
+    {
+      "id": "metamod",
+      "name": "Metamod:Source 1.12 (stable)",
+      "group": "Core",
+      "required": true,
+      "description": "Plugin loader that SourceMod and L4DToolZ run on top of.",
+      "archive": {
+        "type": "alliedmods",
+        "latest": "https://mms.alliedmods.net/mmsdrop/1.12/mmsource-latest-windows",
+        "base": "https://mms.alliedmods.net/mmsdrop/1.12/"
+      },
+      "extract": [
+        {
+          "from": "addons/",
+          "to": "addons/"
+        }
+      ],
+      "keepExisting": [
+        "addons/metamod/metaplugins.ini"
+      ],
+      "detect": "addons/metamod/bin/server.dll",
+      "toggleFiles": [
+        "addons/metamod.vdf",
+        "addons/metamod_x64.vdf"
+      ]
+    },
+    {
+      "id": "sourcemod",
+      "name": "SourceMod 1.12 (stable)",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "metamod"
+      ],
+      "description": "Server plugin framework. Every 8-player fix below is a SourceMod plugin.",
+      "archive": {
+        "type": "alliedmods",
+        "latest": "https://sm.alliedmods.net/smdrop/1.12/sourcemod-latest-windows",
+        "base": "https://sm.alliedmods.net/smdrop/1.12/"
+      },
+      "extract": [
+        {
+          "from": "addons/",
+          "to": "addons/"
+        },
+        {
+          "from": "cfg/",
+          "to": "cfg/"
+        }
+      ],
+      "keepExisting": [
+        "addons/sourcemod/configs/",
+        "cfg/sourcemod/"
+      ],
+      "detect": "addons/sourcemod/bin/sourcemod.logic.dll"
+    },
+    {
+      "id": "l4dtoolz",
+      "name": "L4DToolZ (lakwsh) - player limit unlocker",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "metamod"
+      ],
+      "description": "Removes the engine's player cap and lobby reservation limit (sv_setmax / sv_maxplayers).",
+      "archive": {
+        "type": "github-release",
+        "repo": "lakwsh/l4dtoolz",
+        "asset": "-main\\.zip$",
+        "fallback": "https://github.com/lakwsh/l4dtoolz/releases/download/2.5.1/l4dtoolz-2.5.1-main.zip"
+      },
+      "extract": [
+        {
+          "from": "l4dtoolz.dll",
+          "to": "addons/l4dtoolz.dll"
+        },
+        {
+          "from": "l4dtoolz.vdf",
+          "to": "addons/l4dtoolz.vdf"
+        }
+      ],
+      "detect": "addons/l4dtoolz.dll",
+      "toggleFiles": [
+        "addons/l4dtoolz.vdf"
+      ]
+    },
+    {
+      "id": "left4dhooks",
+      "name": "Left 4 DHooks Direct (SilverShot)",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Shared hook library that nearly every L4D2 plugin depends on.",
+      "base": "https://raw.githubusercontent.com/SilvDev/Left4DHooks/main/sourcemod/",
+      "files": [
+        [
+          "plugins/left4dhooks.smx",
+          "addons/sourcemod/plugins/left4dhooks.smx"
+        ],
+        [
+          "gamedata/left4dhooks.l4d2.txt",
+          "addons/sourcemod/gamedata/left4dhooks.l4d2.txt"
+        ],
+        [
+          "gamedata/lux_library.txt",
+          "addons/sourcemod/gamedata/lux_library.txt"
+        ],
+        [
+          "data/left4dhooks.l4d2.cfg",
+          "addons/sourcemod/data/left4dhooks.l4d2.cfg"
+        ]
+      ],
+      "includes": [
+        "scripting/include/left4dhooks.inc",
+        "scripting/include/left4dhooks_anim.inc",
+        "scripting/include/left4dhooks_lux_library.inc",
+        "scripting/include/left4dhooks_silver.inc",
+        "scripting/include/left4dhooks_stocks.inc"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "Actions extension",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Extension used by the infected-targeting fix for 5+ survivors. Pinned to v3.9.2, the last release built for SourceMod 1.12 (v4.x needs 1.13). Taken from the official release: some server-pack mirrors ship the TF2 build under the L4D2 name, which fails to load.",
+      "archive": {
+        "type": "github-release",
+        "repo": "Vinillia/actions.ext",
+        "asset": "^actions\\.ext\\.zip$",
+        "fallback": "https://github.com/Vinillia/actions.ext/releases/download/v3.9.2/actions.ext.zip",
+        "tag": "v3.9.2"
+      },
+      "extract": [
+        {
+          "from": "extensions/actions.ext.2.l4d2.dll",
+          "to": "addons/sourcemod/extensions/actions.ext.2.l4d2.dll"
+        },
+        {
+          "from": "gamedata/actions.games.txt",
+          "to": "addons/sourcemod/gamedata/actions.games.txt"
+        }
+      ],
+      "detect": "addons/sourcemod/extensions/actions.ext.2.l4d2.dll",
+      "base": "https://raw.githubusercontent.com/fbef0102/Sourcemod-Server/main/L4D2/Windows%20Server%20Files/left4dead2/addons/sourcemod/",
+      "files": [
+        [
+          "extensions/actions.autoload",
+          "addons/sourcemod/extensions/actions.autoload"
+        ]
+      ],
+      "includesBase": "https://raw.githubusercontent.com/Target5150/MoYu_Server_Stupid_Plugins/master/include/",
+      "includes": [
+        "actions.inc",
+        "actions_constructor.inc",
+        "actions_processors.inc",
+        "@Forgetest/gamedatawrapper.inc"
+      ]
+    },
+    {
+      "id": "sourcescramble",
+      "name": "Source Scramble extension (nosoop)",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Memory-patching extension that the Charger collision fix needs.",
+      "archive": {
+        "type": "github-release",
+        "repo": "nosoop/SMExt-SourceScramble",
+        "asset": "^package\\.zip$",
+        "fallback": "https://github.com/nosoop/SMExt-SourceScramble/releases/download/0.8.2.2/package.zip"
+      },
+      "extract": [
+        {
+          "from": "addons/sourcemod/extensions/sourcescramble.ext.dll",
+          "to": "addons/sourcemod/extensions/sourcescramble.ext.dll"
+        },
+        {
+          "from": "addons/sourcemod/plugins/sourcescramble_manager.smx",
+          "to": "addons/sourcemod/plugins/sourcescramble_manager.smx"
+        }
+      ],
+      "detect": "addons/sourcemod/extensions/sourcescramble.ext.dll"
+    },
+    {
+      "id": "createsurvivorbot",
+      "name": "l4d_CreateSurvivorBot",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Spawns the extra survivor bots that players 5-8 take over.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_CreateSurvivorBot/",
+      "files": [
+        [
+          "plugins/l4d_CreateSurvivorBot.smx",
+          "addons/sourcemod/plugins/l4d_CreateSurvivorBot.smx"
+        ],
+        [
+          "gamedata/l4d_CreateSurvivorBot.txt",
+          "addons/sourcemod/gamedata/l4d_CreateSurvivorBot.txt"
+        ]
+      ]
+    },
+    {
+      "id": "multislots",
+      "name": "l4dmultislots (Harry version)",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "left4dhooks",
+        "l4dtoolz",
+        "createsurvivorbot"
+      ],
+      "description": "Gives players 5+ their own survivor. This is the 8-player co-op plugin itself.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4dmultislots/",
+      "files": [
+        [
+          "plugins/l4dmultislots.smx",
+          "addons/sourcemod/plugins/l4dmultislots.smx"
+        ],
+        [
+          "translations/l4dmultislots.phrases.txt",
+          "addons/sourcemod/translations/l4dmultislots.phrases.txt"
+        ]
+      ]
+    },
+    {
+      "id": "unreservelobby",
+      "name": "l4d_unreservelobby (Harry version)",
+      "group": "Core",
+      "required": true,
+      "modes": [
+        "dedicated"
+      ],
+      "requires": [
+        "left4dhooks",
+        "l4dtoolz"
+      ],
+      "description": "Removes the 4-player lobby reservation once the lobby is full so players 5-8 can connect.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_unreservelobby/",
+      "files": [
+        [
+          "plugins/l4d_unreservelobby.smx",
+          "addons/sourcemod/plugins/l4d_unreservelobby.smx"
+        ]
+      ]
+    },
+    {
+      "id": "items8",
+      "name": "Items For 5+ Survivors (built in)",
+      "group": "Core",
+      "required": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Maps are stocked for 4. This scales weapon piles, melee weapons, throwables and healing items (kits, pills, adrenaline, defibs) by survivors / 4, bots included: with 8 survivors a pile of 5 holds 10 and each kit or pills spawn can be taken twice. Survivors joining mid-chapter top up what's left; nothing is taken away when they leave. Switch it on or off with 'More items for 5+' on the Play tab; per-category settings in cfg/sourcemod/l4d2_8p_items.cfg.",
+      "compile": [
+        "embedded:l4d2_8p_items.sp"
+      ]
+    },
+    {
+      "id": "defibfix",
+      "name": "Defib Fix (Lux)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Defibs revive the correct survivor when characters are duplicated.",
+      "base": "https://raw.githubusercontent.com/LuxLuma/Left-4-fix/master/left%204%20fix/Defib_Fix/",
+      "files": [
+        [
+          "gamedata/defib_fix.txt",
+          "addons/sourcemod/gamedata/defib_fix.txt"
+        ]
+      ],
+      "includes": [
+        "scripting/include/Defib_Fix.inc"
+      ],
+      "compile": [
+        "scripting/Defib_Fix.sp"
+      ]
+    },
+    {
+      "id": "afkfix",
+      "name": "Survivor AFK Fix (Lux)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Going idle no longer swaps you onto another bot with the same character.",
+      "base": "https://raw.githubusercontent.com/LuxLuma/Left-4-fix/master/left%204%20fix/survivors/survivor_afk_fix/",
+      "files": [
+        [
+          "gamedata/survivor_afk_fix.txt",
+          "addons/sourcemod/gamedata/survivor_afk_fix.txt"
+        ]
+      ],
+      "compile": [
+        "scripting/survivor_afk_fix.sp"
+      ]
+    },
+    {
+      "id": "afkdeadbot",
+      "name": "l4dafkfix_deadbot",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Idle players take over their dead bot instead of becoming a full spectator.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4dafkfix_deadbot/",
+      "files": [
+        [
+          "plugins/l4dafkfix_deadbot.smx",
+          "addons/sourcemod/plugins/l4dafkfix_deadbot.smx"
+        ]
+      ]
+    },
+    {
+      "id": "upgradepack",
+      "name": "l4d_both_fixUpgradePack",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Lets every survivor pick up ammo upgrade packs when there are 5+ survivors.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_both_fixUpgradePack/",
+      "files": [
+        [
+          "plugins/l4d_both_fixUpgradePack.smx",
+          "addons/sourcemod/plugins/l4d_both_fixUpgradePack.smx"
+        ],
+        [
+          "gamedata/l4d_both_fixUpgradePack.txt",
+          "addons/sourcemod/gamedata/l4d_both_fixUpgradePack.txt"
+        ]
+      ]
+    },
+    {
+      "id": "chargercollision",
+      "name": "Charger Collision patch (Lux)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcescramble"
+      ],
+      "description": "Chargers can hit duplicate survivor characters.",
+      "base": "https://raw.githubusercontent.com/LuxLuma/Left-4-fix/master/left%204%20fix/charger/Charger_Collision_patch/",
+      "files": [
+        [
+          "plugins/Charger_Collision_patch.smx",
+          "addons/sourcemod/plugins/Charger_Collision_patch.smx"
+        ],
+        [
+          "gamedata/charger_collision_patch.txt",
+          "addons/sourcemod/gamedata/charger_collision_patch.txt"
+        ]
+      ]
+    },
+    {
+      "id": "witchtarget",
+      "name": "Witch Target patch (Lux)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Witches chase the survivor who startled them, not a clone of that character.",
+      "base": "https://raw.githubusercontent.com/LuxLuma/Left-4-fix/master/left%204%20fix/witch/witch_target_patch/",
+      "files": [
+        [
+          "plugins/Witch_Target_patch.smx",
+          "addons/sourcemod/plugins/Witch_Target_patch.smx"
+        ],
+        [
+          "gamedata/witch_target_patch.txt",
+          "addons/sourcemod/gamedata/witch_target_patch.txt"
+        ]
+      ]
+    },
+    {
+      "id": "triggerflow",
+      "name": "l4d2_trigger_flow_fix",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Stops custom maps from softlocking when survivor models are mixed.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_trigger_flow_fix/",
+      "files": [
+        [
+          "plugins/l4d2_trigger_flow_fix.smx",
+          "addons/sourcemod/plugins/l4d2_trigger_flow_fix.smx"
+        ]
+      ]
+    },
+    {
+      "id": "vocalize",
+      "name": "l4d2_vocalizebasedmodel",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Survivors talk based on their model, which prevents stuck finale conversations.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_vocalizebasedmodel/",
+      "files": [
+        [
+          "plugins/l4d2_vocalizebasedmodel.smx",
+          "addons/sourcemod/plugins/l4d2_vocalizebasedmodel.smx"
+        ],
+        [
+          "gamedata/l4d2_vocalizebasedmodel.txt",
+          "addons/sourcemod/gamedata/l4d2_vocalizebasedmodel.txt"
+        ]
+      ]
+    },
+    {
+      "id": "changelevel",
+      "name": "l4d2_fix_changelevel (Forgetest)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Fixes problems caused by forced map changes.",
+      "base": "https://raw.githubusercontent.com/Target5150/MoYu_Server_Stupid_Plugins/master/The%20Last%20Stand/l4d2_fix_changelevel/",
+      "files": [
+        [
+          "gamedata/l4d2_fix_changelevel.txt",
+          "addons/sourcemod/gamedata/l4d2_fix_changelevel.txt"
+        ]
+      ],
+      "compile": [
+        "scripting/l4d2_fix_changelevel.sp"
+      ]
+    },
+    {
+      "id": "transitioninfo",
+      "name": "l4d2_transition_info_fix",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "changelevel"
+      ],
+      "description": "Clears stale transition data after a map change.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_transition_info_fix/",
+      "files": [
+        [
+          "plugins/l4d2_transition_info_fix.smx",
+          "addons/sourcemod/plugins/l4d2_transition_info_fix.smx"
+        ],
+        [
+          "gamedata/l4d2_transition_info_fix.txt",
+          "addons/sourcemod/gamedata/l4d2_transition_info_fix.txt"
+        ]
+      ]
+    },
+    {
+      "id": "commandbuffer",
+      "name": "Command and ConVar Buffer Overflow Fixer (SilverShot)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Stops large plugin configs from overflowing the command buffer.",
+      "base": "https://raw.githubusercontent.com/SilvDev/Command_Buffer/main/",
+      "files": [
+        [
+          "gamedata/command_buffer.games.txt",
+          "addons/sourcemod/gamedata/command_buffer.games.txt"
+        ]
+      ],
+      "compile": [
+        "scripting/command_buffer.sp"
+      ]
+    },
+    {
+      "id": "spawninfectednolimit",
+      "name": "spawn_infected_nolimit",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Required by the map tank fix.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/spawn_infected_nolimit/",
+      "files": [
+        [
+          "plugins/spawn_infected_nolimit.smx",
+          "addons/sourcemod/plugins/spawn_infected_nolimit.smx"
+        ],
+        [
+          "gamedata/spawn_infected_nolimit.txt",
+          "addons/sourcemod/gamedata/spawn_infected_nolimit.txt"
+        ]
+      ]
+    },
+    {
+      "id": "maptankfix",
+      "name": "l4d2_maptankfix",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks",
+        "spawninfectednolimit"
+      ],
+      "description": "Makes scripted map tanks spawn when the infected slots are full.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_maptankfix/",
+      "files": [
+        [
+          "plugins/l4d2_maptankfix.smx",
+          "addons/sourcemod/plugins/l4d2_maptankfix.smx"
+        ],
+        [
+          "gamedata/l4d2_maptankfix.txt",
+          "addons/sourcemod/gamedata/l4d2_maptankfix.txt"
+        ]
+      ]
+    },
+    {
+      "id": "rescuevehicle",
+      "name": "l4d2_rescue_vehicle_multi",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Counts survivors 5+ as rescued when the finale vehicle leaves.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_rescue_vehicle_multi/",
+      "files": [
+        [
+          "plugins/l4d2_rescue_vehicle_multi.smx",
+          "addons/sourcemod/plugins/l4d2_rescue_vehicle_multi.smx"
+        ],
+        [
+          "gamedata/l4d2_rescue_vehicle_multi.txt",
+          "addons/sourcemod/gamedata/l4d2_rescue_vehicle_multi.txt"
+        ]
+      ]
+    },
+    {
+      "id": "ladderpatch",
+      "name": "Ladder Server Crash patch (SilverShot)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Prevents a server crash in NavLadder::GetPosAtHeight.",
+      "base": "https://raw.githubusercontent.com/SilvDev/Ladder_Server_Crash-Fix/main/",
+      "files": [
+        [
+          "gamedata/l4d2_ladder_patch.txt",
+          "addons/sourcemod/gamedata/l4d2_ladder_patch.txt"
+        ]
+      ],
+      "compile": [
+        "scripting/l4d2_ladder_patch.sp"
+      ]
+    },
+    {
+      "id": "charactermixed",
+      "name": "l4d2_fix_character_mixed (Forgetest)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Prioritizes character searching so 8+ survivors keep the right characters.",
+      "base": "https://raw.githubusercontent.com/Target5150/MoYu_Server_Stupid_Plugins/master/The%20Last%20Stand/l4d2_fix_character_mixed/",
+      "files": [
+        [
+          "gamedata/l4d2_fix_character_mixed.txt",
+          "addons/sourcemod/gamedata/l4d2_fix_character_mixed.txt"
+        ]
+      ],
+      "compile": [
+        "scripting/l4d2_fix_character_mixed.sp"
+      ]
+    },
+    {
+      "id": "fullslotbot",
+      "name": "l4d_full_slot_bot_replace_fix",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "left4dhooks",
+        "l4dtoolz"
+      ],
+      "description": "Fixes bots failing to take over when the server is out of slots.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_full_slot_bot_replace_fix/",
+      "files": [
+        [
+          "plugins/l4d_full_slot_bot_replace_fix.smx",
+          "addons/sourcemod/plugins/l4d_full_slot_bot_replace_fix.smx"
+        ],
+        [
+          "gamedata/l4d_full_slot_bot_replace_fix.txt",
+          "addons/sourcemod/gamedata/l4d_full_slot_bot_replace_fix.txt"
+        ]
+      ]
+    },
+    {
+      "id": "targetreplace",
+      "name": "l4d_fix_target_replace (Forgetest)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "actions"
+      ],
+      "description": "Infected keep a valid target when survivors are replaced by bots or players.",
+      "base": "https://raw.githubusercontent.com/Target5150/MoYu_Server_Stupid_Plugins/master/The%20Last%20Stand/l4d_fix_target_replace/",
+      "compile": [
+        "scripting/l4d_fix_target_replace.sp"
+      ]
+    },
+    {
+      "id": "steamauth",
+      "name": "Keep Verified Players (built in)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Stops 'No Steam logon' kicks (STEAMAUTH code 8) for players Steam already verified. These hit the host about a minute after joining their own server from the same PC, and anyone after a reconnect. Unverified players are still dropped.",
+      "files": [
+        [
+          "embedded:l4d2_8p_steamauth.txt",
+          "addons/sourcemod/gamedata/l4d2_8p_steamauth.txt"
+        ]
+      ],
+      "compile": [
+        "embedded:l4d2_8p_steamauth.sp"
+      ]
+    },
+    {
+      "id": "uniquechars",
+      "name": "Unique Survivors (built in)",
+      "group": "5+ survivor fixes",
+      "default": true,
+      "requires": [
+        "sourcemod",
+        "left4dhooks"
+      ],
+      "description": "Gives each of up to 8 survivors their own character, the L4D1 cast included (Nick, Rochelle, Coach, Ellis, Bill, Zoey, Francis, Louis), instead of bot fill's copies. Players keep their character across chapters. Also keeps the L4D1 cast out of their calm animations, which hold several weapons straight up through the body. Settings in cfg/sourcemod/l4d2_8p_characters.cfg.",
+      "files": [
+        [
+          "embedded:l4d2_8p_characters.txt",
+          "addons/sourcemod/gamedata/l4d2_8p_characters.txt"
+        ]
+      ],
+      "compile": [
+        "embedded:l4d2_8p_characters.sp"
+      ]
+    },
+    {
+      "id": "identityfix",
+      "name": "Survivor Identity Fix for 5+ (Jackz build of Merudo/Shadowysn)",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Keeps survivors from swapping character when players join or leave. This is a community-modified build; the original is only on the AlliedModders forum.",
+      "base": "https://raw.githubusercontent.com/Jackzmc/sourcemod-plugins/master/",
+      "files": [
+        [
+          "plugins/l4d_survivor_identity_fix.smx",
+          "addons/sourcemod/plugins/l4d_survivor_identity_fix.smx"
+        ]
+      ]
+    },
+    {
+      "id": "saveweapons",
+      "name": "l4d2_ty_saveweapons",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Keeps everyone's weapons across map changes when there are more than 4 players.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_ty_saveweapons/",
+      "files": [
+        [
+          "plugins/l4d2_ty_saveweapons.smx",
+          "addons/sourcemod/plugins/l4d2_ty_saveweapons.smx"
+        ]
+      ]
+    },
+    {
+      "id": "autotakeover",
+      "name": "AutoTakeOver 5+ Survivors",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "When you die, you automatically take over a free alive bot.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/_AutoTakeOver/",
+      "files": [
+        [
+          "plugins/_AutoTakeOver.smx",
+          "addons/sourcemod/plugins/_AutoTakeOver.smx"
+        ]
+      ]
+    },
+    {
+      "id": "hud8",
+      "name": "8-survivor HUD (built in)",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "sourcemod",
+        "left4dhooks"
+      ],
+      "description": "Lists the survivors the stock HUD has no panel for (6-8) under the weapon slots, with health and state (down, ledge, pinned, B&W, dead); also visible on the Tab screen. Plain text by default, which needs nothing on the players' PCs. With 'HUD bars + icons' on (Play tab) it draws dark boxes with health bars coloured by state and the game's own kit/pills icons; every player then needs the small HUD add-on, which the Manager and the Join app install. While it's on, the game runs in 'challenge mode' (needed for the HUD to draw), which can stop some achievements like a mutation does. Settings in cfg/sourcemod/l4d2_8p_hud.cfg.",
+      "compile": [
+        "embedded:l4d2_8p_hud.sp"
+      ]
+    },
+    {
+      "id": "hudaddon",
+      "name": "8-Player HUD add-on (your game)",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "hud8"
+      ],
+      "client": "hud-addon",
+      "description": "The small client add-on (left4dead2\\addons\\l4d2_8p_hud.vpk) that lets the 8-survivor HUD draw health bars, status labels and the game's item icons ('HUD bars + icons' on the Play tab). It goes into your own game, not the server, so close Left 4 Dead 2 before installing it. Every player needs it for that look: friends install it from the Join app."
+    }
+  ],
+  "manual": [
+    {
+      "name": "Transition Restore Fix",
+      "url": "https://forums.alliedmods.net/showthread.php?t=336287",
+      "why": "Restores items and health across map changes by player instead of character. AlliedModders forum download only."
+    },
+    {
+      "name": "InputKill Kick Prevention",
+      "url": "https://forums.alliedmods.net/showthread.php?t=332860",
+      "why": "Fixes the 'Kicked by Console : CBaseEntity::InputKill()' error. AlliedModders forum download only."
+    },
+    {
+      "name": "Survivor Identity Fix (original Shadowysn post)",
+      "url": "https://forums.alliedmods.net/showpost.php?p=2718792&postcount=36",
+      "why": "The upstream version of the optional identity fix."
+    }
+  ],
+  "workshop": [
+    {
+      "id": "2754956355",
+      "name": "8 Slots Lobby Mod",
+      "role": "required-host",
+      "why": "Gives the in-game lobby 8 slots. Only the host needs it. Side effect: ESC > Idle stops working."
+    },
+    {
+      "id": "2462741269",
+      "name": "8 Player Modified Talker",
+      "role": "recommended",
+      "why": "Dialogue for L4D1 and L4D2 survivors playing together."
+    }
+  ],
+  "knowledge": {
+    "conflictingPlugins": [
+      {
+        "match": "superversus|l4d_sv(_|\\.)|super ?versus",
+        "severity": "problem",
+        "reason": "SuperVersus is another survivor-slot manager. Running it next to l4dmultislots spawns duplicate bots and breaks team limits."
+      },
+      {
+        "match": "bebop",
+        "severity": "problem",
+        "reason": "Bebop is another co-op slot manager. It conflicts with l4dmultislots."
+      },
+      {
+        "match": "l4d2_rmc|^rmc$",
+        "severity": "problem",
+        "reason": "l4d2_rmc (lakwsh) is another multi-slot plugin. Use it or l4dmultislots, not both."
+      },
+      {
+        "match": "^(l4d2?_)?multislots(?!.*harry)|l4d2_multislots",
+        "severity": "problem",
+        "reason": "Older MultiSlots variant. It conflicts with the installed l4dmultislots."
+      },
+      {
+        "match": "character.?manager",
+        "severity": "problem",
+        "reason": "Character Manager changes the survivor set and can softlock maps. The 8+ guide says not to install it."
+      },
+      {
+        "match": "left ?4 ?fix|^left4fix",
+        "severity": "problem",
+        "reason": "Left4Fix is broken on the current game version."
+      },
+      {
+        "match": "dialogue.?criteria",
+        "severity": "warning",
+        "reason": "Dialogue Criteria Fix has been broken since the 2023/05 game update."
+      },
+      {
+        "match": "real.?survivor.?mourn",
+        "severity": "warning",
+        "reason": "Real Survivor Mourn Fix has been broken since the 2023/05 game update."
+      },
+      {
+        "match": "tickrate.?enabler",
+        "severity": "warning",
+        "reason": "L4DToolZ already unlocks tickrate. Running tickrate_enabler too can conflict."
+      }
+    ],
+    "conflictingExtensions": [
+      {
+        "match": "left4downtown",
+        "severity": "problem",
+        "reason": "Left4Downtown2 is obsolete and crashes current servers. Left 4 DHooks replaces it."
+      },
+      {
+        "match": "l4dtoolz_mm",
+        "severity": "problem",
+        "reason": "Old ivailosp L4DToolZ build. It conflicts with the lakwsh L4DToolZ that 8-player needs."
+      }
+    ],
+    "libraryProviders": {
+      "left4dhooks": "left4dhooks.smx",
+      "l4d_CreateSurvivorBot": "l4d_CreateSurvivorBot.smx",
+      "l4dmultislots": "l4dmultislots.smx",
+      "l4d2_fix_changelevel": "l4d2_fix_changelevel.smx",
+      "spawn_infected_nolimit": "spawn_infected_nolimit.smx"
+    },
+    "nativePrefixes": {
+      "L4D_": "left4dhooks.smx",
+      "L4D2_": "left4dhooks.smx",
+      "L4D2Direct_": "left4dhooks.smx",
+      "L4DDirect_": "left4dhooks.smx",
+      "Left4DHooks_": "left4dhooks.smx",
+      "AnimHookEnable": "left4dhooks.smx"
+    }
+  }
+}

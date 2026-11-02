@@ -1,0 +1,192 @@
+# L4D2 8-Player Co-op Manager
+
+Two small Windows programs. Neither needs installing or any extra runtime:
+
+- **`L4D2-8P-Manager.exe`** is for the **host**. It sets up, checks and launches 8-player co-op for Left 4 Dead 2, and opens your router port so friends can get in.
+- **`L4D2-8P-Join.exe`** is for **friends who only join**. They paste your invite, check the server and click Join. It needs no mods and changes nothing in their game.
+
+It follows the current community method from fbef0102's *8+ Survivors In Coop* guide (updated July 2026): Metamod + SourceMod + L4DToolZ + l4dmultislots, plus the fixes that keep games with 5+ survivors stable.
+
+Both apps share a dark, in-game look inspired by the L4D2 safe room:
+
+- condensed stencil headings, taped section labels and spray-painted notes
+- blood red only on the main action of each screen, amber for warnings
+- the **Play** tab shows your group as 8 survivor cards (Nick to Francis), tagged HOST / PLAYER / BOT / EMPTY
+
+It's an original take on the style; no Valve art or logos are used.
+
+## Quick start
+
+1. Run `L4D2-8P-Manager.exe`. It finds Left 4 Dead 2 through your Steam libraries. You can also click **Browse**.
+2. **Setup**: pick how you'll host, then click **Download & install**. You'll see everything that will be downloaded, and where it comes from, before anything is installed.
+3. **Mods**: the infection report lists every addon and plugin. Fix anything marked PROBLEM (see below).
+4. **Play**: click **Start server**, then **Launch L4D2 & join**. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds). When it's stopped, they preview your settings.
+5. **Internet**: click **Copy invite** and send it to friends along with `L4D2-8P-Join.exe`.
+
+## Hosting modes
+
+| | Dedicated server (recommended) | Host from my game (listen) |
+|---|---|---|
+| Players | up to 16 (8 by default) | up to 8 |
+| Stability | best; SourceMod is built for this | lower; SourceMod doesn't officially support listen servers |
+| Download | about 10 GB server from Valve via SteamCMD | none |
+| VAC | your game stays normal | the game runs with `-insecure` while you host |
+
+In listen mode the loader files (`metamod.vdf`, `l4dtoolz.vdf`) stay switched off. The tool switches them on only for a launch from the Play tab, then off again when you quit, so a normal Steam launch is always clean.
+
+**VAC:** in dedicated mode the mods run only in the separate server program, which itself runs VAC-secured. Your game client stays stock, so you can still join other VAC servers. The Play tab shows this under the Start button. Switching to "Host from my game" asks you to confirm, because that mode needs `-insecure`.
+
+## Who can join (Play tab)
+
+| Button | Who gets in | What the app does |
+|---|---|---|
+| **Internet** (default) | Friends anywhere | Lists the server online (`sv_lan 0`) and opens the router port while you host (if auto mode is on) |
+| **LAN only** | People on your home network | `sv_lan 1`, never touches the router; friends use your LAN IP or the Join app's *Find games on my network* |
+| **Just me** | Only this PC | `sv_lan 1` and no port forwarding, so it stays off the internet. Someone on your own network could still join if they know your address (set a password to stop that). Good for testing maps, mods and bot fill on your own |
+
+The Steam lobby option needs Internet mode, so LAN only and Just me always use direct connect. The invite, the connect line and the Internet tab all follow the mode you pick.
+
+## What gets installed
+
+| Group | Components |
+|---|---|
+| Core | Metamod:Source 1.12, SourceMod 1.12, L4DToolZ 2.5.x, Left 4 DHooks, Actions 3.9.2 (last build for SourceMod 1.12), Source Scramble, l4d_CreateSurvivorBot, l4dmultislots, l4d_unreservelobby (dedicated only), Items For 5+ Survivors (built in) |
+| 5+ survivor fixes | Defib fix, AFK fix, AFK dead-bot fix, upgrade-pack fix, Charger collision, Witch target, trigger-flow fix, vocalize-by-model, changelevel fix, transition-info fix, command-buffer fix, map-tank fix, rescue-vehicle fix, ladder crash fix, mixed-character fix, full-slot bot fix, target-replace fix, Keep Verified Players (built in), Unique Survivors (built in) |
+| Optional (off by default) | Survivor Identity Fix (community build), save weapons, auto take-over, 8-survivor HUD (built in), 8-Player HUD add-on (installs into your own game) |
+
+### Built-in plugins
+
+Two plugins are written for this tool and ship inside the exe (source in `Plugins/`). They compile on install like the other fixes.
+
+- **Keep Verified Players** (`l4d2_8p_steamauth`): when the dedicated server runs on the same PC as your game, both sign in to that PC's Steam client as Left 4 Dead 2. About a minute after you join, Steam then reports your ticket as invalid and the server drops you with "No Steam logon" (STEAMAUTH failure code 8). This plugin keeps a player Steam already verified when they joined. A player whose ticket was never valid is still dropped, and so are VAC bans. The engine hook is adapted from blueblur's [Block No Steam Logon](https://github.com/blueblur0730/modified-plugins) (GPL-3.0).
+- **Unique Survivors** (`l4d2_8p_characters`): bot fill copies the map's four survivors, so 8 survivors come out as three Rochelles and two Coaches. This gives everyone their own character, the L4D1 cast included: Nick, Rochelle, Coach, Ellis, Bill, Zoey, Francis and Louis. Players keep their character across chapters. On L4D1-cast maps the L4D2 cast is told apart by model (names and voices follow the model through the mixed-character and vocalize fixes). On The Passing, where Bill's group are scripted NPCs, survivors wearing L4D1 models borrow an L4D2 counterpart's character number so the map's scripts still find the NPCs. `l4d2_8p_characters_other_cast 0` limits it to the map's own four. It also keeps the L4D1 cast out of their calm animations (the relaxed idle and walk survivors fall into when nothing is around): Valve's L4D1 models hold several weapons straight up through the body in those, where the L4D2 cast hold them across the chest. They stay in their ready pose instead (`l4d2_8p_characters_l4d1_ready_pose`, on by default; it hooks the game's calm check through `gamedata/l4d2_8p_characters.txt`).
+- **8-survivor HUD** (`l4d2_8p_hud`): the stock HUD shows you plus the first four other survivors (by player slot); anyone after that has no panel. This lists exactly those survivors, with name, health (+temporary health), a health bar and DOWN / LEDGE / B&W / DEAD, in a column on the right just below the weapon slots. It stays visible on the Tab screen. By default it's plain text and nobody needs to install anything: each game draws it from the server. Settings are in `cfg/sourcemod/l4d2_8p_hud.cfg`: `l4d2_8p_hud_enable`, `l4d2_8p_hud_show` (0 = only survivors without a stock panel, 1 = everyone), `l4d2_8p_hud_layout` (1 = right-hand column, 0 = rows above the bottom panels), `l4d2_8p_hud_x` / `l4d2_8p_hud_y` (position) and `l4d2_8p_hud_background`. The game only draws scripted HUD text inside a centred 4:3 area, so on wide screens the plain column sits just left of the weapon slots rather than under them. It also only draws it in "challenge mode" (the state a mutation sets), so the plugin turns that on while the list is shown; like a mutation, that can stop some achievements.
+- **HUD bars + icons** (Play tab, `l4d2_8p_hud_style 1`): the same list as dark boxes right under the weapon slots. Each shows the survivor's name and health (or what's happening to them: SMOKED, POUNCED, RIDDEN for a Jockey, CHARGED, BILED, LEDGE, DOWN, DEAD), a health bar coloured by state (green, yellow, red; red while pinned, hanging or down) and the game's own icon for everything they carry: molotov, pipe bomb or bile jar; first aid kit, defibrillator or an ammo pack; pills or adrenaline. Long names are shortened to fit beside the icons. Every player needs the small **8-Player HUD add-on** (`left4dead2\addons\l4d2_8p_hud.vpk`): click the link under the setting in the Manager, or "Install the 8-player HUD add-on" at the bottom of the Join app, with the game closed. Players without it see stray grey boxes, so only turn it on when everyone has it. Things the game won't let an add-on change: the text font and its size (it's always the scripted HUD's own font). The add-on also makes the scripted-HUD area cover the whole screen, which other HUD mods that replace `scripts/hudlayout.res` or `hudscriptedmode.res` will clash with. The game has 15 HUD boxes in all, so up to 4 survivors fit and, with 3 survivors listed, about 9 item icons at once; when several survivors carry the same item and its boxes run out, the row ends with "+1" (or +2) for the items it couldn't show. `l4d2_8p_hud_addon_x` / `l4d2_8p_hud_addon_y` move the column (the default lines up with the weapon slots on 16:9 screens).
+
+**Fixed (October 2026): LAN / "Just me" servers crashed on the second map change.** The server connects to Steam when the first map loads, so a `sv_lan 1` that only arrives with `server.cfg` makes it reconnect at the next map. At the end of the map after that, the game uploads its per-map Steam stats (`L4D2MapData`) through the Steam interface it got before the reconnect, which no longer exists, and the server crashes (Windows then blames `sourcemod.2.l4d2.dll`, which faults while the process exits). The Manager now puts `+sv_lan` on the server's launch line (and on your game's when you host from it), so Steam starts in the right mode and nothing changes later. If you start srcds yourself, put `+sv_lan 1` before `+map` for a LAN server. Internet servers were never affected (`sv_lan 0` is the default). SourceMod 1.12 git7259 also fixes a separate entity-output crash ([alliedmodders/sourcemod#2589](https://github.com/alliedmodders/sourcemod/issues/2589)); **Setup > Check for updates** installs new builds.
+
+Everything comes from the authors' GitHub repositories, AlliedModders (SourceMod/Metamod) and Valve (SteamCMD). Seven fixes are only published as source code, so the tool compiles them on your PC with SourceMod's own compiler.
+
+Three fixes are only on the AlliedModders forum, which blocks automated downloads. **Forum-only extras...** on the Setup tab links to them.
+
+**Client side:** the host should subscribe to the [8 Slots Lobby Mod](https://steamcommunity.com/sharedfiles/filedetails/?id=2754956355) to get 8-slot lobbies. Friends need nothing except the same custom campaigns.
+
+## Working with mods you already have
+
+- **Existing SourceMod/Metamod/plugins are kept.** The tool records every file it writes. Before replacing a file it didn't create, it saves a backup, and **Remove everything** restores the originals. Your admin lists and plugin configs are never overwritten.
+- **Config files are edited, never replaced.** Settings go into a marked block at the end of `server.cfg` (or `listenserver.cfg`) and `cfg/sourcemod/l4dmultislots.cfg`. Put your own lines outside the block.
+- **Campaigns and script mods reach the server.** With *Copy my server-side addons* on, your enabled campaign, mutation, script and dialogue addons are hard-linked (or copied) into the dedicated server before each start. Cosmetic mods stay client-side.
+
+## Compatibility checks
+
+The **Mods & compatibility** tab reads your addons and plugins directly and flags what can break 8-player games:
+
+- **Addon conflicts.** Two VPKs that override the same files, where only one wins. This is escalated when it hits the 8-slot lobby UI.
+- **Script risks.** VScripts that change `survivor_limit` or player-limit cvars, or that loop over exactly 4 players. Mutations that cap their lobby below 8.
+- **Plugin conflicts.** Rival slot managers (SuperVersus, Bebop, l4d2_rmc, old MultiSlots), plugins the guide marks as broken or harmful (Left4Fix, Character Manager, ...), obsolete extensions (Left4Downtown2, old L4DToolZ), and duplicate copies.
+- **Missing dependencies.** Read from each `.smx`: required plugin libraries, extensions, and Left 4 DHooks natives.
+- **Stability.** Plugin load failures and runtime errors from the last 7 days of SourceMod error logs, plus recent server crash dumps.
+- **Setup.** The lobby mod is subscribed and enabled, and the dedicated server is the same version as your game.
+
+**Future mods are checked as they arrive.** While the tool is open it watches your `addons` and `plugins` folders. Anything new is scanned right away, marked **NEW**, and announced with a notification. A full check also runs before every launch, and you can continue or cancel if it finds problems.
+
+**Disable / enable highlighted** moves a plugin to `plugins/disabled` or turns an addon off in `addonlist.txt`, and the same button reverses it.
+
+## Bot fill
+
+**Play tab > Bot fill: fill every open slot with a bot.**
+
+- **On:** the round starts with a full team (Max players, 8 by default). Bots hold every empty slot, and players who join take a bot over.
+- **Off:** you get the game's normal 4 survivors. Survivors 5+ only appear when players 5+ join.
+
+The game doesn't do this by itself. l4dmultislots does it through `l4d_multislots_min_survivors` and `l4d_multislots_spawn_survivors_roundstart`.
+
+Survivors 5+ always start with the starting pistol, a first aid kit and 100 health (no temporary health), instead of l4dmultislots' default random tier 2 gun, secondary, throwable and 80+20 health. The Manager sets this in the same block of `l4dmultislots.cfg` (`l4d_multislots_firstweapon 0`, `secondweapon 0`, `thirdweapon 0`, `forthweapon 1`, `fifthweapon 0`, `respawnhp 100`, `respawnbuffhp 0`).
+
+## More items for 5+
+
+**Play tab > More items for 5+ (on by default).** Maps are stocked for 4 survivors, so the built-in *Items For 5+ Survivors* plugin is a required install (Core group). It multiplies every item spawn by survivors ÷ 4, bots included:
+
+| Survivors | Multiplier | Weapon pile of 5 | Each kit, pills or throwable spawn |
+|---|---|---|---|
+| 4 or fewer | 1× | 5 | 1 |
+| 6 | 1.5× | 7 or 8 | 1 or 2 (about half get a second) |
+| 8 | 2× | 10 | 2 |
+
+- It covers weapon piles, pistols, melee weapons, the chainsaw, molotovs, pipe bombs, bile jars, first aid kits, pills, adrenaline and defibrillators. Ammo piles, upgrade packs and infinite spawns stay as they are.
+- A spawn still shows one item until it runs out. A doubled kit stays on the table after the first person takes it.
+- When survivors join mid-chapter, the spawns still on the map are topped up. Nothing is taken away when they leave, and spawns that are already empty don't come back.
+- The game removes a random share of item spawns when each map loads. That stays as it is; the plugin scales what's left.
+- Bots grab spare items quickly (the saferoom pistols especially), so they take a share of the extras too.
+- Per-category switches and the cap are in `cfg/sourcemod/l4d2_8p_items.cfg`: `l4d2_8p_items_weapons`, `_throwables`, `_healing` (1/0) and `l4d2_8p_items_max` (largest multiplier, default 4). Admins can type `sm_8pitems` in the console to see the current counts.
+
+## Internet hosting (port forwarding)
+
+The **4. Internet hosting** tab handles the network side:
+
+- **Check my network** shows your LAN and public address, whether your router supports UPnP, whether the game port is forwarded (and to which PC), and whether the Windows Firewall rule exists.
+- It **detects setups where forwarding can't work**: a second router or carrier-grade NAT (CGNAT). When it finds one, it suggests fixes such as bridge mode, asking your ISP for a public IP, or a virtual LAN like Tailscale, ZeroTier or Radmin VPN.
+- **Open port automatically (UPnP)** forwards UDP+TCP on the game port to this PC. It warns instead if another device already holds that port.
+- **Auto mode** (it asks you once): the port opens when you start hosting and closes when you stop. If the tool was closed mid-game, the port is closed the next time it starts.
+- **Allow through Windows Firewall** adds an inbound rule for the port and `srcds.exe`. Windows asks for permission.
+- **Test if friends can reach me** queries your server through your public address. Many routers can't loop back to themselves, so if this test fails, have a friend check with the Join app.
+- **Copy invite for friends** gives a `steam://connect/...` link plus the console command.
+- If UPnP is off, the tab shows step-by-step manual forwarding instructions with your own values filled in.
+
+## Joining only (for friends): `L4D2-8P-Join.exe`
+
+1. Paste the host's invite. A `steam://connect/...` link, an `IP:port`, or a `connect ...` line all work.
+2. **Check server** shows the server name, map, players and ping. It also warns about:
+   - a game version mismatch
+   - a missing password
+   - a full server
+   - a custom map you don't have, with a link that searches the Workshop for it
+3. **Join game** starts L4D2 already connecting. If the game is already running, it connects directly.
+
+**Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the same custom campaign if the host plays one.
+
+## Friends joining (manual)
+
+- **Direct connect (default):** forward UDP+TCP port 27015 on your router to this PC, and allow `srcds.exe` when Windows Firewall asks. Friends open the console and type `connect <your public IP>:27015`. **Find my public IP** and **Copy connect command** help with this.
+- **Steam lobby:** create an 8-slot lobby, choose *Best Available Dedicated* and start. The tool launches your game with `mm_dedicated_force_servers` aimed at your server. When 4 players are in, `l4d_unreservelobby` opens slots 5-8.
+
+## Keeping it current
+
+- **Check for updates** compares SourceMod, Metamod, L4DToolZ and Source Scramble with their latest releases. It also warns when the dedicated server is behind your game version.
+- **Download & install selected** always pulls the latest plugin builds and gamedata from GitHub. Run it after every L4D2 update, because outdated gamedata is the usual cause of crashes.
+- The component list (`components.json`) is built into the exe. To change sources without rebuilding, put an edited `components.json` next to the exe.
+
+## Where things are
+
+- Tool settings and download cache: `%LOCALAPPDATA%\L4D2-8P-Manager` (the Join app keeps its recent list in `join.json` there)
+- Install records and backups: `<left4dead2>\addons\l4d2_8p_manager`
+- Dedicated server (default): `<drive of your game>\L4D2-8P-Server\server`
+
+## Building from source
+
+Requires the .NET SDK (6 or newer) on Windows. The output targets .NET Framework 4.8, which ships with Windows 10 and 11. The two apps share `Core\`, `UI\Theme\` and `Fonts\`.
+
+```bash
+dotnet build L4D2EightPlayer -c Release
+```
+
+```bash
+dotnet build L4D2EightPlayer.Join -c Release
+```
+
+Headless diagnostics (writes a text report; the paths below are examples):
+
+```bash
+L4D2-8P-Manager.exe --selftest --detect --scan-client "C:\...\Left 4 Dead 2\left4dead2" --out report.txt
+```
+
+## Credits
+
+- Keep Verified Players adapts the engine hook from blueblur's [modified-plugins](https://github.com/blueblur0730/modified-plugins) (GPL-3.0). The 8-survivor HUD writes the scripted-HUD network props the way fbef0102's [l4d2_cs_kill_hud](https://github.com/fbef0102/L4D1_2-Plugins) does.
+
+
+Fonts embedded in both apps, all under the SIL Open Font License 1.1 (license texts in `licenses/`):
+
+- [Oswald](https://github.com/googlefonts/OswaldFont)
+- [Barlow](https://github.com/jpt/barlow)
+- [Rubik Dirt](https://github.com/googlefonts/rubik-filtered)

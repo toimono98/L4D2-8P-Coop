@@ -1,0 +1,14 @@
+# build output
+bin/
+obj/
+dist/
+release/
+*.smx
+
+# HUD add-on build scratch (the embedded copy lives in L4D2EightPlayer/Addon)
+HudAddon/build/
+
+# local test material and screenshots of our own games
+scratchtest/
+screenshots/
+*.log
