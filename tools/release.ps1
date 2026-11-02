@@ -5,6 +5,7 @@ Builds, checks and packages a release of the Manager and the Join app.
   tools\release.ps1 -Version 1.2.0      same, after raising the version in Directory.Build.props
   tools\release.ps1 -Publish            also tag v<version>, push, and create the GitHub release (needs gh, signed in);
                                         raise the version and commit before publishing
+  tools\release.ps1 -Publish -NotesFile notes.md    use your own release notes instead of the commit list
   tools\release.ps1 -NoDeploy           skip the copy to Documents\L4D2 8 Player
 
 Checks: every built-in plugin compiles with the Manager's SourcePawn toolchain, both apps build, the Manager's
@@ -13,7 +14,8 @@ self-test and both apps' screenshot modes run, and the Join zip extracts and sta
 param(
     [string]$Version,
     [switch]$Publish,
-    [switch]$NoDeploy
+    [switch]$NoDeploy,
+    [string]$NotesFile
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -116,7 +118,8 @@ if ($Publish) {
     git tag -a "v$Version" -m "v$Version"
     git push origin HEAD "v$Version"
     if ($LASTEXITCODE -ne 0) { Fail "git push failed" }
-    gh release create "v$Version" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --generate-notes
+    if ($NotesFile) { gh release create "v$Version" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --notes-file $NotesFile }
+    else { gh release create "v$Version" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --generate-notes }
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
 }
 
