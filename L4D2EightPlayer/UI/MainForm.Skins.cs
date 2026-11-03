@@ -42,14 +42,14 @@ namespace L4D2EightPlayer.UI
         }
 
         /// <summary>
-        /// Before the game starts: overlapping skins with nothing picked are asked about. False when the user went to
-        /// choose on the Skins tab (or cancelled), so the launch stops there.
+        /// Before the game starts: overlapping skins with nothing picked are asked about, then add-ons that replace the
+        /// same files. False when the user went to choose on the Skins tab (or cancelled), so the launch stops there.
         /// </summary>
         async Task<bool> SkinsSettled()
         {
             if (Preview || settings.ClientGameDir == null) return true;
             var choose = OverlapDialog.Check(this, settings.ClientGameDir, manifest);
-            if (choose == null) return true;
+            if (choose == null) return ClashDialog.Check(this, settings.ClientGameDir, manifest);   // then add-ons replacing the same files
             if (choose != "")
             {
                 skins.SelectTarget(choose);   // kept while the list is read

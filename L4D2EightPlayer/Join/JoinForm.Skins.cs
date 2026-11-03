@@ -31,7 +31,7 @@ namespace L4D2EightPlayer.Join
 
         /// <summary>
         /// Before Join game starts the game: overlapping skins with nothing picked are asked about, and the Skins
-        /// window opens on the first one. False when the user cancelled.
+        /// window opens on the first one; then add-ons that replace the same files. False when the user cancelled.
         /// </summary>
         bool SkinsSettled()
         {
@@ -46,7 +46,7 @@ namespace L4D2EightPlayer.Join
                     f.ShowDialog(TopLevelControl as Form ?? this);
                 }
             }
-            return true;
+            return ClashDialog.Check(this, ClientGameDir, Manifest.BuiltIn());   // then add-ons replacing the same files
         }
     }
 }

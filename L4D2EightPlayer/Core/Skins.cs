@@ -323,7 +323,7 @@ namespace L4D2EightPlayer.Core
                 var mod = new Mod
                 {
                     Key = key, Path = vpk, Enabled = enabled, Targets = covered,
-                    Title = string.IsNullOrWhiteSpace(info.Title) ? System.IO.Path.GetFileNameWithoutExtension(vpk) : info.Title.Trim(),
+                    Title = Compat.AddonTitle(vpk, info),
                     Locked = info.Campaign || info.Mutation || info.Scripts,
                     WeaponScripts = info.WeaponScripts,
                     NotJustSkin = info.Campaign || info.Mutation || info.Scripts || info.Talker || info.Ui,
@@ -478,6 +478,8 @@ namespace L4D2EightPlayer.Core
         public Dictionary<string, string> Seen { get; set; } = new Dictionary<string, string>();
         /// <summary>Target id -> the skins left on together when the user chose "Launch anyway".</summary>
         public Dictionary<string, string> KeepOverlap { get; set; } = new Dictionary<string, string>();
+        /// <summary>Add-on pairs ("key|key") left on together when asked before a launch, with how many files they share.</summary>
+        public Dictionary<string, string> KeepClash { get; set; } = new Dictionary<string, string>();
 
         /// <summary>Set by tests and audits: never write the file.</summary>
         public static bool ReadOnly;

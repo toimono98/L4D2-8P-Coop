@@ -6,6 +6,7 @@ Every VPK holds placeholder files at the real game paths, so the picker classifi
 skins: a Nick model skin, a Nick texture-only skin, a survivors + AK-47 pack (Workshop), a rifle pack with a
 weapon script (Workshop), Hunter and common-infected skins, a script mod and a sound mod (not skins), a
 campaign that also replaces the AK-47, and copies of the HUD add-on and the 8 Slots Lobby Mod (never touched).
+A survivor-icons mod shares HUD portraits with the pack, and a HUD mod shares the HUD add-on's layout file.
 The addonlist.txt mixes "1", "0", a doubled backslash and missing entries (which the game treats as on).
 """
 import os
@@ -28,7 +29,8 @@ ADDONS = {
     "workshop/1000000001.vpk": {"addoninfo.txt": info("Survivors and AK Pack"),
                                 "models/survivors/survivor_gambler.mdl": b"mdl", "models/survivors/survivor_producer.mdl": b"mdl",
                                 "models/survivors/survivor_coach.mdl": b"mdl", "models/survivors/survivor_mechanic.mdl": b"mdl",
-                                "models/v_models/v_rifle_ak47.mdl": b"mdl"},
+                                "models/v_models/v_rifle_ak47.mdl": b"mdl",
+                                "materials/vgui/s_panel_gambler.vtf": b"vtf", "materials/vgui/s_panel_producer.vtf": b"vtf"},
     "workshop/1000000002.vpk": {"addoninfo.txt": info("Rifle Pack"),
                                 "models/v_models/v_rifle_ak47.mdl": b"mdl", "models/v_models/v_rifle.mdl": b"mdl",
                                 "scripts/weapon_rifle_ak47.txt": b"WeaponData {}"},
@@ -39,7 +41,11 @@ ADDONS = {
     "sound_mod.vpk": {"addoninfo.txt": info("Sound Mod"), "sound/player/survivor/voice/gambler/hey01.wav": b"RIFF"},
     "campaign_with_ak.vpk": {"addoninfo.txt": info("Campaign With AK"), "missions/zzcamp.txt": b'"mission" {}',
                              "maps/zz_m1.bsp": b"VBSP", "models/v_models/v_rifle_ak47.mdl": b"mdl"},
-    "l4d2_8p_hud.vpk": {"addoninfo.txt": info("8-Player HUD"), "models/v_models/v_rifle.mdl": b"mdl"},
+    "l4d2_8p_hud.vpk": {"addoninfo.txt": info("8-Player HUD"), "models/v_models/v_rifle.mdl": b"mdl", "scripts/hudlayout.res": b"res"},
+    # not skins, but they replace files other add-ons have: the survivor pack's HUD portraits, the 8-player HUD's layout
+    "survivor_icons.vpk": {"addoninfo.txt": info("Survivor Icons"), "materials/vgui/s_panel_gambler.vtf": b"vtf",
+                           "materials/vgui/s_panel_producer.vtf": b"vtf", "materials/vgui/select_zoey.vtf": b"vtf"},
+    "hud_mod.vpk": {"addoninfo.txt": info("HUD Mod"), "scripts/hudlayout.res": b"res"},
     "workshop/2754956355.vpk": {"addoninfo.txt": info("8 Slots Lobby Mod"), "models/v_models/v_rifle.mdl": b"mdl"},
 }
 

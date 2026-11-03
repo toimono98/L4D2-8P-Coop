@@ -83,6 +83,15 @@ namespace L4D2EightPlayer.Core
         static readonly Regex MaxPlayersCvar = new Regex(@"\bsv_(maxplayers|setmax|visiblemaxplayers)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         static readonly Regex ModeMaxPlayers = new Regex("\"maxplayers\"\\s+\"?(\\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        /// <summary>The add-on's own title, or "Workshop item 123" / the file name when it has none.</summary>
+        public static string AddonTitle(string vpk, AddonInfo info)
+        {
+            if (!string.IsNullOrWhiteSpace(info?.Title)) return info.Title.Trim();
+            var name = Path.GetFileNameWithoutExtension(vpk);
+            bool workshop = string.Equals(Path.GetFileName(Path.GetDirectoryName(vpk)), "workshop", StringComparison.OrdinalIgnoreCase);
+            return workshop && name.All(char.IsDigit) ? "Workshop item " + name : name;
+        }
+
         public static AddonInfo ReadAddon(string path)
         {
             var fi = new FileInfo(path);

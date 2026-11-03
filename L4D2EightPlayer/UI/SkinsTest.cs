@@ -41,7 +41,7 @@ namespace L4D2EightPlayer.UI
             string Ids(IEnumerable<Skins.Target> ts) => string.Join(",", ts.Select(t => t.Id).OrderBy(t => t));
             Check("skins found: " + Names(inv.Mods), Names(inv.Mods) == "Campaign With AK, Commons Skin, Hunter Skin, Nick Model Skin, Nick Texture Skin, Rifle Pack, Survivors and AK Pack");
             Check("protected add-ons left out (HUD, lobby mod)", inv.Mods.All(m => !m.Path.EndsWith("l4d2_8p_hud.vpk") && !m.Path.EndsWith("2754956355.vpk")));
-            Check($"script and sound mods aren't skins (other add-ons on: {inv.Others})", inv.Others == 2);
+            Check($"script, sound, icon and HUD mods aren't skins (other add-ons on: {inv.Others})", inv.Others == 4);
             Check("Nick: model skin, texture skin, pack", Names(inv.ByTarget["nick"].Mods) == "Nick Model Skin, Nick Texture Skin, Survivors and AK Pack");
             Check("the pack covers Nick, Rochelle, Coach, Ellis and the AK-47: " + Ids(M("Survivors and AK Pack").Targets), Ids(M("Survivors and AK Pack").Targets) == "ak47,coach,ellis,nick,rochelle");
             Check("a texture-only skin is recognised (Hunter, commons)", Ids(M("Hunter Skin").Targets) == "hunter" && Ids(M("Commons Skin").Targets) == "common");
@@ -70,6 +70,25 @@ namespace L4D2EightPlayer.UI
             Compat.SetAddonEnabled(game, "nick_texture.vpk", true);
             Check("... but is when another skin for it is turned on", Ids(Skins.Overlaps(game, manifest, SkinPrefs.Load()).Select(s => s.Target)) == "nick");
             Compat.SetAddonEnabled(game, "nick_texture.vpk", false);
+            File.Delete(SkinPrefs.FilePath);
+
+            // add-ons replacing the same files (not skins for the same thing): asked about before a launch too
+            var clashes = Clashes.Find(game, manifest, SkinPrefs.Load());
+            string Pair(Clashes.Clash c) => c.A.Title + " + " + c.B.Title;
+            Check("clashes: " + string.Join("; ", clashes.Select(Pair)), string.Join("; ", clashes.Select(Pair)) == "Survivor Icons + Survivors and AK Pack; 8-Player HUD + HUD Mod");
+            Check("... skins for the same thing aren't clashes (Nick model skin and the pack share a model)", !clashes.Any(c => c.A.Title == "Nick Model Skin" || c.B.Title == "Nick Model Skin"));
+            Check("described: " + clashes[0].What + " / " + clashes[1].What, clashes[0].What == "survivor portraits on the HUD (2)" && clashes[1].What == "the HUD layout (1)");
+            Check("the HUD add-on is marked as one the app needs", clashes[1].A.Protected && !clashes[1].B.Protected);
+            var cp = SkinPrefs.Load();
+            cp.Picks["nick"] = "workshop\\1000000001.vpk";
+            Clashes.Resolve(game, new[] { clashes[0].B, clashes[1].A }, new[] { clashes[1] }, cp);
+            var after = Compat.ReadAddonList(game);
+            Check("keeping the icons turns the pack off, never the HUD add-on", !after["workshop\\1000000001.vpk"] && after["l4d2_8p_hud.vpk"]);
+            Check("... a skin pick for the add-on turned off is dropped, so the next launch doesn't turn it back on", !SkinPrefs.Load().Picks.ContainsKey("nick"));
+            Check("'Keep both' isn't asked again, and nothing else is left", Clashes.Find(game, manifest, SkinPrefs.Load()).Count == 0);
+            Compat.SetAddonEnabled(game, "workshop\\1000000001.vpk", true);
+            Compat.SetAddonEnabled(game, "survivor_icons.vpk", false);
+            Compat.SetAddonEnabled(game, "hud_mod.vpk", false);
             File.Delete(SkinPrefs.FilePath);
 
             // 4. applying and remembering
@@ -153,6 +172,23 @@ namespace L4D2EightPlayer.UI
             {
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); Pump(400); Save(q, "skins-overlap-question"); q.Close();
+            }
+            using (var q = new ClashDialog(Clashes.Find(Path.Combine(work, "left4dead2"), Manifest.BuiltIn(), new SkinPrefs())))
+            {
+                q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
+                q.Show(); q.Choose(0, 0); Pump(400); Save(q, "skins-clash-question"); q.Close();
+            }
+            // long Workshop names, as on a real PC: a survivor pack and an icons pack sharing 16 HUD pictures
+            var longPair = new Clashes.Clash
+            {
+                A = new Clashes.Addon { Key = "dead_space.vpk", Title = "Dead Space Advanced Suit Squads (All 8 Survivors)" },
+                B = new Clashes.Addon { Key = "survivor_icons.vpk", Title = "Scott Pilgrim Takes Off Styled Survivor Icons" },
+                Files = Enumerable.Range(0, 12).Select(i => "materials/vgui/s_panel_" + i + ".vtf").Concat(Enumerable.Range(0, 4).Select(i => "materials/vgui/select_" + i + ".vtf")).ToList(),
+            };
+            using (var q = new ClashDialog(new List<Clashes.Clash> { longPair }))
+            {
+                q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
+                q.Show(); q.Choose(0, 0); Pump(400); Save(q, "skins-clash-long"); q.Close();
             }
             SkinsPanel.PretendGameOpen = true;
             var again = f.Panel.Reload();

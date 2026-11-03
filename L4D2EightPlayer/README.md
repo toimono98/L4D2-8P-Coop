@@ -155,6 +155,8 @@ You can tick **Don't ask again for this add-on**.
 
 **Checked before each launch:** the game turns on every new Workshop subscription, so two skins for the same thing can end up on with nothing picked. Then only one of them shows, and which one isn't predictable, while every extra add-on still loads. Before **Launch L4D2 & join** or **Join game** starts the game, the app lists these and offers **Choose skins** (opens the picker on the first one), **Launch anyway** (keeps them, and doesn't ask again until another skin for the same thing turns up) or **Cancel**.
 
+**Add-ons that replace the same files** are asked about next, skins or not. The game uses one copy of each file, so with both on you get part of each: a survivor pack showing another add-on's HUD portraits, or a HUD mod with half of the 8-player HUD. The question names both add-ons and what they share ("survivor portraits on the HUD (12), character-select pictures (4)"), and for each pair you choose **Keep** one (the other is turned off), or **Keep both** (not asked again while they share the same files). **Launch** waits for a choice on every pair. The HUD add-on and the lobby mod are never the one turned off, and a skin pick for an add-on you turn off here is dropped, so the next launch doesn't turn it back on.
+
 **Never touched:**
 - The 8-Player HUD add-on, the 8 Slots Lobby Mod and the other add-ons the app needs.
 - Campaigns, mutations and script mods: they stay on, and the picker says so.
