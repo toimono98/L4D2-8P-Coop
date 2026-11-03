@@ -258,8 +258,26 @@ namespace L4D2EightPlayer.UI
                 {
                     // --campaigns <left4dead2 dir>[;<dir>...]: the custom campaigns the Play tab would list
                     foreach (var c in Campaigns.Find(Arg("--campaigns").Split(';')))
-                        log.Info($"campaign {c.Title} | maps {string.Join(",", c.Maps)} | workshop {c.WorkshopId ?? "-"} | {Path.GetFileName(c.File)}");
+                        log.Info($"campaign {c.Title} | maps {string.Join(",", c.Maps)} | chapters {string.Join(",", c.Maps.Select((m, i) => c.ChapterLabel(i)))} | workshop {c.WorkshopId ?? "-"} | {Path.GetFileName(c.File)}");
                     log.Info("campaigns: done");
+                }
+
+                if (Arg("--official-maps") != null)
+                {
+                    // --official-maps <game or server folder>: every chapter in the built-in campaign list must be a map the game ships
+                    var shipped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    // the campaigns' maps are loose files in left4dead2\maps (and the DLC folders); VPKs can hold more
+                    foreach (var bsp in Directory.GetFiles(Arg("--official-maps"), "*.bsp", SearchOption.AllDirectories))
+                        if (Path.GetFileName(Path.GetDirectoryName(bsp)).Equals("maps", StringComparison.OrdinalIgnoreCase)) shipped.Add(Path.GetFileNameWithoutExtension(bsp));
+                    foreach (var vpk in Directory.GetFiles(Arg("--official-maps"), "*_dir.vpk", SearchOption.AllDirectories))
+                    {
+                        try { foreach (var f in Vpk.Open(vpk).Entries.Keys.Where(k => k.StartsWith("maps/") && k.EndsWith(".bsp"))) shipped.Add(Path.GetFileNameWithoutExtension(f)); }
+                        catch (Exception ex) { log.Info($"official-maps: couldn't read {vpk}: {ex.Message}"); }
+                    }
+                    var all = Campaigns.Official.SelectMany(c => c.Maps).ToList();
+                    var missing = all.Where(m => !shipped.Contains(m)).ToList();
+                    log.Info($"official-maps: {all.Count} chapters in {Campaigns.Official.Count} campaigns, {shipped.Count} maps the game ships, missing: {(missing.Count == 0 ? "none" : string.Join(", ", missing))}");
+                    if (missing.Count > 0) rc = 1;
                 }
 
                 if (Arg("--health") != null)

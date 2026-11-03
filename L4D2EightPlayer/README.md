@@ -80,7 +80,7 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 
 ## Custom campaigns
 
-- **Play tab > Campaign** lists the official campaigns plus every custom campaign in the server's add-ons and your game's add-ons (read from each add-on's `missions` file), by their first chapter. The heading shows the campaign's own name.
+- **Play tab > Campaign** lists the official campaigns by their in-game names (Dead Center to The Last Stand), then every custom campaign in the server's add-ons and your game's add-ons by its own title (read from each add-on's `missions` file). **Start from chapter** picks the level the server starts on, by the chapter's in-game name ("2 · Streets", "5 · Rooftop Finale"); a custom campaign's chapters use the names in its `missions` file, or the map name where it has none. Picking another campaign starts it from chapter 1. A map saved by an older version that isn't in any campaign shows as **Other map**.
 - With **Copy campaigns and script mods to the server** on, campaigns you subscribe to in your game reach the dedicated server on the next Start server.
 - **Copy invite** adds "Needs the <campaign> campaign: <Workshop link>" when the server runs a custom campaign that came from the Workshop. It stays on the invite's single line, so friends can paste the whole invite into the Join side, which then links straight to that Workshop item.
 

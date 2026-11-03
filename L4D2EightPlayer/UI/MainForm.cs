@@ -84,16 +84,7 @@ namespace L4D2EightPlayer.UI
         {
             var dirs = new[] { settings.TargetGameDir, settings.ClientGameDir };
             customCampaigns = await Task.Run(() => Campaigns.Find(dirs));
-            var text = cmbMap.Text;
-            cmbMap.BeginUpdate();
-            cmbMap.Items.Clear();
-            cmbMap.Items.AddRange(ServerConfig.Maps);
-            foreach (var c in customCampaigns) cmbMap.Items.Add(c.FirstMap);
-            cmbMap.EndUpdate();
-            loading = true;
-            cmbMap.Text = text;
-            loading = false;
-            lblCampaign.Text = CampaignTitle(cmbMap.Text);
+            FillCampaigns(settings.Map);
             if (customCampaigns.Count > 0)
                 Info($"Custom campaigns: {string.Join(", ", customCampaigns.Select(c => c.Title + " (" + c.FirstMap + ")"))}.");
         }
@@ -101,10 +92,50 @@ namespace L4D2EightPlayer.UI
         /// <summary>The campaign's name for a map: official, an installed custom campaign, or "CUSTOM MAP".</summary>
         string CampaignTitle(string map)
         {
-            if (ServerQuery.IsOfficialMap(map)) return CampaignName(map);
-            var c = Campaigns.ForMap(customCampaigns, map);
+            var c = Campaigns.ForMap(Campaigns.Official, map) ?? Campaigns.ForMap(customCampaigns, map);
             return c != null ? c.Title.ToUpperInvariant() : "CUSTOM MAP";
         }
+
+        /// <summary>
+        /// The campaign list: the official ones in the game's order, then the custom ones, and the saved map on
+        /// its own ("Other map") if it's in none of them. Selects the campaign and chapter that hold this map.
+        /// </summary>
+        void FillCampaigns(string map)
+        {
+            var list = Campaigns.Official.Concat(customCampaigns).ToList();
+            if (!string.IsNullOrWhiteSpace(map) && Campaigns.ForMap(list, map) == null)
+                list.Add(new Campaigns.Campaign { Title = "Other map", Maps = { map.Trim() } });
+            var current = Campaigns.ForMap(list, map) ?? list[0];
+            bool was = loading;
+            loading = true;
+            cmbCampaign.BeginUpdate();
+            cmbCampaign.Items.Clear();
+            cmbCampaign.Items.AddRange(list.ToArray());
+            cmbCampaign.EndUpdate();
+            cmbCampaign.SelectedItem = current;
+            FillChapters(current, map);
+            loading = was;
+            lblCampaign.Text = current.Title.ToUpperInvariant();
+            cmbCampaign.DropDownWidth = Math.Max(cmbCampaign.Width, list.Max(c => TextRenderer.MeasureText(c.Title, cmbCampaign.Font).Width) + UI.Themes.Ui.S(30));
+        }
+
+        /// <summary>The campaign's chapters by name ("1 · Hotel"), on the one with this map (or the first).</summary>
+        void FillChapters(Campaigns.Campaign c, string map)
+        {
+            bool was = loading;
+            loading = true;
+            cmbChapter.BeginUpdate();
+            cmbChapter.Items.Clear();
+            for (int i = 0; i < c.Maps.Count; i++) cmbChapter.Items.Add(c.ChapterLabel(i));
+            cmbChapter.EndUpdate();
+            cmbChapter.SelectedIndex = Math.Max(0, c.Maps.FindIndex(m => m.Equals(map ?? "", StringComparison.OrdinalIgnoreCase)));
+            loading = was;
+        }
+
+        /// <summary>The map the server starts on: the chosen chapter of the chosen campaign.</summary>
+        string SelectedMap =>
+            cmbCampaign.SelectedItem is Campaigns.Campaign c && cmbChapter.SelectedIndex >= 0 && cmbChapter.SelectedIndex < c.Maps.Count
+                ? c.Maps[cmbChapter.SelectedIndex] : "c1m1_hotel";
 
         void LoadSettingsIntoUi()
         {
@@ -131,7 +162,7 @@ namespace L4D2EightPlayer.UI
             if (cmbMode.SelectedIndex < 0) cmbMode.SelectedIndex = 0;
             cmbDifficulty.SelectedItem = settings.Difficulty;
             if (cmbDifficulty.SelectedIndex < 0) cmbDifficulty.SelectedIndex = 1;
-            cmbMap.Text = settings.Map;
+            FillCampaigns(settings.Map);
             rbDirect.Checked = settings.JoinMethod != "lobby";
             rbLobby.Checked = settings.JoinMethod == "lobby";
             cmbNetwork.SelectedItem = settings.Internet ? "internet" : settings.NetworkMode;
@@ -159,7 +190,7 @@ namespace L4D2EightPlayer.UI
             UpdateHudAddonLink();
             settings.GameMode = cmbMode.SelectedItem as string ?? "coop";
             settings.Difficulty = cmbDifficulty.SelectedItem as string ?? "Normal";
-            settings.Map = string.IsNullOrWhiteSpace(cmbMap.Text) ? "c1m1_hotel" : cmbMap.Text.Trim();
+            settings.Map = SelectedMap;
             settings.JoinMethod = rbLobby.Checked ? "lobby" : "direct";
             settings.NetworkMode = cmbNetwork.SelectedItem as string ?? "internet";
             settings.LobbyAddress = txtLobbyAddress.Text.Trim();
@@ -721,8 +752,7 @@ namespace L4D2EightPlayer.UI
             bool listen = settings.Mode == "listen";
             bool running = serverProcess != null && !serverProcess.HasExited;
             grpServer.Text = listen ? "Listen server (uses your game)" : "Dedicated server";
-            txtServerName.Enabled = numPort.Enabled = txtPassword.Enabled = cmbMap.Enabled = cmbMode.Enabled = !listen;
-            if (listen) cmbMap.SelectionLength = 0;
+            txtServerName.Enabled = numPort.Enabled = txtPassword.Enabled = cmbCampaign.Enabled = cmbChapter.Enabled = cmbMode.Enabled = !listen;
             numPlayers.Maximum = listen ? 8 : 16;
             rbDirect.Enabled = rbLobby.Enabled = txtLobbyAddress.Enabled = chkSync.Enabled = chkUpdateOnStart.Enabled = !listen;
             btnStart.Visible = btnStop.Visible = !listen;
@@ -739,7 +769,7 @@ namespace L4D2EightPlayer.UI
             nav.StatusColor = running || gameWatch.Enabled ? Theme.Amber : Theme.Muted;
             txtJoinInfo.Text = JoinInstructions(publicIp);
             lblConnect.Text = $"connect {ShareHost()}:{(listen ? 27015 : settings.Port)}";
-            lblCampaign.Text = CampaignTitle(cmbMap.Text);
+            lblCampaign.Text = CampaignTitle(SelectedMap);
             UpdateRoster();
         }
 

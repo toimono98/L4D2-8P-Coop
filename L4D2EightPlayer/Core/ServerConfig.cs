@@ -158,11 +158,7 @@ namespace L4D2EightPlayer.Core
             File.WriteAllText(file, sb.ToString(), new UTF8Encoding(false));
         }
 
-        public static readonly string[] CampaignTitles =
-        {
-            "Dead Center", "Dark Carnival", "Swamp Fever", "Hard Rain", "The Parish", "The Passing", "The Sacrifice",
-            "No Mercy", "Crash Course", "Death Toll", "Dead Air", "Blood Harvest", "Cold Stream", "The Last Stand",
-        };
+        public static readonly string[] CampaignTitles = Campaigns.Official.Select(c => c.Title).ToArray();
 
         /// <summary>Plugin mode number for a Settings.ScalingModes name (unknown = auto).</summary>
         static int ModeIndex(string mode)
@@ -171,12 +167,8 @@ namespace L4D2EightPlayer.Core
             return i < 0 ? 1 : i;
         }
 
-        public static readonly string[] Maps =
-        {
-            "c1m1_hotel", "c2m1_highway", "c3m1_plankcountry", "c4m1_milltown_a", "c5m1_waterfront",
-            "c6m1_riverbank", "c7m1_docks", "c8m1_apartment", "c9m1_alleys", "c10m1_caves",
-            "c11m1_greenhouse", "c12m1_hilltop", "c13m1_alpinecreek", "c14m1_junkyard",
-        };
+        /// <summary>Each official campaign's first map, in order.</summary>
+        public static readonly string[] Maps = Campaigns.Official.Select(c => c.FirstMap).ToArray();
 
         public static readonly string[] GameModes = { "coop", "realism", "survival", "versus", "scavenge" };
         public static readonly string[] Difficulties = { "Easy", "Normal", "Hard", "Impossible" };

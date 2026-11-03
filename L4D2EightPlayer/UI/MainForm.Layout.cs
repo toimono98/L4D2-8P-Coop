@@ -29,7 +29,7 @@ namespace L4D2EightPlayer.UI
         Pills cmbItemsMode, cmbInfectedMode, cmbRotation;
         Stepper numPlayers;
         NumericUpDown numPort;
-        ComboBox cmbMode, cmbMap;
+        ComboBox cmbMode, cmbCampaign, cmbChapter;
         Pills cmbDifficulty, cmbNetwork;
         Label lblNetworkNote;
         Meter progress;
@@ -72,7 +72,7 @@ namespace L4D2EightPlayer.UI
             rosterTimer.Tick += async (s, e) => await PollRoster();
             rosterTimer.Start();
             Load += async (s, e) => await OnLoaded();
-            Shown += (s, e) => { ActiveControl = nav; cmbMap.SelectionLength = 0; };
+            Shown += (s, e) => ActiveControl = nav;
             Shown += async (s, e) => await MaybeStartTour();
             FormClosing += OnClosing;
         }
@@ -531,18 +531,28 @@ namespace L4D2EightPlayer.UI
             cc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
             cc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
             lblCampaign = new Label { AutoSize = true, Font = Theme.Display(17f), ForeColor = Theme.Bone, Margin = P(0, 0, 0, 6), Text = "DEAD CENTER" };
-            cmbMap = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, Dock = DockStyle.Fill, Font = Theme.Body(10f), Margin = P(0, 0, 8, 0) };
-            cmbMap.Items.AddRange(ServerConfig.Maps);
-            cmbMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.Body(10f), Margin = P(0) };
-            Theme.StyleCombo(cmbMap);
-            Theme.StyleCombo(cmbMode);
+            // the campaign by its in-game name, then which of its chapters the server starts on
+            cmbCampaign = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.Body(10f), Margin = P(0, 0, 8, 0), AccessibleName = "Campaign" };
+            cmbChapter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.Body(10f), Margin = P(0), AccessibleName = "Starting chapter" };
+            cmbMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.Body(10f), Margin = P(0), AccessibleName = "Game mode" };
+            foreach (var cb in new[] { cmbCampaign, cmbChapter, cmbMode }) Theme.StyleCombo(cb);
             cmbMode.Items.AddRange(ServerConfig.GameModes);
+            var chapterCap = SmallCaps("Start from chapter");
+            chapterCap.Margin = P(0, 10, 0, 4);
             cc.Controls.Add(lblCampaign, 0, 0);
             cc.SetColumnSpan(lblCampaign, 2);
-            cc.Controls.Add(cmbMap, 0, 1);
+            cc.Controls.Add(cmbCampaign, 0, 1);
             cc.Controls.Add(cmbMode, 1, 1);
+            cc.Controls.Add(chapterCap, 0, 2);
+            cc.SetColumnSpan(chapterCap, 2);
+            cc.Controls.Add(cmbChapter, 0, 3);
+            cc.SetColumnSpan(cmbChapter, 2);
+            int comboRow = Math.Max(cmbCampaign.Height, cmbMode.Height) + S(2);
             cc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            cc.RowStyles.Add(new RowStyle(SizeType.Absolute, Math.Max(cmbMap.Height, cmbMode.Height) + S(2)));
+            cc.RowStyles.Add(new RowStyle(SizeType.Absolute, comboRow));
+            cc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            cc.RowStyles.Add(new RowStyle(SizeType.Absolute, comboRow));
+            new ToolTip().SetToolTip(cmbChapter, "The chapter the server starts on. Later chapters follow as usual, and the next campaign starts from chapter 1.");
             camp.Controls.Add(cc);
             right.Controls.Add(camp, 0, 0);
 
@@ -648,7 +658,14 @@ namespace L4D2EightPlayer.UI
             cmbMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbDifficulty.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbNetwork.SelectedIndexChanged += (s, e) => ReadPlaySettings();
-            cmbMap.TextChanged += (s, e) => { lblCampaign.Text = CampaignTitle(cmbMap.Text); ReadPlaySettings(); };
+            cmbCampaign.SelectedIndexChanged += (s, e) =>
+            {
+                if (loading || !(cmbCampaign.SelectedItem is Campaigns.Campaign c)) return;
+                FillChapters(c, null);   // a new campaign starts from its first chapter
+                lblCampaign.Text = c.Title.ToUpperInvariant();
+                ReadPlaySettings();
+            };
+            cmbChapter.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             foreach (var c in new CheckBox[] { chkFill, chkHudLook, chkSync, chkUpdateOnStart, chkScanFirst }) c.CheckedChanged += (s, e) => ReadPlaySettings();
             cmbItemsMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbInfectedMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
@@ -703,18 +720,6 @@ namespace L4D2EightPlayer.UI
             tt.SetToolTip(pills, tip);
             card.Controls.Add(text);
             return card;
-        }
-
-        static readonly string[] CampaignNames =
-        {
-            "DEAD CENTER", "DARK CARNIVAL", "SWAMP FEVER", "HARD RAIN", "THE PARISH", "THE PASSING", "THE SACRIFICE",
-            "NO MERCY", "CRASH COURSE", "DEATH TOLL", "DEAD AIR", "BLOOD HARVEST", "COLD STREAM", "THE LAST STAND",
-        };
-
-        static string CampaignName(string map)
-        {
-            var m = System.Text.RegularExpressions.Regex.Match(map ?? "", @"^c(\d{1,2})m\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            return m.Success && int.TryParse(m.Groups[1].Value, out int n) && n >= 1 && n <= CampaignNames.Length ? CampaignNames[n - 1] : "CUSTOM MAP";
         }
 
         // ---- roster
