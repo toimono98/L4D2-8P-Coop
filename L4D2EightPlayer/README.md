@@ -125,6 +125,8 @@ The game doesn't do this by itself. l4dmultislots does it through `l4d_multislot
 
 Survivors 5+ always start with the starting pistol, a first aid kit and 100 health (no temporary health), instead of l4dmultislots' default random tier 2 gun, secondary, throwable and 80+20 health. The Manager sets this in the same block of `l4dmultislots.cfg` (`l4d_multislots_firstweapon 0`, `secondweapon 0`, `thirdweapon 0`, `forthweapon 1`, `fifthweapon 0`, `respawnhp 100`, `respawnbuffhp 0`).
 
+**Gear at chapter changes:** the game carries weapons and items over for the first four survivors only. Survivors 5+ (seen with the bots in those slots) arrive in the next chapter with the starting loadout and re-arm from the saferoom. The optional **l4d2_ty_saveweapons** (Setup tab) keeps their gear, but on L4D2 it also needs *Transition Restore Fix*, a forum-only download (**Forum-only extras**); with saveweapons alone, only some items come back.
+
 ## Scaling for 5+ survivors: items and infected
 
 The game is tuned for 4 survivors. Two built-in plugins, both required installs (Core group), scale it to the team you actually have, bots included. Each has its own row on the **Play tab** with four modes:

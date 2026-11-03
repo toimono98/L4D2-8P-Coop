@@ -315,12 +315,21 @@ namespace L4D2EightPlayer.UI
                 {
                     var target = Arg("--uninstall");
                     var inst = new Installer(target, log);
-                    foreach (var id in inst.State.components.Keys.ToList()) inst.Uninstall(manifest.Get(id) ?? new Component { id = id, name = id });
-                    ServerConfig.ClearBlock(Path.Combine(target, "cfg", "server.cfg"));
-                    ServerConfig.ClearBlock(Path.Combine(target, "cfg", "sourcemod", "l4dmultislots.cfg"));
-                    var left = Directory.Exists(target) ? Directory.GetFiles(target, "*", SearchOption.AllDirectories).Where(f => !f.Contains("l4d2_8p_manager")).ToList() : new List<string>();
-                    log.Info($"uninstall: {left.Count} file(s) left outside the manager folder");
-                    foreach (var f in left.Take(20)) log.Info("  left: " + f);
+                    if (Arg("--only") != null)
+                    {
+                        // --uninstall dir --only id,id: remove just those components, leave the config alone
+                        foreach (var id in Arg("--only").Split(',')) inst.Uninstall(manifest.Get(id) ?? new Component { id = id, name = id });
+                        foreach (var c in manifest.components) log.Info($"  status {c.id,-22} {inst.Status(c)}");
+                    }
+                    else
+                    {
+                        foreach (var id in inst.State.components.Keys.ToList()) inst.Uninstall(manifest.Get(id) ?? new Component { id = id, name = id });
+                        ServerConfig.ClearBlock(Path.Combine(target, "cfg", "server.cfg"));
+                        ServerConfig.ClearBlock(Path.Combine(target, "cfg", "sourcemod", "l4dmultislots.cfg"));
+                        var left = Directory.Exists(target) ? Directory.GetFiles(target, "*", SearchOption.AllDirectories).Where(f => !f.Contains("l4d2_8p_manager")).ToList() : new List<string>();
+                        log.Info($"uninstall: {left.Count} file(s) left outside the manager folder");
+                        foreach (var f in left.Take(20)) log.Info("  left: " + f);
+                    }
                 }
 
                 if (args.Contains("--launch-join"))

@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "updated": "2026-10-25",
+  "updated": "2026-11-02",
   "notes": "Component list for the L4D2 8-Player Co-op Manager. Based on fbef0102's '8+ Survivors In Coop' guide (updated 2026-07-26). Put an edited copy named components.json next to the .exe to override this embedded one.",
   "components": [
     {
@@ -206,13 +206,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_CreateSurvivorBot/",
       "files": [
         [
-          "plugins/l4d_CreateSurvivorBot.smx",
-          "addons/sourcemod/plugins/l4d_CreateSurvivorBot.smx"
-        ],
-        [
           "gamedata/l4d_CreateSurvivorBot.txt",
           "addons/sourcemod/gamedata/l4d_CreateSurvivorBot.txt"
         ]
+      ],
+      "compile": [
+        "scripting/l4d_CreateSurvivorBot.sp"
       ]
     },
     {
@@ -229,13 +228,19 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4dmultislots/",
       "files": [
         [
-          "plugins/l4dmultislots.smx",
-          "addons/sourcemod/plugins/l4dmultislots.smx"
-        ],
-        [
           "translations/l4dmultislots.phrases.txt",
           "addons/sourcemod/translations/l4dmultislots.phrases.txt"
         ]
+      ],
+      "includesBase": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/scripting_1.12/include/",
+      "includes": [
+        "multicolors.inc",
+        "multicolors/morecolors.inc",
+        "multicolors/colors.inc",
+        "l4d_CreateSurvivorBot.inc"
+      ],
+      "compile": [
+        "scripting/l4dmultislots.sp"
       ]
     },
     {
@@ -252,11 +257,8 @@
       ],
       "description": "Removes the 4-player lobby reservation once the lobby is full so players 5-8 can connect.",
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_unreservelobby/",
-      "files": [
-        [
-          "plugins/l4d_unreservelobby.smx",
-          "addons/sourcemod/plugins/l4d_unreservelobby.smx"
-        ]
+      "compile": [
+        "scripting/l4d_unreservelobby.sp"
       ]
     },
     {
@@ -356,11 +358,8 @@
       ],
       "description": "Idle players take over their dead bot instead of becoming a full spectator.",
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4dafkfix_deadbot/",
-      "files": [
-        [
-          "plugins/l4dafkfix_deadbot.smx",
-          "addons/sourcemod/plugins/l4dafkfix_deadbot.smx"
-        ]
+      "compile": [
+        "scripting/l4dafkfix_deadbot.sp"
       ]
     },
     {
@@ -375,13 +374,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_both_fixUpgradePack/",
       "files": [
         [
-          "plugins/l4d_both_fixUpgradePack.smx",
-          "addons/sourcemod/plugins/l4d_both_fixUpgradePack.smx"
-        ],
-        [
           "gamedata/l4d_both_fixUpgradePack.txt",
           "addons/sourcemod/gamedata/l4d_both_fixUpgradePack.txt"
         ]
+      ],
+      "compile": [
+        "scripting/l4d_both_fixUpgradePack.sp"
       ]
     },
     {
@@ -436,11 +434,8 @@
       ],
       "description": "Stops custom maps from softlocking when survivor models are mixed.",
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_trigger_flow_fix/",
-      "files": [
-        [
-          "plugins/l4d2_trigger_flow_fix.smx",
-          "addons/sourcemod/plugins/l4d2_trigger_flow_fix.smx"
-        ]
+      "compile": [
+        "scripting/l4d2_trigger_flow_fix.sp"
       ]
     },
     {
@@ -455,13 +450,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_vocalizebasedmodel/",
       "files": [
         [
-          "plugins/l4d2_vocalizebasedmodel.smx",
-          "addons/sourcemod/plugins/l4d2_vocalizebasedmodel.smx"
-        ],
-        [
           "gamedata/l4d2_vocalizebasedmodel.txt",
           "addons/sourcemod/gamedata/l4d2_vocalizebasedmodel.txt"
         ]
+      ],
+      "compile": [
+        "scripting/l4d2_vocalizebasedmodel.sp"
       ]
     },
     {
@@ -496,13 +490,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_transition_info_fix/",
       "files": [
         [
-          "plugins/l4d2_transition_info_fix.smx",
-          "addons/sourcemod/plugins/l4d2_transition_info_fix.smx"
-        ],
-        [
           "gamedata/l4d2_transition_info_fix.txt",
           "addons/sourcemod/gamedata/l4d2_transition_info_fix.txt"
         ]
+      ],
+      "compile": [
+        "scripting/l4d2_transition_info_fix.sp"
       ]
     },
     {
@@ -537,13 +530,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/spawn_infected_nolimit/",
       "files": [
         [
-          "plugins/spawn_infected_nolimit.smx",
-          "addons/sourcemod/plugins/spawn_infected_nolimit.smx"
-        ],
-        [
           "gamedata/spawn_infected_nolimit.txt",
           "addons/sourcemod/gamedata/spawn_infected_nolimit.txt"
         ]
+      ],
+      "compile": [
+        "scripting/spawn_infected_nolimit.sp"
       ]
     },
     {
@@ -557,15 +549,12 @@
       ],
       "description": "Makes scripted map tanks spawn when the infected slots are full.",
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_maptankfix/",
-      "files": [
-        [
-          "plugins/l4d2_maptankfix.smx",
-          "addons/sourcemod/plugins/l4d2_maptankfix.smx"
-        ],
-        [
-          "gamedata/l4d2_maptankfix.txt",
-          "addons/sourcemod/gamedata/l4d2_maptankfix.txt"
-        ]
+      "includesBase": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/scripting_1.12/include/",
+      "includes": [
+        "spawn_infected_nolimit.inc"
+      ],
+      "compile": [
+        "scripting/l4d2_maptankfix.sp"
       ]
     },
     {
@@ -580,13 +569,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_rescue_vehicle_multi/",
       "files": [
         [
-          "plugins/l4d2_rescue_vehicle_multi.smx",
-          "addons/sourcemod/plugins/l4d2_rescue_vehicle_multi.smx"
-        ],
-        [
           "gamedata/l4d2_rescue_vehicle_multi.txt",
           "addons/sourcemod/gamedata/l4d2_rescue_vehicle_multi.txt"
         ]
+      ],
+      "compile": [
+        "scripting/l4d2_rescue_vehicle_multi.sp"
       ]
     },
     {
@@ -642,13 +630,12 @@
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_full_slot_bot_replace_fix/",
       "files": [
         [
-          "plugins/l4d_full_slot_bot_replace_fix.smx",
-          "addons/sourcemod/plugins/l4d_full_slot_bot_replace_fix.smx"
-        ],
-        [
           "gamedata/l4d_full_slot_bot_replace_fix.txt",
           "addons/sourcemod/gamedata/l4d_full_slot_bot_replace_fix.txt"
         ]
+      ],
+      "compile": [
+        "scripting/l4d_full_slot_bot_replace_fix.sp"
       ]
     },
     {
@@ -727,15 +714,65 @@
       "group": "Optional",
       "default": false,
       "requires": [
-        "left4dhooks"
+        "left4dhooks",
+        "heartbeat",
+        "transitionentity"
       ],
-      "description": "Keeps everyone's weapons across map changes when there are more than 4 players.",
+      "description": "Survivors 5+ lose their weapons and items at every chapter change (the game only carries over the first four). This saves and restores them. On L4D2 it also needs Transition Restore Fix, which is a forum-only download (Setup tab > Forum-only extras); without it, only some items come back. Installs l4d_heartbeat and l4d_transition_entity with it.",
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d2_ty_saveweapons/",
       "files": [
         [
-          "plugins/l4d2_ty_saveweapons.smx",
-          "addons/sourcemod/plugins/l4d2_ty_saveweapons.smx"
+          "gamedata/l4d2_ty_saveweapons.txt",
+          "addons/sourcemod/gamedata/l4d2_ty_saveweapons.txt"
         ]
+      ],
+      "includesBase": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/scripting_1.12/include/",
+      "includes": [
+        "l4d_heartbeat.inc",
+        "l4d_transition_entity.inc"
+      ],
+      "compile": [
+        "scripting/l4d2_ty_saveweapons.sp"
+      ]
+    },
+    {
+      "id": "heartbeat",
+      "name": "l4d_heartbeat (needed by l4d2_ty_saveweapons)",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "left4dhooks"
+      ],
+      "description": "Keeps each survivor's black-and-white state and revive count right. Installed with l4d2_ty_saveweapons, which needs it.",
+      "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/l4d_heartbeat/",
+      "compile": [
+        "scripting/l4d_heartbeat.sp"
+      ]
+    },
+    {
+      "id": "transitionentity",
+      "name": "l4d_transition_entity (Forgetest, needed by l4d2_ty_saveweapons)",
+      "group": "Optional",
+      "default": false,
+      "requires": [
+        "sourcemod",
+        "sourcescramble"
+      ],
+      "description": "Carries entities across a map transition. Installed with l4d2_ty_saveweapons, which needs it.",
+      "base": "https://raw.githubusercontent.com/Target5150/MoYu_Server_Stupid_Plugins/master/The%20Last%20Stand/l4d_transition_entity/",
+      "files": [
+        [
+          "gamedata/l4d_transition_entity.txt",
+          "addons/sourcemod/gamedata/l4d_transition_entity.txt"
+        ]
+      ],
+      "includesBase": "https://raw.githubusercontent.com/Target5150/MoYu_Server_Stupid_Plugins/master/include/",
+      "includes": [
+        "sourcescramble.inc",
+        "@Forgetest/gamedatawrapper.inc"
+      ],
+      "compile": [
+        "scripting/l4d_transition_entity.sp"
       ]
     },
     {
@@ -748,11 +785,8 @@
       ],
       "description": "When you die, you automatically take over a free alive bot.",
       "base": "https://raw.githubusercontent.com/fbef0102/L4D1_2-Plugins/master/_AutoTakeOver/",
-      "files": [
-        [
-          "plugins/_AutoTakeOver.smx",
-          "addons/sourcemod/plugins/_AutoTakeOver.smx"
-        ]
+      "compile": [
+        "scripting/_AutoTakeOver.sp"
       ]
     },
     {

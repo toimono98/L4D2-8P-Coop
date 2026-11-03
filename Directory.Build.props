@@ -1,6 +1,6 @@
 ﻿<Project>
   <!-- One version for the Manager and the Join app. tools\release.ps1 raises it. -->
   <PropertyGroup>
-    <Version>1.7.0</Version>
+    <Version>1.7.1</Version>
   </PropertyGroup>
 </Project>
