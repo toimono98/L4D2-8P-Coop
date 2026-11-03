@@ -1,8 +1,9 @@
 /**
  * [L4D2] 8-Player Survivor HUD
  *
- * The stock HUD shows a player and the first four other survivors (by player slot); anyone after that has no
- * panel. This lists exactly those survivors in a column under the weapon slots:
+ * The stock HUD shows a player and the first four other survivors (by player slot; dead ones keep their panel,
+ * and a bot's panel is labelled with its character); anyone after that has no panel. This lists exactly those
+ * survivors in a column under the weapon slots (with more survivors than rows, the last row names the rest):
  *  - their health and state, through the game's scripted HUD
  *    (the game-rules entity's m_*ScriptedHUD* props, drawn by each client's own game; written directly, the
  *    way fbef0102's l4d2_cs_kill_hud does). It stays visible while Tab is held, below the scoreboard's four
@@ -33,7 +34,7 @@
 #include <sdktools>
 #include <left4dhooks>
 
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.2.0"
 
 public Plugin myinfo =
 {
@@ -387,9 +388,16 @@ void UpdateStrip(const int[] list, int count)
 	if (!g_bLayoutSent) PlaceSlots();
 	EnsureHudDrawn();
 	int flags = StripFlags();
+	bool overflow = count > MAX_SHOWN;
 	for (int i = 0; i < MAX_SHOWN; i++)
 	{
-		if (i < count)
+		if (overflow && i == MAX_SHOWN - 1)
+		{
+			char line[128];
+			OverflowLine(list, i, count, line, sizeof(line));
+			SetSlot(g_iSlots[i], flags, line);
+		}
+		else if (i < count)
 		{
 			char line[128];
 			SurvivorLine(list[i], false, line, sizeof(line));
@@ -474,6 +482,30 @@ bool RowState(int client, char[] state, int maxlength, float &fill, int &colour)
 	return true;
 }
 
+/**
+ * The last row when there are more survivors than rows, so nobody goes missing: "+3  Zoey DOWN, Nick, Louis".
+ * Anyone in trouble (dead, down, pinned, red health) is named first, with their state.
+ */
+void OverflowLine(const int[] list, int from, int count, char[] buffer, int maxlength)
+{
+	FormatEx(buffer, maxlength, "+%d ", count - from);
+	bool first = true;
+	for (int pass = 0; pass < 2; pass++)
+		for (int i = from; i < count; i++)
+		{
+			char state[24], name[16], part[48];
+			float fill;
+			int colour;
+			bool trouble = !RowState(list[i], state, sizeof(state), fill, colour) || colour == Bar_Red;
+			if (trouble != (pass == 0)) continue;
+			PlayerLabel(list[i], name, sizeof(name));
+			if (trouble) FormatEx(part, sizeof(part), "%s%s %s", first ? " " : ", ", name, state);
+			else FormatEx(part, sizeof(part), "%s%s", first ? " " : ", ", name);
+			StrCat(buffer, maxlength, part);
+			first = false;
+		}
+}
+
 // ---- items to boxes: a box can take an item if its Fl or Im icon is that item (bipartite matching)
 
 #define MAX_ITEMS (ADDON_ROWS * 3)
@@ -505,7 +537,10 @@ void UpdateAddonStrip(const int[] list, int count)
 {
 	EnsureHudDrawn();
 	bool taken[HUD_SLOTS];
-	if (count > ADDON_ROWS) count = ADDON_ROWS;
+	// more survivors than rows: the last row lists the rest instead of dropping them
+	bool overflow = count > ADDON_ROWS;
+	int total = count;
+	if (overflow) count = ADDON_ROWS - 1;
 	float x = g_cvAddonX.FloatValue;
 	float rowY[ADDON_ROWS];
 	char state[ADDON_ROWS][24];
@@ -585,6 +620,27 @@ void UpdateAddonStrip(const int[] list, int count)
 		int box = g_iTextSlots[i];
 		// the add-on draws a text box's background TEXT_PAD wider on each side than its text
 		PlaceSlot(box, x + PxX(TEXT_PAD), rowY[i], PxX(ROW_W - 2 * TEXT_PAD), PxY(ROW_H));
+		SetSlot(box, HUD_FLAG_TEXT | HUD_FLAG_ALIGN_LEFT | HUD_FLAG_TEAM_SURVIVORS, text);
+	}
+
+	if (overflow)
+	{
+		char text[128];
+		OverflowLine(list, count, total, text, sizeof(text));
+		int roomUnits = RoundToFloor((ROW_W - 2 * TEXT_PAD - 4.0) / TEXT_EM * 1000.0);
+		if (TextWidth(text) > roomUnits)
+		{
+			// cut at a character boundary and mark it
+			int dots = TextWidth("..."), n = strlen(text);
+			while (n > 1 && TextWidth(text) + dots > roomUnits) text[--n] = '\0';
+			// don't leave half a UTF-8 character at the end
+			while (n > 0 && (text[n - 1] & 0xC0) == 0x80) text[--n] = '\0';
+			if (n > 0 && (text[n - 1] & 0xC0) == 0xC0) text[--n] = '\0';
+			StrCat(text, sizeof(text), "...");
+		}
+		int box = g_iTextSlots[ADDON_ROWS - 1];
+		taken[box] = true;
+		PlaceSlot(box, x + PxX(TEXT_PAD), g_cvAddonY.FloatValue + PxY((ADDON_ROWS - 1) * (ROW_H + ROW_GAP)), PxX(ROW_W - 2 * TEXT_PAD), PxY(ROW_H));
 		SetSlot(box, HUD_FLAG_TEXT | HUD_FLAG_ALIGN_LEFT | HUD_FLAG_TEAM_SURVIVORS, text);
 	}
 
