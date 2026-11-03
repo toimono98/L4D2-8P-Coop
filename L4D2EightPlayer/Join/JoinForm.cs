@@ -26,6 +26,8 @@ namespace L4D2EightPlayer.Join
         public string GamePath { get; set; }
         public List<RecentServer> Recent { get; set; } = new List<RecentServer>();
         public bool TourSeen { get; set; }   // the first-run tour has been shown
+        /// <summary>Join game downloads the server's required mods you're missing (and the cosmetic ones you tick) first.</summary>
+        public bool DownloadMods { get; set; } = true;
 
         static string FilePath => Path.Combine(Paths.AppData, "join.json");
         public static bool Exists => File.Exists(FilePath);
@@ -152,7 +154,7 @@ namespace L4D2EightPlayer.Join
             g.Controls.Add(pw, 0, 1);
 
             // ---- server card (shown after a check) and its empty state
-            var holder = new Panel { Dock = DockStyle.Fill, Height = S(390), Margin = P(0, 0, 0, 16) };
+            var holder = new Panel { Dock = DockStyle.Fill, Height = S(470), Margin = P(0, 0, 0, 16) };
             serverCard = new Card { Dock = DockStyle.Fill, Padding = P(18, 16, 18, 16), Visible = false };
             var sc = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };
             sc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -193,6 +195,7 @@ namespace L4D2EightPlayer.Join
             tail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             tail.Controls.Add(lblNotes, 0, 0);
             tail.Controls.Add(lnkMap, 0, 1);
+            tail.Controls.Add(BuildModsPanel(), 0, 2);   // the server's mods, between the notes and Join
             tail.Controls.Add(btnJoin, 0, 3);
             sc.Controls.Add(tail, 0, 5); sc.SetColumnSpan(tail, 2);
             serverCard.Controls.Add(sc);
@@ -411,6 +414,15 @@ namespace L4D2EightPlayer.Join
                     }
                 }
 
+                await LoadServerMods(t);
+                // the host's campaign is one of the server's required mods: it comes with them
+                if (missingMap != null && lblMapState.Text == "Custom · missing" && settings.DownloadMods && serverMods.Any(m => m.Required && !m.Have && m.Url != null))
+                {
+                    notes.RemoveAll(n => n.Contains("custom map"));
+                    notes.Add($"The host is on a custom map ({info.Map}). It's in the server's required mods below, which download when you click Join game.");
+                    lnkMap.Visible = false;
+                }
+
                 lblNotes.Text = string.Join(Environment.NewLine, notes);
                 lblNotes.Visible = notes.Count > 0;
                 btnJoin.Text = "Join game";
@@ -430,9 +442,18 @@ namespace L4D2EightPlayer.Join
             try
             {
                 if (Launcher.GameRunning())
+                {
+                    // a running game can't load new add-ons: missing required mods mean closing it first
+                    if (serverMods.Any(m => m.Required && !m.Have))
+                    {
+                        MessageBox.Show(this, "This server needs mods you don't have yet. Close Left 4 Dead 2, then click Join game: the mods download first and the game loads them when it starts.", Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
                     Process.Start(t.SteamUrl); // the running game connects straight away
+                }
                 else
                 {
+                    if (!await GetServerMods()) return;   // the server's mods you're missing, before the game reads its add-ons
                     ReapplySkins();   // the remembered skin picks, before the game reads its add-on list
                     if (!SkinsSettled()) return;
                     // the connect waits until the game has loaded the Workshop add-ons: joining straight away leaves them

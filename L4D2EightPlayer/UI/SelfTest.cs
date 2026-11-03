@@ -369,8 +369,12 @@ namespace L4D2EightPlayer.UI
                     ServerConfig.Apply(st, st.TargetGameDir);
                     var srvInst = new Installer(st.TargetGameDir, log);
                     foreach (var c in srvInst.OutdatedBuiltIns(manifest)) srvInst.Install(c, CancellationToken.None).GetAwaiter().GetResult();
-                    var skip = manifest.Get("skipintro");
-                    if (st.SkipIntros && skip != null && srvInst.Status(skip) == ComponentStatus.NotInstalled) srvInst.Install(skip, CancellationToken.None).GetAwaiter().GetResult();
+                    foreach (var id in new[] { "skipintro", "modlist" })
+                    {
+                        var c = manifest.Get(id);
+                        if (c != null && srvInst.Status(c) == ComponentStatus.NotInstalled) srvInst.Install(c, CancellationToken.None).GetAwaiter().GetResult();
+                    }
+                    ServerConfig.WriteModList(st.TargetGameDir, ServerMods.Collect(st.ClientGameDir, manifest));
                     if (st.SyncAddons && GameLocator.IsGameDir(st.GamePath))
                         AddonSync.Sync(st.ClientGameDir, st.TargetGameDir, InstallState.Load(st.TargetGameDir), log);
                     var host = Launcher.LocalServerAddress();

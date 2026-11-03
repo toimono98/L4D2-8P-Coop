@@ -920,11 +920,18 @@ namespace L4D2EightPlayer.UI
                 inst.ApplySourceModGuard(manifest);
                 // the plugins this app builds itself: a newer app may bring fixed versions
                 foreach (var c in inst.OutdatedBuiltIns(manifest)) await inst.Install(c, ct);
-                // Skip intros needs its plugin on the server (servers set up before it existed don't have it yet)
-                var skip = manifest.Get("skipintro");
-                if (settings.SkipIntros && skip != null && inst.Status(skip) == ComponentStatus.NotInstalled) await inst.Install(skip, ct);
+                // plugins newer than the server's setup: Skip intros (when it's on) and the mod list for joining friends
+                foreach (var id in settings.SkipIntros ? new[] { "skipintro", "modlist" } : new[] { "modlist" })
+                {
+                    var c = manifest.Get(id);
+                    if (c != null && inst.Status(c) == ComponentStatus.NotInstalled) await inst.Install(c, ct);
+                }
                 if (settings.SyncAddons && GameLocator.IsGameDir(settings.GamePath))
                     await Task.Run(() => AddonSync.Sync(settings.ClientGameDir, settings.TargetGameDir, InstallState.Load(settings.TargetGameDir), this), ct);
+                // the Workshop add-ons this game uses, for friends' downloads (published by the mod list plugin)
+                var mods = await Task.Run(() => ServerMods.Collect(settings.ClientGameDir, manifest), ct);
+                ServerConfig.WriteModList(settings.TargetGameDir, mods);
+                Info($"Mod list for joining friends: {mods.Count(m => m.Required)} required, {mods.Count(m => !m.Required)} cosmetic.");
             });
             if (!ok || !await ReviewBeforeLaunch(skins: launching, problems: true)) return;
 

@@ -146,6 +146,10 @@ namespace L4D2EightPlayer.Core
             WriteRotationList(gameDir, custom);
         }
 
+        /// <summary>cfg/sourcemod/l4d2_8p_mods.cfg: the Workshop add-ons this game uses, which the mod list plugin publishes.</summary>
+        public static void WriteModList(string gameDir, IEnumerable<ServerMods.Item> items) =>
+            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_mods.cfg"), ServerMods.CvarLines(items));
+
         /// <summary>addons/sourcemod/data/l4d2_8p_rotation.txt: official campaigns by map prefix, then custom ones by their maps.</summary>
         static void WriteRotationList(string gameDir, IEnumerable<Campaigns.Campaign> custom)
         {

@@ -816,6 +816,19 @@
       ]
     },
     {
+      "id": "modlist",
+      "name": "Server mod list (built in)",
+      "group": "Optional",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Publishes the Workshop add-ons your game uses (required ones on the server, and your cosmetic ones) in the server's info, so friends' copies of this app can list them on the Join side and download the ones they're missing. It changes nothing in game.",
+      "compile": [
+        "embedded:l4d2_8p_mods.sp"
+      ]
+    },
+    {
       "id": "hud8",
       "name": "8-survivor HUD (built in)",
       "group": "Optional",

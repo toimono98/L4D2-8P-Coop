@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using L4D2EightPlayer.Core;
 using L4D2EightPlayer.UI.Themes;
 
 namespace L4D2EightPlayer.Join
@@ -22,6 +23,21 @@ namespace L4D2EightPlayer.Join
             ("no-answer-lan-address", async () => { txtTarget.Text = "192.168.0.250:27098"; await Check(); }),
             ("found-official-map", async () => { txtTarget.Text = "steam://connect/" + mockAddress; await Check(); }),
             ("found-custom-map-full-password", async () => { await Check(); }),
+            // the server's mods, as a host's server lists them: a required campaign you're missing, a script you have, cosmetics
+            ("server-mods", async () =>
+            {
+                serverMods = new List<ServerMods.Item>
+                {
+                    new ServerMods.Item { Id = "121086524", Required = true, Title = "Urban Flight", Size = 200L << 20, Url = "x" },
+                    new ServerMods.Item { Id = "213445426", Required = true, Title = "Manacat Common Library", Size = 199 << 10, Url = "x", Have = true },
+                    new ServerMods.Item { Id = "3787719478", Title = "[Chainsaw Man]: Power (Replace Rochelle)", Size = 8L << 20, Url = "x" },
+                    new ServerMods.Item { Id = "3815316510", Title = "Daffy Duck [Nick]", Size = 12L << 20, Url = "x" },
+                    new ServerMods.Item { Id = "3807277805", Title = "MW19: Holger-26 (M16)", Size = 45L << 20, Url = "x", Have = true },
+                };
+                ShowMods();
+                cosmeticPicks["3815316510"].Checked = true;
+                await Task.CompletedTask;
+            }),
             ("lan-search", async () => { await FindLan(); }),
         };
     }

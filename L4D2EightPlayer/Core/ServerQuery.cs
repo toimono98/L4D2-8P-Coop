@@ -129,6 +129,61 @@ namespace L4D2EightPlayer.Core
             }
         }
 
+        /// <summary>A2S_RULES: the server's public cvars (FCVAR_NOTIFY), name to value; null if it doesn't answer.</summary>
+        public static async Task<Dictionary<string, string>> Rules(string host, int port, int timeoutMs = 2500)
+        {
+            var ip = await Resolve(host);
+            using (var udp = new UdpClient(ip.AddressFamily))
+            {
+                IgnoreConnReset(udp);
+                var ep = new IPEndPoint(ip, port);
+                byte[] challenge = { 0xFF, 0xFF, 0xFF, 0xFF };
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    var req = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0x56 }.Concat(challenge).ToArray();
+                    await udp.SendAsync(req, req.Length, ep);
+                    var d = await ReceiveWhole(udp, timeoutMs);
+                    if (d == null || d.Length < 5) return null;
+                    if (d[4] == 0x41 && d.Length >= 9) { challenge = d.Skip(5).Take(4).ToArray(); continue; }
+                    if (d[4] != 0x45 || d.Length < 7) return null;
+                    var rules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    int count = BitConverter.ToUInt16(d, 5), i = 7;
+                    string Str()
+                    {
+                        int s = i;
+                        while (i < d.Length && d[i] != 0) i++;
+                        var v = Encoding.UTF8.GetString(d, s, i - s);
+                        i++;
+                        return v;
+                    }
+                    for (int r = 0; r < count && i < d.Length; r++) { var name = Str(); rules[name] = Str(); }
+                    return rules;
+                }
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// One answer, put back together when the server split it over several packets (header -2: an id, the packet
+        /// count and number, and the size). Compressed answers (old engines) aren't read.
+        /// </summary>
+        static async Task<byte[]> ReceiveWhole(UdpClient udp, int timeoutMs)
+        {
+            var first = await Receive(udp, timeoutMs);
+            if (first == null || first.Length < 4 || BitConverter.ToInt32(first, 0) != -2) return first;
+            var parts = new Dictionary<int, byte[]>();
+            int total = 1;
+            for (var d = first; d != null; d = parts.Count < total ? await Receive(udp, timeoutMs) : null)
+            {
+                if (d.Length < 12 || BitConverter.ToInt32(d, 0) != -2) continue;
+                if ((BitConverter.ToInt32(d, 4) & unchecked((int)0x80000000)) != 0) return null;   // bz2-compressed
+                total = d[8];
+                parts[d[9]] = d.Skip(12).ToArray();
+            }
+            if (parts.Count < total) return null;
+            return Enumerable.Range(0, total).SelectMany(n => parts[n]).ToArray();   // starts with FF FF FF FF again
+        }
+
         /// <summary>Broadcasts A2S_INFO on the local network and collects every L4D2 server that answers.</summary>
         public static async Task<List<ServerInfo>> FindLan(int timeoutMs = 1500)
         {

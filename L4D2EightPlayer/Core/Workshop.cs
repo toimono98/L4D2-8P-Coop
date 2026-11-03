@@ -78,6 +78,22 @@ namespace L4D2EightPlayer.Core
             return c;
         }
 
+        /// <summary>Title, size and public download address (null when Steam has none) of each Workshop item, 100 at a time.</summary>
+        public static async Task<List<(string id, string title, long size, string url)>> ItemDetails(IList<string> ids, CancellationToken ct = default)
+        {
+            var result = new List<(string, string, long, string)>();
+            for (int i = 0; i < ids.Count; i += 100)
+                foreach (var d in await Details(ids.Skip(i).Take(100).ToList(), ct).ConfigureAwait(false))
+                {
+                    if (Num(d, "result") != 1) continue;
+                    var id = d.TryGetValue("publishedfileid", out var v) ? Convert.ToString(v) : null;
+                    var title = (d.TryGetValue("title", out var t) ? t as string : null)?.Trim();
+                    var url = d.TryGetValue("file_url", out var u) ? u as string : null;
+                    if (id != null) result.Add((id, string.IsNullOrEmpty(title) ? "Workshop item " + id : title, Num(d, "file_size"), string.IsNullOrEmpty(url) ? null : url));
+                }
+            return result;
+        }
+
         /// <summary>Where a collection's picture is kept.</summary>
         public static string CollectionPicture(string id) => Path.Combine(Paths.Cache, "collections", id + ".jpg");
 

@@ -24,6 +24,7 @@ namespace L4D2EightPlayer
         ///   --paint-test &lt;report&gt; [--off-screen]          repaint passes, two-pass boxes and the progress bar's frame rate
         ///   --flicker-test &lt;report&gt; [--legacy] [--composited]   glitches seen on screen while a dropdown repaints and tabs switch
         ///   --skins-test &lt;fixtures&gt; &lt;report&gt;                the skin picker's logic on tools\make_skin_fixtures.py's fake game
+        ///   --mods-test &lt;report&gt;                          the server mod list: parts, Steam details, downloads (needs the internet)
         ///   --skin-catalog &lt;game folder&gt; &lt;out.json&gt;         maps the skin targets to the game's materials (writes &lt;out.json&gt;.log)
         /// </summary>
         [STAThread]
@@ -51,6 +52,7 @@ namespace L4D2EightPlayer
             if (args.Length >= 2 && args[0] == "--shell-test") { Environment.Exit(ShellTest(args[1])); return; }
             if (args.Length >= 3 && args[0] == "--skins-shot") { Environment.Exit(SkinsTest.Shots(args[1], args[2])); return; }
             if (args.Length >= 3 && args[0] == "--skins-test") { Environment.Exit(SkinsTest.Run(args[1], args[2])); return; }
+            if (args.Length >= 2 && args[0] == "--mods-test") { Environment.Exit(ModsTest.Run(args[1])); return; }
             if (args.Length >= 3 && args[0] == "--skin-catalog") { File.WriteAllText(args[2] + ".log", Skins.BuildCatalog(args[1], args[2])); return; }
             if (args.Length >= 2 && args[0] == "--flicker-test") { Environment.Exit(FlickerTest.Run(args[1], args.Contains("--legacy"), args.Contains("--composited"))); return; }
             if (args.Length >= 2 && args[0] == "--paint-test") { PaintTest.OffScreen = args.Contains("--off-screen"); Environment.Exit(PaintTest.Run(args[1])); return; }

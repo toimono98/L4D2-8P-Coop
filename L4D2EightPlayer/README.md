@@ -71,6 +71,7 @@ The Steam lobby option needs Internet mode, so it only shows there; LAN only and
 These plugins are written for this tool and ship inside the exe (source in `Plugins/`). They compile on install like the other fixes.
 
 - **Skip The Opening Cutscene** (`l4d2_8p_skipintro`): the first chapter of a campaign normally opens with a camera flight while everyone is frozen. The plugin lets the map start it, then cancels the rest and runs the map's own end-of-intro step (`relay_intro_survivor_cameras`, else `relay_intro_finished`), so play starts at once. Maps without those relays, like most custom campaigns, are left alone. **Skip intros** on the Play tab turns it on and off (`l4d2_8p_skipintro_enable`); Start server installs it on servers set up before it existed.
+- **Server Mod List** (`l4d2_8p_mods`): tells joining friends which Workshop mods the host plays with. At Start server the app lists your enabled Workshop add-ons (and ones the app downloaded for you), marks each as **required** (campaigns, game modes, mods that change how the game plays, dialogue and animations) or **cosmetic** (skins, sounds, menus and HUD), and writes the list to `cfg/sourcemod/l4d2_8p_mods.cfg`. The plugin publishes it as server rules (`l4d2_8p_mods_1` to `_8`, Workshop numbers only), which the Join side reads with Check server. Start server installs it on servers set up before it existed.
 - **Keep Verified Players** (`l4d2_8p_steamauth`): when the dedicated server runs on the same PC as your game, both sign in to that PC's Steam client as Left 4 Dead 2. About a minute after you join, Steam then reports your ticket as invalid and the server drops you with "No Steam logon" (STEAMAUTH failure code 8). This plugin keeps a player Steam already verified when they joined. It also remembers verified players while the server runs, so rejoining from the same PC (after the game hung or was restarted) doesn't end in that drop either. A player whose ticket was never valid is still dropped, and so are VAC bans. The engine hook is adapted from blueblur's [Block No Steam Logon](https://github.com/blueblur0730/modified-plugins) (GPL-3.0).
 - **Unique Survivors** (`l4d2_8p_characters`): bot fill copies the map's four survivors, so 8 survivors come out as three Rochelles and two Coaches. This gives everyone their own character, the L4D1 cast included: Nick, Rochelle, Coach, Ellis, Bill, Zoey, Francis and Louis. Players keep their character across chapters.  On L4D1-cast maps the L4D2 cast is told apart by model (names and voices follow the model through the mixed-character and vocalize fixes). On The Passing, where Bill's group are scripted NPCs, survivors wearing L4D1 models borrow an L4D2 counterpart's character number so the map's scripts still find the NPCs. `l4d2_8p_characters_other_cast 0` limits it to the map's own four. It also keeps the L4D1 cast out of their calm animations (the relaxed idle and walk survivors fall into when nothing is around): Valve's L4D1 models hold several weapons straight up through the body in those, where the L4D2 cast hold them across the chest. They stay in their ready pose instead (`l4d2_8p_characters_l4d1_ready_pose`, on by default; it hooks the game's calm check through `gamedata/l4d2_8p_characters.txt`).
   - **Picking a survivor:** players type `!char` (or `!survivor`) in chat for a menu of the eight. A character another player has is greyed out with their name; one a bot has swaps with the bot. The menu also opens by itself once, when a player first joins the survivors (`l4d2_8p_characters_pick_menu 0` turns that off; `!char` still works). Picks last across chapters.
@@ -265,9 +266,13 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
    - a missing password
    - a full server
    - a custom map you don't have. When the host's invite names the campaign, the link opens that exact Workshop item in Steam, where Subscribe is one click; otherwise it searches the Workshop for the map name
-3. **Join game** starts L4D2, waits until it has loaded your Workshop add-ons (skins, the host's campaign), then connects. If the game is already running, it connects directly.
+3. **Mods on this server** (shown after Check server, for servers started with this app) lists the host's Workshop mods:
+   - **REQUIRED** ones (campaigns, game modes, gameplay changes, animations) are needed to play there. With **Download missing mods when I join** ticked (the default), the ones you're missing download before the game starts. Turned off, Join game asks first.
+   - **Cosmetic** ones (the host's skins, sounds, HUD) are your choice: tick the ones you want and they download too. The ones you already have show a check mark.
+   - Downloads come straight from Steam and go into your game's `addons` folder as `8p_<number>.vpk`. If you later subscribe to the same item on the Workshop, the app removes its own copy. A running game can't load new add-ons, so if required mods are missing, close the game first.
+4. **Join game** starts L4D2, waits until it has loaded your Workshop add-ons (skins, the host's campaign), then connects. If the game is already running, it connects directly.
 
-**Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the same custom campaign if the host plays one.
+**Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the host's required mods, which the app can download for them.
 
 ## Friends joining (manual)
 
@@ -302,6 +307,8 @@ Headless diagnostics (writes a text report; the paths below are examples):
 ```bash
 L4D2-8P-Coop.exe --selftest --detect --scan-client "C:\...\Left 4 Dead 2\left4dead2" --out report.txt
 ```
+
+`--mods-test report.txt` checks the server mod list without a server: splitting a long list over the cvars and reading it back, Steam's details for two Workshop items, and downloading them into a throwaway folder (needs the internet).
 
 ## Credits
 

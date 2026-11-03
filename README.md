@@ -3,7 +3,7 @@
 One small Windows app for playing Left 4 Dead 2 co-op with up to 8 survivors (16 on a dedicated server). It has two sides, and **HOST | JOIN** at the top switches between them:
 
 - **Host**: installs and checks the server mods (Metamod, SourceMod, L4DToolZ, l4dmultislots and the 5+ survivor fixes), then starts the server and your game.
-- **Join**, for friends: paste the host's invite, check the server, join. No mods needed.
+- **Join**, for friends: paste the host's invite, check the server, join. No mods needed: the host's required Workshop mods (campaigns, gameplay and animation mods) download for you, and their cosmetic ones are yours to tick.
 
 Both sides have a **skin picker**: choose which skin add-on you see for each survivor, weapon, item and infected. Packs ask first, a Packs & collections view uses whole packs and Workshop collections at once, and your picks are put back every time you launch.
 
