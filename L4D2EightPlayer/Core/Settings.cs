@@ -57,6 +57,7 @@ namespace L4D2EightPlayer.Core
         public string ManifestUrl { get; set; } = "";
         public bool AutoPortForward { get; set; } = true;
         public bool PortForwardAsked { get; set; }
+        public bool TourSeen { get; set; }                        // the first-run tour has been shown
         public int ForwardedPort { get; set; }                    // port this tool opened on the router (0 = none)
 
         public static Settings Load() => Json.Load<Settings>(Paths.SettingsFile);

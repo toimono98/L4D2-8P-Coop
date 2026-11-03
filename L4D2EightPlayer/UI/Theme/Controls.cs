@@ -655,6 +655,13 @@ namespace L4D2EightPlayer.UI.Themes
         string notice;
         Rectangle noticeHit;
 
+        /// <summary>A small link at the far right (e.g. "? TOUR"); null hides it.</summary>
+        public string Help { get => help; set { help = value; Invalidate(); } }
+        public event EventHandler HelpClicked;
+        string help;
+        Rectangle helpHit;
+        bool helpHover;
+
         static Font TitleFont => Theme.Display(17f);
         static Font SubFont => Theme.BodyBold(7.5f);
         static Font ItemFont => Theme.Stencil(10.5f);
@@ -702,8 +709,22 @@ namespace L4D2EightPlayer.UI.Themes
                 x += w + S(2);
             }
 
+            helpHit = Rectangle.Empty;
+            int helpRoom = 0;
+            if (!string.IsNullOrEmpty(help))
+            {
+                var hs = Draw.Measure(help, ItemFont);
+                if (Width - x - S(26) >= hs.Width + S(16))
+                {
+                    helpHit = new Rectangle(Width - S(26) - hs.Width - S(16), 0, hs.Width + S(16), Height);
+                    if (helpHover) using (var b = new SolidBrush(Theme.Panel)) g.FillRectangle(b, helpHit);
+                    Draw.Text(g, help, ItemFont, helpHover ? Theme.Bone : Theme.Muted, helpHit, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+                    helpRoom = helpHit.Width + S(20);
+                }
+            }
+
             // The status repeats what the page shows, so on a narrow window it gives way instead of clipping.
-            int roomAll = Width - x - S(46);
+            int roomAll = Width - x - S(46) - helpRoom;
             bool hasNotice = !string.IsNullOrEmpty(notice);
             int shift = hasNotice ? S(9) : 0;
             if (!string.IsNullOrEmpty(status))
@@ -730,18 +751,20 @@ namespace L4D2EightPlayer.UI.Themes
         protected override void OnMouseMove(MouseEventArgs e)
         {
             int h = hits.FindIndex(r => r.Contains(e.Location));
-            Cursor = h >= 0 || noticeHit.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
-            if (h != hover) { hover = h; Invalidate(); }
+            bool onHelp = helpHit.Contains(e.Location);
+            Cursor = h >= 0 || onHelp || noticeHit.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+            if (h != hover || onHelp != helpHover) { hover = h; helpHover = onHelp; Invalidate(); }
             base.OnMouseMove(e);
         }
 
-        protected override void OnMouseLeave(EventArgs e) { hover = -1; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = -1; helpHover = false; Invalidate(); base.OnMouseLeave(e); }
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
             int h = hits.FindIndex(r => r.Contains(e.Location));
             if (h >= 0) { Focus(); Selected = h; }
             else if (noticeHit.Contains(e.Location)) NoticeClicked?.Invoke(this, EventArgs.Empty);
+            else if (helpHit.Contains(e.Location)) HelpClicked?.Invoke(this, EventArgs.Empty);
             base.OnMouseClick(e);
         }
 

@@ -222,6 +222,17 @@ namespace L4D2EightPlayer.UI
                         }
                         d.Close();
                     }
+                    // every stop of the first-run tour, as the user sees it
+                    var tour = form.BuildTour();
+                    tour.Start();
+                    for (int i = 0; i < tour.Count; i++)
+                    {
+                        tour.Go(i);
+                        var t5 = DateTime.Now.AddSeconds(1);
+                        while (DateTime.Now < t5) { System.Windows.Forms.Application.DoEvents(); Thread.Sleep(20); }
+                        using (var bmp = tour.Snapshot()) bmp.Save(Path.Combine(dir, $"tour{i + 1}.png"), System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    tour.Close();
                     form.Close();
                     log.Info("screenshots saved to " + dir);
                 }

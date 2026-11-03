@@ -30,21 +30,40 @@ namespace L4D2EightPlayer.Join
                 return;
             }
 
+            // --shot <file.png> [--tour]: the window off-screen; with --tour also <file>-tour1.png… for each stop of the tour
             if (args.Length >= 2 && args[0] == "--shot")
             {
                 Application.EnableVisualStyles();
+                JoinForm.Preview = true;
                 var f = new JoinForm("steam://connect/127.0.0.1:27099") { StartPosition = FormStartPosition.Manual, Location = new System.Drawing.Point(-30000, -30000), ShowInTaskbar = false };
                 f.Show();
-                var until = DateTime.Now.AddSeconds(6);
-                while (DateTime.Now < until) { Application.DoEvents(); System.Threading.Thread.Sleep(20); }
+                void Pump(double s) { var until = DateTime.Now.AddSeconds(s); while (DateTime.Now < until) { Application.DoEvents(); System.Threading.Thread.Sleep(20); } }
+                Pump(6);
                 using (var bmp = new System.Drawing.Bitmap(f.Width, f.Height))
                 {
                     f.DrawToBitmap(bmp, new System.Drawing.Rectangle(0, 0, f.Width, f.Height));
                     bmp.Save(args[1]);
                 }
+                if (args.Contains("--tour"))
+                {
+                    var tour = f.BuildTour();
+                    tour.Start();
+                    for (int i = 0; i < tour.Count; i++)
+                    {
+                        tour.Go(i);
+                        Pump(0.8);
+                        using (var bmp = tour.Snapshot()) bmp.Save(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[1])), Path.GetFileNameWithoutExtension(args[1]) + $"-tour{i + 1}.png"));
+                    }
+                    tour.Close();
+                }
                 f.Close();
                 return;
             }
+
+            // from the Setup's last page: "Show me around" ticked (--tour) or unticked (--no-tour)
+            JoinForm.TourRequested = args.Contains("--tour");
+            JoinForm.TourDeclined = args.Contains("--no-tour");
+            args = args.Where(a => a != "--tour" && a != "--no-tour").ToArray();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

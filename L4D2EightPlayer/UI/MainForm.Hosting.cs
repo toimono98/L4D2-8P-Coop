@@ -64,6 +64,7 @@ namespace L4D2EightPlayer.UI
             route.Controls.Add(linkNetFriends, 5, 0);
             route.Controls.Add(hopFriends, 6, 0);
             g.Controls.Add(route, 0, 1);
+            routeRow = route;
 
             var main = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };
             main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

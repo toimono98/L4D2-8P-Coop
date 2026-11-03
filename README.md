@@ -5,7 +5,7 @@ Two small Windows programs for playing Left 4 Dead 2 co-op with up to 8 survivor
 - **L4D2-8P-Manager.exe** for the host: installs and checks the server mods (Metamod, SourceMod, L4DToolZ, l4dmultislots and the 5+ survivor fixes), then starts the server and your game.
 - **L4D2-8P-Join.exe** for friends: paste the host's invite, check the server, join. No mods needed.
 
-**[Download the latest release](../../releases/latest)** and run **`L4D2-8P-Setup.exe`**: it asks whether you're hosting or joining a friend, then installs the right app with Start menu and Desktop shortcuts (no admin needed; to remove it, use the Uninstall shortcut in its folder or Start menu, or Windows' Installed apps). The same file works for everyone, so it's the one to send friends. `L4D2-8P-Manager.exe` and `L4D2-8P-Join.zip` are there too if you'd rather not install anything.
+**[Download the latest release](../../releases/latest)** and run **`L4D2-8P-Setup.exe`**: it asks whether you're hosting or joining a friend, then installs the right app with Start menu and Desktop shortcuts (no admin needed; to remove it, use the Uninstall shortcut in its folder or Start menu, or Windows' Installed apps). On a first install, **Show me around** (ticked on the last page) opens the app with a one-minute tour of the parts you'll use; **? TOUR** at the top right brings it back. The same file works for everyone, so it's the one to send friends. `L4D2-8P-Manager.exe` and `L4D2-8P-Join.zip` are there too if you'd rather not install anything.
 
 The full guide (setup, hosting modes, bot fill, item scaling, the 8-player HUD, troubleshooting) is in **[L4D2EightPlayer/README.md](L4D2EightPlayer/README.md)**.
 

@@ -73,6 +73,7 @@ namespace L4D2EightPlayer.UI
             rosterTimer.Start();
             Load += async (s, e) => await OnLoaded();
             Shown += (s, e) => { ActiveControl = nav; cmbMap.SelectionLength = 0; };
+            Shown += async (s, e) => await MaybeStartTour();
             FormClosing += OnClosing;
         }
 
@@ -83,6 +84,8 @@ namespace L4D2EightPlayer.UI
             nav = new NavBar("Setup", "Mods", "Play", "Internet");
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
             nav.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
+            nav.Help = "? TOUR";
+            nav.HelpClicked += (s, e) => StartTour();
 
             var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, FixedPanel = FixedPanel.Panel2, SplitterWidth = 1 };
 
@@ -253,6 +256,7 @@ namespace L4D2EightPlayer.UI
             modeRow.Controls.Add(rbDedicated, 0, 0);
             modeRow.Controls.Add(rbListen, 1, 0);
             g.Controls.Add(modeRow, 0, 2);
+            this.modeRow = modeRow;
 
             // Server folder
             var serverRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, AutoSize = true, Margin = P(0) };

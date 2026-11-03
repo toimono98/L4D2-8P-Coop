@@ -19,7 +19,7 @@ namespace L4D2EightPlayer.Setup
         PathCard cardHost, cardJoin;
         SetupEngine.App chosen;
         TextBox txtFolder;
-        CheckBox chkStart, chkDesktop, chkHud, chkOpen;
+        CheckBox chkStart, chkDesktop, chkHud, chkOpen, chkTour;
         readonly string game = GameLocator.FindGame();
 
         public SetupForm(string preselect = null)
@@ -174,6 +174,8 @@ namespace L4D2EightPlayer.Setup
                 return;
             }
 
+            // a first install gets the tour ticked; an update or reinstall doesn't
+            bool firstTime = SetupEngine.Existing()?.apps.Contains(o.App.Id) != true;
             var g = Page(out var buttons, fillRow: 5);
             g.Controls.Add(Heading("Installing…"), 0, 0);
             var meter = new Meter { Dock = DockStyle.Top, Height = S(10), Marquee = true, Margin = P(0, 14, 0, 14) };
@@ -187,7 +189,7 @@ namespace L4D2EightPlayer.Setup
                 catch (Exception ex) { error = ex.Message; }
             });
             if (error != null) { ShowError(error); return; }
-            ShowDone(o);
+            ShowDone(o, firstTime);
         }
 
         void ShowError(string error)
@@ -199,7 +201,7 @@ namespace L4D2EightPlayer.Setup
             buttons.Controls.Add(Btn("Close", ButtonKind.Ghost, () => Close()));
         }
 
-        internal void ShowDone(SetupEngine.Options o)
+        internal void ShowDone(SetupEngine.Options o, bool firstTime = true)
         {
             var g = Page(out var buttons, fillRow: 5);
             g.Controls.Add(Heading("Ready"), 0, 0);
@@ -207,14 +209,26 @@ namespace L4D2EightPlayer.Setup
                 ? "The 8-Player Manager is installed in " + o.Folder + ". Open it and follow its Setup tab: it finds your game, downloads the server and the mods, and checks everything before your first game."
                 : "The Join app is installed in " + o.Folder + ". Open it, paste the invite your host sends you, click Check server, then Join game." +
                   (o.HudAddon ? " The HUD add-on is in your game too." : "")), 0, 1);
-            g.Controls.Add(Note("To remove it: Windows Settings › Apps › Installed apps › " + SetupEngine.Product + "." +
-                (o.App == SetupEngine.Host ? " Your settings stay, and so does the server." : " Your settings stay.")), 0, 2);
-            chkOpen = new GameCheck { Text = "Open " + o.App.Shortcut + " now", Checked = true, AutoSize = true, Font = Theme.Body(10.5f), Margin = P(0, 16, 0, 0) };
-            g.Controls.Add(chkOpen, 0, 3);
+            g.Controls.Add(Note("To remove it later, open Uninstall " + SetupEngine.Product + " in the install folder" + (o.StartMenu ? " or the Start menu" : "") +
+                ", or use Windows' Installed apps." + (o.App == SetupEngine.Host ? " Your settings stay, and so does the server." : " Your settings stay.")), 0, 2);
+            var opens = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 16, 0, 0) };
+            chkOpen = new GameCheck { Text = "Open " + o.App.Shortcut + " now", Checked = true, AutoSize = true, Font = Theme.Body(10.5f), Margin = P(0, 0, 0, 6) };
+            chkTour = new GameCheck
+            {
+                Text = o.App == SetupEngine.Host
+                    ? "Show me around: a one-minute tour of setting up the server, checking mods and inviting friends"
+                    : "Show me around: a quick tour of pasting the invite, checking the server and joining",
+                Checked = firstTime, AutoSize = true, MaximumSize = Sz(700, 0), Font = Theme.Body(10.5f), Margin = P(28, 0, 0, 0),
+            };
+            chkOpen.CheckedChanged += (s, e) => chkTour.Enabled = chkOpen.Checked;
+            opens.Controls.Add(chkOpen);
+            opens.Controls.Add(chkTour);
+            g.Controls.Add(opens, 0, 3);
             var finish = new GameButton("Finish", ButtonKind.Primary, 12f);
             finish.Click += (s, e) =>
             {
-                if (chkOpen.Checked) Process.Start(new ProcessStartInfo(Path.Combine(o.Folder, o.App.Exe)) { WorkingDirectory = o.Folder });
+                if (chkOpen.Checked)
+                    Process.Start(new ProcessStartInfo(Path.Combine(o.Folder, o.App.Exe), chkTour.Checked ? "--tour" : "--no-tour") { WorkingDirectory = o.Folder });
                 Close();
             };
             buttons.Controls.Add(finish);

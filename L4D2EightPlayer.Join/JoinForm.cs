@@ -25,8 +25,10 @@ namespace L4D2EightPlayer.Join
     {
         public string GamePath { get; set; }
         public List<RecentServer> Recent { get; set; } = new List<RecentServer>();
+        public bool TourSeen { get; set; }   // the first-run tour has been shown
 
         static string FilePath => Path.Combine(Paths.AppData, "join.json");
+        public static bool Exists => File.Exists(FilePath);
         public static JoinSettings Load() => Json.Load<JoinSettings>(FilePath);
         /// <summary>Set by the layout audit so it never overwrites the real recent list.</summary>
         public static bool ReadOnly;
@@ -62,6 +64,8 @@ namespace L4D2EightPlayer.Join
     public sealed partial class JoinForm : Form
     {
         const string Title = "L4D2 8-Player Co-op · Join";
+        /// <summary>No join.json yet: someone opening the Join app for the first time.</summary>
+        readonly bool firstRun = !JoinSettings.Exists;
         readonly JoinSettings settings = JoinSettings.Load();
         NavBar header;
         TextBox txtTarget, txtPassword;
@@ -93,6 +97,7 @@ namespace L4D2EightPlayer.Join
             RefreshRecent();
             ShowEmpty("No server checked yet", "Paste your host's invite (it looks like steam://connect/1.2.3.4:27015) and click Check server. You don't need any mods to join.");
             if (JoinTarget.Parse(initial) != null) txtTarget.Text = initial;
+            Shown += async (s, e) => await MaybeStartTour();
             Shown += async (s, e) =>
             {
                 ActiveControl = txtTarget;
@@ -109,6 +114,8 @@ namespace L4D2EightPlayer.Join
         {
             header = new NavBar() { Title = "JOIN YOUR GROUP", Subtitle = "L4D2 8-PLAYER CO-OP" };
             header.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
+            header.Help = "? TOUR";
+            header.HelpClicked += (s, e) => StartTour();
 
             var g = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = P(24, 18, 24, 18) };
             g.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

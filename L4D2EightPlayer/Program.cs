@@ -13,6 +13,9 @@ namespace L4D2EightPlayer
         {
             // Headless checks for development and troubleshooting: L4D2-8P-Manager.exe --selftest --out report.txt
             if (args.Contains("--selftest")) { Environment.Exit(SelfTest.Run(args)); return; }
+            // from the Setup's last page: "Show me around" ticked (--tour) or unticked (--no-tour)
+            MainForm.TourRequested = args.Contains("--tour");
+            MainForm.TourDeclined = args.Contains("--no-tour");
 
             using (var single = new Mutex(true, "L4D2-8P-Manager-single-instance", out bool first))
             {

@@ -103,7 +103,7 @@ namespace L4D2EightPlayer.Setup
                 Save(f, "choose-" + path);
                 f.ShowOptions();
                 Save(f, "options-" + path);
-                f.ShowDone(new SetupEngine.Options { App = SetupEngine.ById(path), Folder = SetupEngine.DefaultFolder, HudAddon = path == "join" });
+                f.ShowDone(new SetupEngine.Options { App = SetupEngine.ById(path), Folder = SetupEngine.DefaultFolder, HudAddon = path == "join", StartMenu = true });
                 Save(f, "done-" + path);
                 f.Close();
             }

@@ -77,6 +77,7 @@ Step "self-test and screenshots"
 $p = Start-Process $mgr -ArgumentList "--selftest --out `"$tmp\selftest.txt`" --detect --shot `"$tmp\shots`"" -PassThru -Wait
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\selftest.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "Manager self-test exit code $($p.ExitCode)" }
 if (-not (Test-Path "$tmp\shots\tab3.png")) { Fail "Manager screenshots missing" }
+if (-not (Test-Path "$tmp\shots\tour7.png")) { Fail "Manager tour screenshots missing" }
 $p = Start-Process $setup -ArgumentList "--shot `"$tmp\shots`"" -PassThru -Wait
 if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\choose-join.png")) { Fail "Setup screenshots failed" }
 
@@ -112,9 +113,11 @@ $a.Dispose(); $fs.Dispose()
 
 Step "checking the Join zip"
 Expand-Archive $zip "$tmp\unzipped"
-$p = Start-Process "$tmp\unzipped\L4D2-8P-Join\L4D2-8P-Join.exe" -ArgumentList "--shot `"$tmp\join.png`"" -PassThru -Wait
+$p = Start-Process "$tmp\unzipped\L4D2-8P-Join\L4D2-8P-Join.exe" -ArgumentList "--shot `"$tmp\join.png`" --tour" -PassThru -Wait
 if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\join.png")) { Fail "the Join app from the zip didn't start" }
 Copy-Item "$tmp\join.png" "$out\shots\join.png"
+if (-not (Test-Path "$tmp\join-tour4.png")) { Fail "Join tour screenshots missing" }
+Copy-Item "$tmp\join-tour*.png" "$out\shots"
 '{0:N0} KB zip' -f ((Get-Item $zip).Length / 1KB) | Write-Host
 
 # ---- deploy
