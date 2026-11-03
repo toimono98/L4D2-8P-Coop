@@ -1,6 +1,8 @@
 # L4D2 8-Player Co-op Manager
 
-Two small Windows programs. Neither needs installing or any extra runtime:
+Two small Windows programs, plus a setup that installs the right one. None of them needs any extra runtime.
+
+**Easiest:** run `L4D2-8P-Setup.exe` and pick **Host a game** (installs the Manager) or **Join a friend** (installs the Join app, and optionally the HUD add-on). It installs just for you, with no admin prompt, into `%LOCALAPPDATA%\Programs\L4D2 8-Player Co-op` (you can change the folder), and adds Start menu and Desktop shortcuts. Run it again to update or to add the other app. To remove it, go to Windows Settings › Apps › Installed apps › L4D2 8-Player Co-op; your settings, the server and your game stay. Send friends the same Setup file. The two exes also run on their own without installing:
 
 - **`L4D2-8P-Manager.exe`** is for the **host**. It sets up, checks and launches 8-player co-op for Left 4 Dead 2, and opens your router port so friends can get in.
 - **`L4D2-8P-Join.exe`** is for **friends who only join**. They paste your invite, check the server and click Join. It needs no mods and changes nothing in their game.
@@ -17,11 +19,11 @@ It's an original take on the style; no Valve art or logos are used.
 
 ## Quick start
 
-1. Run `L4D2-8P-Manager.exe`. It finds Left 4 Dead 2 through your Steam libraries. You can also click **Browse**.
+1. Run `L4D2-8P-Manager.exe` (or install it with `L4D2-8P-Setup.exe` › Host a game). It finds Left 4 Dead 2 through your Steam libraries. You can also click **Browse**.
 2. **Setup**: pick how you'll host, then click **Download & install**. You'll see everything that will be downloaded, and where it comes from, before anything is installed.
 3. **Mods**: the infection report lists every addon and plugin. Fix anything marked PROBLEM (see below).
 4. **Play**: click **Start server**, then **Launch L4D2 & join**. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds). When it's stopped, they preview your settings.
-5. **Internet**: click **Copy invite** and send it to friends along with `L4D2-8P-Join.exe`.
+5. **Internet**: click **Copy invite** and send it to friends along with `L4D2-8P-Setup.exe` (they pick Join a friend) or the Join zip.
 
 ## Hosting modes
 

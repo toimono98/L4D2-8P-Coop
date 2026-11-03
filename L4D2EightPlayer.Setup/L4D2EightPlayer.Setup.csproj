@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- One download for everyone: asks Host or Join, installs that app, shortcuts and an uninstall entry. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>L4D2-8P-Setup</AssemblyName>
+    <RootNamespace>L4D2EightPlayer.Setup</RootNamespace>
+    <ApplicationManifest>..\L4D2EightPlayer\app.manifest</ApplicationManifest>
+    <Product>L4D2 8-Player Co-op Setup</Product>
+    <Description>Installs the 8-Player Manager (hosts) or the Join app (friends).</Description>
+    <Copyright>MIT License</Copyright>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <!-- the two apps are built first and carried inside the setup -->
+  <ItemGroup>
+    <ProjectReference Include="..\L4D2EightPlayer\L4D2EightPlayer.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\L4D2EightPlayer.Join\L4D2EightPlayer.Join.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\L4D2EightPlayer\Core\*.cs" LinkBase="Core" />
+    <Compile Include="..\L4D2EightPlayer\UI\Theme\*.cs" LinkBase="Theme" />
+    <Compile Include="*.cs" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\components.json" LogicalName="components.json" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\Fonts\*.ttf" LinkBase="Fonts" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\Addon\l4d2_8p_hud.vpk" LogicalName="addon/l4d2_8p_hud.vpk" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\bin\$(Configuration)\L4D2-8P-Manager.exe" LogicalName="app/L4D2-8P-Manager.exe" />
+    <EmbeddedResource Include="..\L4D2EightPlayer.Join\bin\$(Configuration)\L4D2-8P-Join.exe" LogicalName="app/L4D2-8P-Join.exe" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\README.md" LogicalName="app/README.md" />
+    <EmbeddedResource Include="..\L4D2EightPlayer.Join\READ ME FIRST.txt" LogicalName="app/READ ME FIRST.txt" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\Fonts\OFL-*.txt" LogicalName="app/licenses/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

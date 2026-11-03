@@ -59,13 +59,15 @@ foreach ($sp in Get-ChildItem 'L4D2EightPlayer\Plugins\*.sp') {
 
 # ---- apps
 Step "building"
-foreach ($p in 'L4D2EightPlayer', 'L4D2EightPlayer.Join') {
+# the setup last: it carries the two apps just built
+foreach ($p in 'L4D2EightPlayer', 'L4D2EightPlayer.Join', 'L4D2EightPlayer.Setup') {
     $res = dotnet build $p -c Release 2>&1
     if ($LASTEXITCODE -ne 0) { $res | Select-String 'error' | Write-Host; Fail "$p doesn't build" }
 }
 $mgr = 'L4D2EightPlayer\bin\Release\L4D2-8P-Manager.exe'
 $join = 'L4D2EightPlayer.Join\bin\Release\L4D2-8P-Join.exe'
-foreach ($exe in $mgr, $join) {
+$setup = 'L4D2EightPlayer.Setup\bin\Release\L4D2-8P-Setup.exe'
+foreach ($exe in $mgr, $join, $setup) {
     $v = (Get-Item $exe).VersionInfo.ProductVersion
     if ($v -notlike "$Version*") { Fail "$exe reports version $v, expected $Version" }
 }
@@ -75,12 +77,22 @@ Step "self-test and screenshots"
 $p = Start-Process $mgr -ArgumentList "--selftest --out `"$tmp\selftest.txt`" --detect --shot `"$tmp\shots`"" -PassThru -Wait
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\selftest.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "Manager self-test exit code $($p.ExitCode)" }
 if (-not (Test-Path "$tmp\shots\tab3.png")) { Fail "Manager screenshots missing" }
+$p = Start-Process $setup -ArgumentList "--shot `"$tmp\shots`"" -PassThru -Wait
+if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\choose-join.png")) { Fail "Setup screenshots failed" }
+
+# both setup paths into a scratch folder, without shortcuts or an Installed apps entry
+foreach ($path in 'join', 'host') {
+    $p = Start-Process $setup -ArgumentList "--silent --path $path --dir `"$tmp\installed`" --no-start-menu --no-desktop --no-register --out `"$tmp\setup-$path.txt`"" -PassThru -Wait
+    if ($p.ExitCode -ne 0) { Get-Content "$tmp\setup-$path.txt" | Write-Host; Fail "Setup's $path install failed" }
+}
+$p = Start-Process "$tmp\installed\L4D2-8P-Join.exe" -ArgumentList "--shot `"$tmp\installed.png`"" -PassThru -Wait
+if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\installed\L4D2-8P-Manager.exe")) { Fail "the apps the Setup installed didn't start" }
 
 # ---- package
 Step "packaging into release\"
 Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $out | Out-Null
-Copy-Item $mgr, 'L4D2EightPlayer\README.md' $out
+Copy-Item $mgr, $setup, 'L4D2EightPlayer\README.md' $out
 Copy-Item "$tmp\shots" "$out\shots" -Recurse
 
 $stage = "$tmp\zip\L4D2-8P-Join"
@@ -110,7 +122,7 @@ $docs = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'L4D2 8 Player'
 if (-not $NoDeploy -and (Test-Path $docs)) {
     Step "copying to $docs"
     # a Manager running from there locks its exe; that shouldn't stop the release
-    try { Copy-Item $mgr, $join, 'L4D2EightPlayer\README.md', $zip $docs -Force -ErrorAction Stop }
+    try { Copy-Item $mgr, $join, $setup, 'L4D2EightPlayer\README.md', $zip $docs -Force -ErrorAction Stop }
     catch { Write-Host "   not copied ($($_.Exception.Message)); close the app there and copy release\ by hand" -ForegroundColor Yellow }
 }
 
@@ -120,10 +132,10 @@ if ($Publish) {
     git tag -a "v$Version" -m "v$Version"
     git push origin HEAD "v$Version"
     if ($LASTEXITCODE -ne 0) { Fail "git push failed" }
-    if ($NotesFile) { gh release create "v$Version" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --notes-file $NotesFile }
-    else { gh release create "v$Version" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --generate-notes }
+    if ($NotesFile) { gh release create "v$Version" "$out\L4D2-8P-Setup.exe" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --notes-file $NotesFile }
+    else { gh release create "v$Version" "$out\L4D2-8P-Setup.exe" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --generate-notes }
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
 }
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-Step "done: release\ holds L4D2-8P-Manager.exe, L4D2-8P-Join.zip, README.md and screenshots"
+Step "done: release\ holds L4D2-8P-Setup.exe, L4D2-8P-Manager.exe, L4D2-8P-Join.zip, README.md and screenshots"
