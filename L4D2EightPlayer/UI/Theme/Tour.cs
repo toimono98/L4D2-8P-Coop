@@ -20,12 +20,14 @@ namespace L4D2EightPlayer.UI.Themes
     /// <summary>
     /// A first-run walkthrough over the real window: the window is dimmed except for a hole around the
     /// step's controls (which stay clickable), and a callout beside it explains them. Enter or Right
-    /// goes on, Left goes back, Esc ends it. Three small borderless windows owned by the form, so they
-    /// follow it, minimise with it and never show in the taskbar.
+    /// goes on, Left goes back, Esc ends it. Three small borderless windows owned by the form's window
+    /// (the form itself, or the app window it sits in), so they follow it, minimise with it and never
+    /// show in the taskbar. Hiding the form (switching to the app's other side) ends the tour.
     /// </summary>
     public sealed class Tour
     {
         readonly Form owner;
+        Form top;   // the real window: the owner, or the app window the owner is embedded in
         readonly IList<TourStep> steps;
         readonly Shade shade = new Shade();
         readonly Shade ring = new Shade { BackColor = Theme.Red, Opacity = 1 };
@@ -48,11 +50,14 @@ namespace L4D2EightPlayer.UI.Themes
         public void Start()
         {
             if (Running || steps.Count == 0) return;
-            owner.LocationChanged += Follow;
+            top = owner.TopLevelControl as Form ?? owner;
+            top.LocationChanged += Follow;
+            top.SizeChanged += Follow;
             owner.SizeChanged += Follow;
-            owner.FormClosed += OwnerClosed;
-            shade.Show(owner);
-            ring.Show(owner);
+            top.FormClosed += OwnerClosed;
+            owner.VisibleChanged += OwnerHidden;
+            shade.Show(top);
+            ring.Show(top);
             Go(0);
         }
 
@@ -60,18 +65,21 @@ namespace L4D2EightPlayer.UI.Themes
         {
             if (closed) return;
             closed = true;
-            owner.LocationChanged -= Follow;
+            top.LocationChanged -= Follow;
+            top.SizeChanged -= Follow;
             owner.SizeChanged -= Follow;
-            owner.FormClosed -= OwnerClosed;
+            top.FormClosed -= OwnerClosed;
+            owner.VisibleChanged -= OwnerHidden;
             callout?.Close();
             ring.Close();
             shade.Close();
-            if (!owner.IsDisposed) owner.Activate();
+            if (!top.IsDisposed) top.Activate();
             Ended?.Invoke(this, EventArgs.Empty);
         }
 
         void OwnerClosed(object s, FormClosedEventArgs e) => Close();
-        void Follow(object s, EventArgs e) { if (Running && owner.WindowState != FormWindowState.Minimized) Place(); }
+        void OwnerHidden(object s, EventArgs e) { if (!owner.Visible) Close(); }
+        void Follow(object s, EventArgs e) { if (Running && top.WindowState != FormWindowState.Minimized) Place(); }
 
         /// <summary>Shows step i (0-based).</summary>
         public void Go(int i)
@@ -91,7 +99,7 @@ namespace L4D2EightPlayer.UI.Themes
             callout.Escaped += (s, e) => Close();
             callout.Stepped += (s, d) => { if (index + d >= 0 && index + d < steps.Count) Go(index + d); };
             Place();
-            callout.Show(owner);
+            callout.Show(top);
             old?.Close();
             callout.Activate();
             callout.Next.Focus();
@@ -183,8 +191,10 @@ namespace L4D2EightPlayer.UI.Themes
         {
             var bmp = new Bitmap(owner.Width, owner.Height);
             owner.DrawToBitmap(bmp, new Rectangle(Point.Empty, owner.Size));
+            // where the bitmap's corner is on screen (a form embedded in the app window has no frame)
+            var corner = owner.TopLevel ? owner.Location : owner.Parent.PointToScreen(owner.Location);
             var origin = owner.PointToScreen(Point.Empty);
-            int ox = origin.X - owner.Left, oy = origin.Y - owner.Top;   // the client area inside the frame
+            int ox = origin.X - corner.X, oy = origin.Y - corner.Y;   // the client area inside the frame
             using (var g = Graphics.FromImage(bmp))
             {
                 var client = new Rectangle(ox, oy, owner.ClientSize.Width, owner.ClientSize.Height);
@@ -200,7 +210,7 @@ namespace L4D2EightPlayer.UI.Themes
                 using (var c = new Bitmap(callout.Width, callout.Height))
                 {
                     callout.DrawToBitmap(c, new Rectangle(Point.Empty, callout.Size));
-                    g.DrawImage(c, callout.Left - owner.Left, callout.Top - owner.Top);
+                    g.DrawImage(c, callout.Left - corner.X, callout.Top - corner.Y);
                 }
             }
             return bmp;

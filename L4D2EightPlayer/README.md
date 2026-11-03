@@ -5,7 +5,7 @@ One small Windows app with two sides, plus a setup that installs it. It needs no
 - **Host** sets up, checks and launches 8-player co-op for Left 4 Dead 2 (the server, its mods, your game), and opens your router port so friends can get in.
 - **Join** is for **friends who only join**: paste the host's invite, check the server and click Join. It needs no mods and changes nothing in their game.
 
-**HOST | JOIN** at the top of the window switches sides at any time. The other side stays as it was (a running server or an install carries on), and the app opens on whichever side you used last.
+Both sides live in one window: **HOST | JOIN** at the top switches between them at any time, and the window keeps its size and place (maximized included). The other side stays as it was (a running server or an install carries on), and the app opens on whichever side you used last.
 
 **Easiest:** run `L4D2-8P-Setup.exe` and pick **Host a game** or **Join a friend** (which also offers the HUD add-on). Both install the same app; the choice sets the side it opens on. It installs just for you, with no admin prompt, into `%LOCALAPPDATA%\Programs\L4D2 8-Player Co-op` (you can change the folder), and adds Start menu and Desktop shortcuts. Its last page offers **Show me around** (ticked on a first install): the app opens with a short tour that spotlights the parts you'll use, one at a time (on the Host side: how you host, installing the server and mods, the mod scan, settings for your group, Start and invite, letting friends in and the switch; on the Join side: pasting the invite, checking the server, recent groups, the HUD add-on and the switch). Next or the arrow keys step through it, Esc skips it, and **? TOUR** at the top right shows it again. Opening a side for the first time without the Setup shows its tour too. Run the Setup again to update it or change the side it opens on. To remove it, open **Uninstall L4D2 8-Player Co-op** in the install folder or the Start menu (or Windows Settings › Apps › Installed apps › L4D2 8-Player Co-op, or run the Setup again and click Uninstall); your settings, the server and your game stay. Send friends the same Setup file. `L4D2-8P-Coop.exe` also runs on its own without installing (the first time, it opens on hosting).
 
@@ -232,7 +232,7 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
 
 ## Building from source
 
-Requires the .NET SDK (6 or newer) on Windows. The output targets .NET Framework 4.8, which ships with Windows 10 and 11. Both sides are one project: the Host side is `UI\`, the Join side `Join\`, sharing `Core\`, `UI\Theme\` and `Fonts\`; `UI\AppShell.cs` switches between them.
+Requires the .NET SDK (6 or newer) on Windows. The output targets .NET Framework 4.8, which ships with Windows 10 and 11. Both sides are one project: the Host side is `UI\`, the Join side `Join\`, sharing `Core\`, `UI\Theme\` and `Fonts\`; `UI\AppWindow.cs` holds both in one window and switches between them.
 
 ```bash
 dotnet build L4D2EightPlayer -c Release

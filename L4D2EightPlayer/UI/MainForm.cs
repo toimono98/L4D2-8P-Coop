@@ -12,7 +12,7 @@ using L4D2EightPlayer.UI.Themes;
 
 namespace L4D2EightPlayer.UI
 {
-    public sealed partial class MainForm : Form, ILog
+    public sealed partial class MainForm : Form, ILog, IAppSide
     {
         const string Title = "L4D2 8-Player Co-op · Host";
 
@@ -1074,7 +1074,10 @@ namespace L4D2EightPlayer.UI
             lblStatus.Text = $"{label} {fraction:P0}";
         }
 
-        void OnClosing(object sender, FormClosingEventArgs e)
+        void IAppSide.RaiseShown() => OnShown(EventArgs.Empty);
+
+        /// <summary>Closing: the running-server question, listen mods off, the tray icon. The app window calls it too.</summary>
+        internal void OnClosing(object sender, FormClosingEventArgs e)
         {
             if (serverProcess != null && !serverProcess.HasExited)
             {

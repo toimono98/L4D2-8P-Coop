@@ -15,6 +15,8 @@ namespace L4D2EightPlayer.Join
         public static bool Preview;
         Tour tour;
 
+        void UI.IAppSide.RaiseShown() => OnShown(System.EventArgs.Empty);
+
         async Task MaybeStartTour()
         {
             if (Preview || TourDeclined || !(TourRequested || (firstRun && !settings.TourSeen))) return;

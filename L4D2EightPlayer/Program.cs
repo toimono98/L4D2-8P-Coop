@@ -66,37 +66,70 @@ namespace L4D2EightPlayer
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.ThreadException += (s, e) =>
                     MessageBox.Show(e.Exception.Message, "Unexpected error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Run(AppShell.Instance = new AppShell(mode, invite));
+                Application.Run(AppWindow.Instance = new AppWindow(mode, invite));
             }
         }
 
         /// <summary>
-        /// Off-screen check of the HOST | JOIN switch: host, join, host, join, then closing the join window
-        /// must close the hidden host one too and end the app. Writes what it saw; exit code 0 = all as expected.
+        /// Off-screen check of the one window: it opens on host, HOST | JOIN flips sides inside it (the
+        /// window keeps its size, the hidden side stays alive, each side gets Load and Shown), the tour
+        /// runs inside it, and closing it ends the app. Writes what it saw, plus a PNG of each side next to
+        /// the report; exit code 0 = all as expected.
         /// </summary>
         static int ShellTest(string outFile)
         {
             var log = new System.Text.StringBuilder();
             bool ok = true;
             void Check(string what, bool good) { log.AppendLine((good ? "ok   " : "FAIL ") + what); ok &= good; }
+            var dir = Path.GetDirectoryName(Path.GetFullPath(outFile));
+            void Shot(Form f, string name) { using (var bmp = new System.Drawing.Bitmap(f.Width, f.Height)) { f.DrawToBitmap(bmp, new System.Drawing.Rectangle(0, 0, f.Width, f.Height)); bmp.Save(Path.Combine(dir, name)); } }
             MainForm.Preview = true; Settings.ReadOnly = true; JoinForm.Preview = true; JoinSettings.ReadOnly = true;
-            AppShell.Test = true;
+            AppWindow.Test = true;
             Application.EnableVisualStyles();
-            var shell = AppShell.Instance = new AppShell(StartMode.Host, "");
+            var w = AppWindow.Instance = new AppWindow(StartMode.Host, "");
+            System.Drawing.Size size = default;
+            UI.Themes.Tour tour = null;
             var steps = new Action[]
             {
-                () => { Check("starts on host", shell.Mode == StartMode.Host && shell.HostWindow.Visible && shell.JoinWindow == null); shell.Switch(StartMode.Join); },
-                () => { Check("join shows, host hidden but alive", shell.JoinWindow.Visible && !shell.HostWindow.Visible && !shell.HostWindow.IsDisposed); shell.Switch(StartMode.Host); },
-                () => { Check("host shows again, same window", shell.HostWindow.Visible && !shell.JoinWindow.Visible); shell.Switch(StartMode.Join); },
-                () => { Check("join again, same window", shell.JoinWindow.Visible); shell.JoinWindow.Close(); },
+                () =>
+                {
+                    Check("opens on host", w.Mode == StartMode.Host && w.HostSide.Visible && w.JoinSide == null && w.Text.Contains("Host"));
+                    Check("host side got Load and Shown: " + string.Join(", ", w.Seen), w.Seen.Contains("host load") && w.Seen.Contains("host shown"));
+                    Shot(w, "shell-host.png");
+                    w.Size = size = new System.Drawing.Size(UI.Themes.Ui.S(1000), UI.Themes.Ui.S(760));   // as if the user resized it
+                    w.Switch(StartMode.Join);
+                },
+                () =>
+                {
+                    Check("join shows in the same window, host hidden but alive", w.JoinSide.Visible && !w.HostSide.Visible && !w.HostSide.IsDisposed && w.Text.Contains("Join"));
+                    Check($"the window kept its size ({w.Size})", w.Size == size);
+                    Check("join side fills it", w.JoinSide.Size == w.ClientSize);
+                    Check("join side got Load and Shown: " + string.Join(", ", w.Seen), w.Seen.Contains("join load") && w.Seen.Contains("join shown"));
+                    Shot(w, "shell-join.png");
+                    tour = ((JoinForm)w.JoinSide).BuildTour();
+                    tour.Start();
+                    tour.Go(tour.Count - 1);
+                },
+                () =>
+                {
+                    using (var bmp = tour.Snapshot()) bmp.Save(Path.Combine(dir, "shell-join-tour.png"));
+                    Check("the tour runs inside the window", tour.Running);
+                    tour.Close();
+                    w.Switch(StartMode.Host);
+                },
+                () =>
+                {
+                    Check("host shows again, same window and size", w.HostSide.Visible && !w.JoinSide.Visible && w.Size == size);
+                    w.Close();
+                },
             };
             int i = 0;
             var timer = new System.Windows.Forms.Timer { Interval = 2500 };
-            timer.Tick += (s, e) => { if (i < steps.Length) steps[i++](); else { timer.Stop(); Check("closing join left the app open", false); Application.ExitThread(); } };
+            timer.Tick += (s, e) => { if (i < steps.Length) steps[i++](); else { timer.Stop(); Check("closing left the app open", false); Application.ExitThread(); } };
             timer.Start();
-            Application.Run(shell);
+            Application.Run(w);
             timer.Stop();
-            Check("closing the join window closed both and ended the app", i == steps.Length && shell.HostWindow == null && shell.JoinWindow == null);
+            Check("closing the window ended the app with both sides gone", i == steps.Length && w.IsDisposed && w.HostSide.IsDisposed && w.JoinSide.IsDisposed);
             File.WriteAllText(outFile, log.ToString());
             return ok ? 0 : 1;
         }

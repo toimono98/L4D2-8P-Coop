@@ -61,7 +61,7 @@ namespace L4D2EightPlayer.Join
     }
 
     /// <summary>Everything a friend needs: paste the host's invite, check the server, join.</summary>
-    public sealed partial class JoinForm : Form
+    public sealed partial class JoinForm : Form, UI.IAppSide
     {
         const string Title = "L4D2 8-Player Co-op · Join";
         /// <summary>No join.json yet: someone opening the Join app for the first time.</summary>
@@ -119,7 +119,7 @@ namespace L4D2EightPlayer.Join
             // the same app hosts: HOST | JOIN swaps to the host window
             header.Modes = new[] { "HOST", "JOIN" };
             header.Mode = 1;
-            header.ModeClicked += (s, i) => UI.AppShell.Instance?.Switch(StartMode.Host);
+            header.ModeClicked += (s, i) => UI.AppWindow.Instance?.Switch(StartMode.Host);
 
             var g = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = P(24, 18, 24, 18) };
             g.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

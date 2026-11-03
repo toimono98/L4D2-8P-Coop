@@ -65,7 +65,7 @@ namespace L4D2EightPlayer.UI
             BuildUi();
             Theme.Style(this);
             tray = new NotifyIcon { Icon = Icon ?? SystemIcons.Application, Text = Title, Visible = true };
-            tray.BalloonTipClicked += (s, e) => { Activate(); tabs.SelectedIndex = 1; };
+            tray.BalloonTipClicked += (s, e) => { AppWindow.Instance?.Switch(StartMode.Host); (TopLevelControl as Form ?? this).Activate(); tabs.SelectedIndex = 1; };
 
             rescanTimer.Tick += async (s, e) => { rescanTimer.Stop(); await RunScan(auto: true); };
             gameWatch.Tick += (s, e) => WatchListenGame();
@@ -89,7 +89,7 @@ namespace L4D2EightPlayer.UI
             // the same app joins friends: HOST | JOIN swaps to the join window (this one stays alive)
             nav.Modes = new[] { "HOST", "JOIN" };
             nav.Mode = 0;
-            nav.ModeClicked += (s, i) => AppShell.Instance?.Switch(StartMode.Join);
+            nav.ModeClicked += (s, i) => AppWindow.Instance?.Switch(StartMode.Join);
 
             var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, FixedPanel = FixedPanel.Panel2, SplitterWidth = 1 };
 
