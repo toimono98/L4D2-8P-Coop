@@ -872,7 +872,8 @@ namespace L4D2EightPlayer.UI.Themes
 
     // ====================================================================== game pieces
 
-    public enum SlotKind { Host, Player, Bot, Empty }
+    /// <summary>Who has a survivor: Spare is a character not in use (more characters than player slots).</summary>
+    public enum SlotKind { Host, Player, Bot, Empty, Spare }
 
     /// <summary>One survivor slot in the lobby roster.</summary>
     public class SurvivorCard : Control, Themed
@@ -881,6 +882,15 @@ namespace L4D2EightPlayer.UI.Themes
         public int Slot { get; private set; }
         public SlotKind Kind { get; private set; }
         public string Who { get; private set; }
+        bool hover;
+
+        /// <summary>The card can be clicked (to play as this survivor): a hand cursor and a lighter frame on hover.</summary>
+        public bool Clickable
+        {
+            get => clickable;
+            set { clickable = value; Cursor = value ? Cursors.Hand : Cursors.Default; AccessibleRole = value ? AccessibleRole.PushButton : AccessibleRole.StaticText; Invalidate(); }
+        }
+        bool clickable;
 
         static Font NameFont => Theme.Display(14.5f);
         static Font SlotFont => Theme.BodyBold(7.5f);
@@ -900,19 +910,24 @@ namespace L4D2EightPlayer.UI.Themes
 
         public void Set(int slot, string character, SlotKind kind, string who)
         {
+            if (Slot == slot && Character == character && Kind == kind && Who == who) return;
             Slot = slot; Character = character; Kind = kind; Who = who;
-            AccessibleName = $"Slot {slot}, {character}: {(kind == SlotKind.Empty ? "empty" : kind == SlotKind.Bot ? "bot" : who)}";
+            AccessibleName = kind == SlotKind.Spare ? $"{character}: not used" : $"Slot {slot}, {character}: {(kind == SlotKind.Empty ? "empty" : kind == SlotKind.Bot ? "bot" : who)}";
             Invalidate();
         }
+
+        protected override void OnMouseEnter(EventArgs e) { hover = true; if (clickable) Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = false; if (clickable) Invalidate(); base.OnMouseLeave(e); }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             Audit.Context = this;
             var g = e.Graphics;
             var r = ClientRectangle;
-            bool empty = Kind == SlotKind.Empty;
-            using (var b = new SolidBrush(empty ? Theme.Header : Theme.Panel)) g.FillRectangle(b, r);
-            if (empty) Draw.Dashed(g, r, Theme.Line);
+            bool empty = Kind == SlotKind.Empty || Kind == SlotKind.Spare, hot = clickable && hover;
+            using (var b = new SolidBrush(hot ? Theme.Panel2 : empty ? Theme.Header : Theme.Panel)) g.FillRectangle(b, r);
+            if (hot) Draw.Border(g, r, Theme.Muted);
+            else if (empty) Draw.Dashed(g, r, Theme.Line);
             else Draw.Border(g, r, Theme.Line);
 
             int pad = S(14), inner = r.Width - pad * 2;
@@ -921,7 +936,7 @@ namespace L4D2EightPlayer.UI.Themes
             int y = S(8);
             Draw.Text(g, Character ?? "", NameFont, empty ? Theme.Muted : Theme.Bone, new Rectangle(pad, y, inner, nh), TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
             y += nh - S(4);
-            Draw.Text(g, "SLOT " + Slot, SlotFont, Theme.Muted, new Rectangle(pad + S(1), y, inner, sh), TextFormatFlags.Left | TextFormatFlags.SingleLine);
+            if (Kind != SlotKind.Spare) Draw.Text(g, "SLOT " + Slot, SlotFont, Theme.Muted, new Rectangle(pad + S(1), y, inner, sh), TextFormatFlags.Left | TextFormatFlags.SingleLine);
 
             string who, tag; Color tagFill = Color.Empty, tagBorder = Color.Empty, tagText = Theme.Bone, bar = Color.Empty; bool dashed = false;
             switch (Kind)
@@ -929,6 +944,7 @@ namespace L4D2EightPlayer.UI.Themes
                 case SlotKind.Host: who = Who ?? "You"; tag = "HOST"; tagFill = Theme.Red; tagText = Theme.BoneText; bar = Theme.Red; break;
                 case SlotKind.Player: who = Who; tag = "PLAYER"; tagBorder = Theme.Bone; bar = Theme.Bone; break;
                 case SlotKind.Bot: who = "Bot"; tag = "BOT · TAKE OVER"; tagFill = Theme.Line; bar = Theme.Bot; break;
+                case SlotKind.Spare: who = "Not in this game"; tag = "NOT USED"; tagBorder = Theme.Line; tagText = Theme.Muted; dashed = true; break;
                 default: who = "Open slot"; tag = "EMPTY"; tagBorder = Theme.Muted; tagText = Theme.Muted; dashed = true; break;
             }
             // Wide cards show the long bot label; narrow ones the short one.

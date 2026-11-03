@@ -78,7 +78,8 @@ namespace L4D2EightPlayer.UI
                     Before = () => Tab(2),
                     Targets = () => new[] { CardOf(chkFill), CardOf(numPlayers), CardOf(cmbItemsMode), CardOf(cmbInfectedMode) },
                     Title = "Set it up for your group",
-                    Body = "Bot fill keeps every empty slot filled with a bot that a friend takes over when they join. " +
+                    Body = "Click a survivor card on the left to play as them; friends pick from the rest in game. " +
+                           "Bot fill keeps every empty slot filled with a bot that a friend takes over when they join. " +
                            "More items and Harder infected scale the supplies and the infected to the number of survivors; Auto suits most groups.",
                 },
                 new TourStep
