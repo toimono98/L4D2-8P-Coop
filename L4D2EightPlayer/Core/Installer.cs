@@ -91,6 +91,32 @@ namespace L4D2EightPlayer.Core
 
         public string InstalledVersion(Component c) => state.components.TryGetValue(c.id, out var cs) ? cs.version : null;
 
+        /// <summary>
+        /// For our own plugins (built from sources inside the exe): "built-in" plus a hash of those sources, so a
+        /// newer app can tell they changed. Null for components that come from anywhere else.
+        /// </summary>
+        public static string BuiltInVersion(Component c)
+        {
+            var sources = (c.compile ?? new List<string>()).Concat((c.files ?? new List<List<string>>()).Where(f => f.Count > 0).Select(f => f[0])).ToList();
+            if (c.archive != null || sources.Count == 0 || !sources.All(s => s.StartsWith("embedded:", StringComparison.OrdinalIgnoreCase))) return null;
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                foreach (var s in sources)
+                    using (var res = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("plugins/" + s.Substring("embedded:".Length)))
+                    {
+                        if (res == null) return null;
+                        var bytes = new MemoryStream(); res.CopyTo(bytes);
+                        sha.TransformBlock(bytes.ToArray(), 0, (int)bytes.Length, null, 0);
+                    }
+                sha.TransformFinalBlock(new byte[0], 0, 0);
+                return "built-in " + BitConverter.ToString(sha.Hash, 0, 6).Replace("-", "").ToLowerInvariant();
+            }
+        }
+
+        /// <summary>Our own plugins installed here by an older version of the app.</summary>
+        public List<Component> OutdatedBuiltIns(Manifest m) =>
+            m.components.Where(c => state.components.ContainsKey(c.id) && BuiltInVersion(c) is string v && InstalledVersion(c) != v).ToList();
+
         /// <summary>Returns the file, or its ".disabled" twin (listen-mode toggle), or null.</summary>
         static string ExistingVariant(string full)
         {
@@ -183,7 +209,7 @@ namespace L4D2EightPlayer.Core
                 staged[rel] = outPath;
             }
 
-            if (version == null) version = "latest @ " + DateTime.Now.ToString("yyyy-MM-dd");
+            if (version == null) version = BuiltInVersion(c) ?? "latest @ " + DateTime.Now.ToString("yyyy-MM-dd");
             Apply(c, staged, version);
             log.Info($"   installed {staged.Count} file(s), version {version}");
         }

@@ -886,7 +886,10 @@ namespace L4D2EightPlayer.UI
             {
                 if (settings.UpdateServerOnStart) await SteamCmd.UpdateServer(settings.ServerRoot, settings.ServerInstallDir, this, ct);
                 ServerConfig.Apply(settings, settings.TargetGameDir, customCampaigns);
-                new Installer(settings.TargetGameDir, this).ApplySourceModGuard(manifest);
+                var inst = new Installer(settings.TargetGameDir, this);
+                inst.ApplySourceModGuard(manifest);
+                // the plugins this app builds itself: a newer app may bring fixed versions
+                foreach (var c in inst.OutdatedBuiltIns(manifest)) await inst.Install(c, ct);
                 if (settings.SyncAddons && GameLocator.IsGameDir(settings.GamePath))
                     await Task.Run(() => AddonSync.Sync(settings.ClientGameDir, settings.TargetGameDir, InstallState.Load(settings.TargetGameDir), this), ct);
             });

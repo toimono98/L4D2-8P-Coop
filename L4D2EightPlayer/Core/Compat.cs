@@ -69,7 +69,13 @@ namespace L4D2EightPlayer.Core
             public List<string> Files = new List<string>();
             public List<(Severity sev, string text)> ScriptNotes = new List<(Severity, string)>();
             public List<string> Missions = new List<string>();
-            public bool NeedsServer => Campaign || Gameplay || Mutation || Talker;
+            /// <summary>
+            /// Copied to the dedicated server. A skin isn't, even with a small script of its own: skins show only on
+            /// each player's screen, and with its textures on the server, joining stalls on a black screen while
+            /// the game asks the server for files it already has.
+            /// </summary>
+            public bool NeedsServer => Campaign || Mutation || Talker || (Gameplay && !IsSkin);
+            public bool IsSkin => Models && Skins.Coverage(Files).Count > 0;
         }
 
         static readonly Regex LoopTo4 = new Regex(@"\bfor\s*\(\s*local\s+\w+\s*=\s*[01]\s*;\s*\w+\s*<=?\s*4\s*;", RegexOptions.Compiled);
@@ -290,6 +296,8 @@ namespace L4D2EightPlayer.Core
                         if (ctx.SyncAddons) f.Details.Add("Copied to the dedicated server automatically at launch (it changes server-side content).");
                         else f.Raise(Severity.Warning, "This addon changes server-side content but is not on the dedicated server. Turn on 'Copy my server-side addons to the server' on the Play tab.");
                     }
+                    else if (clientSide && ctx.Mode == "dedicated" && info.Gameplay && info.IsSkin)
+                        f.Details.Add("A skin with a script of its own: it stays on your PC and isn't copied to the dedicated server (skins show only on each player's screen).");
 
                     foreach (var file in info.Files)
                     {

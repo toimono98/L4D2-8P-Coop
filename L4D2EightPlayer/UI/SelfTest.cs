@@ -366,6 +366,10 @@ namespace L4D2EightPlayer.UI
                     // The dedicated "Launch L4D2 & join" path with the saved settings, checked by a player query.
                     var st = Settings.Load();
                     ServerConfig.Apply(st, st.TargetGameDir);
+                    var srvInst = new Installer(st.TargetGameDir, log);
+                    foreach (var c in srvInst.OutdatedBuiltIns(manifest)) srvInst.Install(c, CancellationToken.None).GetAwaiter().GetResult();
+                    if (st.SyncAddons && GameLocator.IsGameDir(st.GamePath))
+                        AddonSync.Sync(st.ClientGameDir, st.TargetGameDir, InstallState.Load(st.TargetGameDir), log);
                     var host = Launcher.LocalServerAddress();
                     log.Info($"mode {st.NetworkMode}, server {host}:{st.Port}, password {(string.IsNullOrEmpty(st.Password) ? "none" : "set")}");
                     var srv = Launcher.StartServer(st);
@@ -378,7 +382,7 @@ namespace L4D2EightPlayer.UI
                         else
                         {
                             var pw = st.Password ?? "";
-                            bool dropped = Launcher.LaunchGameDirect(st.GamePath, $"+connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""), dropInsecure: true);
+                            bool dropped = Launcher.LaunchGameDirect(st.GamePath, $"-condebug {Arg("--client-args")} +connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""), dropInsecure: true);
                             log.Info("game launched directly" + (dropped ? " (left out -insecure)" : ""));
                             int seen = 0;
                             for (var until = DateTime.Now.AddSeconds(150); seen == 0 && DateTime.Now < until; Thread.Sleep(3000))
@@ -388,6 +392,20 @@ namespace L4D2EightPlayer.UI
                                 if (seen > 0) log.Info("on the server: " + string.Join(", ", players));
                             }
                             if (seen == 0) { rc = 1; log.Error("the game never showed up on the server"); }
+                            else if (args.Contains("--rejoin"))
+                            {
+                                // A hung game ended and started again: the server still holds the old connection
+                                // when the new one arrives, and Steam's late "invalid ticket" lands before the
+                                // player is back in the game. They should stay (Keep Verified Players).
+                                Thread.Sleep(75000);
+                                foreach (var g in System.Diagnostics.Process.GetProcessesByName("left4dead2")) try { g.Kill(); g.WaitForExit(10000); } catch { }
+                                log.Info("game killed, rejoining");
+                                Launcher.LaunchGameDirect(st.GamePath, $"+connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""), dropInsecure: true);
+                                Thread.Sleep(120000);
+                                var players = ServerQuery.Players(host, st.Port).GetAwaiter().GetResult();
+                                log.Info("on the server after rejoining: " + (players == null || players.Count == 0 ? "nobody" : string.Join(", ", players)));
+                                if (players == null || players.Count == 0) rc = 1;
+                            }
                         }
                     }
                     finally
