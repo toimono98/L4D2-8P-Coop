@@ -68,7 +68,7 @@ namespace L4D2EightPlayer.UI
 
             var main = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };
             main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(440)));
+            main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(440) + SystemInformation.VerticalScrollBarWidth));
             main.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             var left = Stack(P(0, 0, 24, 0));
@@ -104,7 +104,10 @@ namespace L4D2EightPlayer.UI
             left.Controls.Add(txtNetHelp, 0, 4);
             main.Controls.Add(left, 0, 0);
 
+            // scrolls on a short window (large display scaling) instead of cutting off the cards at the bottom
             var right = Stack(P(0));
+            right.AutoScroll = true;
+            Theme.DarkScrollbars(right);
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -128,7 +131,7 @@ namespace L4D2EightPlayer.UI
             right.Controls.Add(BuildDiscordCard(), 0, 1);
 
             right.Controls.Add(SmallCaps("Details"), 0, 2);
-            txtNetStatus = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical,
+            txtNetStatus = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical, MinimumSize = new Size(0, S(110)),
                                          Text = "Open this tab or click Check again to test your connection." };
             right.Controls.Add(txtNetStatus, 0, 3);
             main.Controls.Add(right, 1, 0);

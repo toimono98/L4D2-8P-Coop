@@ -148,7 +148,22 @@ namespace L4D2EightPlayer.UI.Themes
             cb.FlatStyle = FlatStyle.Flat;
             cb.BackColor = Console;
             cb.ForeColor = Bone;
-            PaintOver.Attach(cb, PaintComboFrame);
+            if (cb.DropDownStyle == ComboBoxStyle.DropDownList && !PaintOver.Direct)
+            {
+                // The closed box is drawn whole here, in one buffered pass. Drawing the theme over Windows' own
+                // combo let its light frame show through for a frame now and then (the blinking dropdowns).
+                SetStyleMethod.Invoke(cb, new object[] { ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true });
+                cb.Paint += (s, e) => PaintClosedCombo(e.Graphics, cb);
+                EventHandler redraw = (s, e) => cb.Invalidate();
+                cb.SelectedIndexChanged += redraw;
+                cb.MouseEnter += redraw;
+                cb.MouseLeave += redraw;
+                cb.GotFocus += redraw;
+                cb.LostFocus += redraw;
+                cb.EnabledChanged += redraw;
+                cb.DropDownClosed += redraw;
+            }
+            else PaintOver.Attach(cb, PaintComboFrame);
             if (cb.DrawMode == DrawMode.Normal)
             {
                 // A DropDownList ignores BackColor under visual styles; draw it ourselves.
@@ -180,6 +195,20 @@ namespace L4D2EightPlayer.UI.Themes
             using (var b = new SolidBrush(Console)) g.FillRectangle(b, Rectangle.FromLTRB(btn.Left - 3, r.Top, r.Right, r.Bottom)); // the flat frame draws its divider just left of rcButton
             Chevron(g, btn, true, !cb.Enabled ? Bot : hot ? Bone : Muted);
             using (var inner = new Pen(Console)) g.DrawRectangle(inner, r.X + 1, r.Y + 1, r.Width - 3, r.Height - 3);
+            using (var edge = new Pen(hot ? Muted : Line)) g.DrawRectangle(edge, r.X, r.Y, r.Width - 1, r.Height - 1);
+        }
+
+        /// <summary>A closed DropDownList in the theme: dark field, the selected text, a chevron and a frame (lighter when hot).</summary>
+        static void PaintClosedCombo(Graphics g, ComboBox cb)
+        {
+            var r = cb.ClientRectangle;
+            bool hot = cb.Enabled && (cb.Focused || cb.DroppedDown || r.Contains(cb.PointToClient(Cursor.Position)));
+            using (var b = new SolidBrush(Console)) g.FillRectangle(b, r);
+            int arrow = SystemInformation.VerticalScrollBarWidth;
+            var text = new Rectangle(r.X + Ui.S(6), r.Y, r.Width - arrow - Ui.S(8), r.Height);
+            TextRenderer.DrawText(g, cb.SelectedIndex >= 0 ? cb.GetItemText(cb.SelectedItem) : cb.Text, cb.Font, text, cb.Enabled ? Bone : Bot,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+            Chevron(g, new Rectangle(r.Right - arrow - 1, r.Y, arrow, r.Height), true, !cb.Enabled ? Bot : hot ? Bone : Muted);
             using (var edge = new Pen(hot ? Muted : Line)) g.DrawRectangle(edge, r.X, r.Y, r.Width - 1, r.Height - 1);
         }
 
@@ -407,6 +436,8 @@ namespace L4D2EightPlayer.UI.Themes
         readonly Control control;
         readonly Action<Graphics, Control> draw;
         PaintOver(Control control, Action<Graphics, Control> draw) { this.control = control; this.draw = draw; }
+        /// <summary>Set by --flicker-test --legacy: draw over the control on screen, as before 2.1.2 (for comparison).</summary>
+        public static bool Direct;
 
         public static void Attach(Control c, Action<Graphics, Control> draw)
         {
@@ -422,6 +453,10 @@ namespace L4D2EightPlayer.UI.Themes
             c.EnabledChanged += (s, e) => c.Invalidate();
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        struct PAINTSTRUCT { public IntPtr hdc; public bool fErase; public int left, top, right, bottom; public bool fRestore, fIncUpdate; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] reserved; }
+        [DllImport("user32.dll")] static extern IntPtr BeginPaint(IntPtr hWnd, ref PAINTSTRUCT ps);
+        [DllImport("user32.dll")] static extern bool EndPaint(IntPtr hWnd, ref PAINTSTRUCT ps);
         [DllImport("gdi32.dll")] static extern int SetBkColor(IntPtr hdc, int color);
         [DllImport("gdi32.dll")] static extern int SetTextColor(IntPtr hdc, int color);
         [DllImport("gdi32.dll")] static extern IntPtr CreateSolidBrush(int color);
@@ -438,10 +473,36 @@ namespace L4D2EightPlayer.UI.Themes
                 m.Result = consoleBrush;
                 return;
             }
+            // WM_PAINT: the control paints itself into a back buffer, the theme draws over it there, and the
+            // finished picture goes to the screen once. (Drawing over it on the screen afterwards let the
+            // control's own light frame show for a frame now and then: the blinking dropdowns.)
+            // (Not for combos: an owner-drawn combo draws its item straight to the screen, outside the buffer.)
+            if (m.Msg == 0x000F /* WM_PAINT */ && m.WParam == IntPtr.Zero && control.IsHandleCreated && !Direct && !(control is ComboBox))
+            {
+                var ps = new PAINTSTRUCT();
+                IntPtr hdc = BeginPaint(m.HWnd, ref ps);
+                try
+                {
+                    var r = control.ClientRectangle;
+                    if (r.Width > 0 && r.Height > 0)
+                        using (var buffer = BufferedGraphicsManager.Current.Allocate(hdc, r))
+                        {
+                            IntPtr mem = buffer.Graphics.GetHdc();
+                            var inner = Message.Create(m.HWnd, 0x000F, mem, IntPtr.Zero);   // a DC in wParam: paint into it
+                            base.WndProc(ref inner);
+                            buffer.Graphics.ReleaseHdc(mem);
+                            draw(buffer.Graphics, control);
+                            buffer.Render(hdc);
+                        }
+                }
+                finally { EndPaint(m.HWnd, ref ps); }
+                m.Result = IntPtr.Zero;
+                return;
+            }
             base.WndProc(ref m);
             if (!control.IsHandleCreated) return;
-            if (m.Msg == 0x000F /* WM_PAINT */)
-                using (var g = Graphics.FromHwnd(m.HWnd)) draw(g, control);
+            if (m.Msg == 0x000F /* WM_PAINT with a DC (already drawn into it), or the legacy way */)
+                using (var g = m.WParam == IntPtr.Zero ? Graphics.FromHwnd(m.HWnd) : Graphics.FromHdc(m.WParam)) draw(g, control);
             else if ((m.Msg == 0x0317 /* WM_PRINT */ || m.Msg == 0x0318 /* WM_PRINTCLIENT */) && m.WParam != IntPtr.Zero)
                 using (var g = Graphics.FromHdc(m.WParam)) draw(g, control); // DrawToBitmap
         }

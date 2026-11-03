@@ -450,7 +450,9 @@ namespace L4D2EightPlayer.UI
             var page = Page(1040, 720);
             var outer = Grid(2);
             outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(360)));
+            // the settings column scrolls on short windows: room for its scrollbar, so the 360 px of
+            // cards and pill rows never get clipped on the right when it appears
+            outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(360) + SystemInformation.VerticalScrollBarWidth));
             outer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             outer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 

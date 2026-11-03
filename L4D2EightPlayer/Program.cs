@@ -22,6 +22,7 @@ namespace L4D2EightPlayer
         ///   --join-shot &lt;file.png&gt; [--tour]               the join window (and each tour stop) to PNGs
         ///   --shell-test &lt;report&gt;                         the one window: switching sides, size, closing (off-screen)
         ///   --paint-test &lt;report&gt; [--off-screen]          repaint passes, two-pass boxes and the progress bar's frame rate
+        ///   --flicker-test &lt;report&gt; [--legacy] [--composited]   glitches seen on screen while a dropdown repaints and tabs switch
         /// </summary>
         [STAThread]
         static void Main(string[] args)
@@ -46,6 +47,7 @@ namespace L4D2EightPlayer
             }
             if (args.Length >= 2 && args[0] == "--join-shot") { JoinShot(args[1], args.Contains("--tour")); return; }
             if (args.Length >= 2 && args[0] == "--shell-test") { Environment.Exit(ShellTest(args[1])); return; }
+            if (args.Length >= 2 && args[0] == "--flicker-test") { Environment.Exit(FlickerTest.Run(args[1], args.Contains("--legacy"), args.Contains("--composited"))); return; }
             if (args.Length >= 2 && args[0] == "--paint-test") { PaintTest.OffScreen = args.Contains("--off-screen"); Environment.Exit(PaintTest.Run(args[1])); return; }
 
             // an invite on the command line (steam://connect/…, IP:port) opens the join side with it

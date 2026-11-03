@@ -35,9 +35,12 @@ namespace L4D2EightPlayer.UI.Themes
         /// Makes a change (a page or card swap, a refilled panel) with drawing held, then paints the result in
         /// one pass, so boxes don't appear one by one or flash the old state on the way.
         /// </summary>
+        /// <summary>Set by --flicker-test --legacy: changes draw as they happen, as before 2.1.1 (for comparison).</summary>
+        public static bool NoBatch;
+
         public static void Batch(Control c, Action change)
         {
-            if (c == null || !c.IsHandleCreated || !c.Visible) { change(); return; }
+            if (c == null || !c.IsHandleCreated || !c.Visible || NoBatch) { change(); return; }
             SendMessage(c.Handle, 0x000B /* WM_SETREDRAW */, IntPtr.Zero, IntPtr.Zero);
             try { change(); }
             finally
