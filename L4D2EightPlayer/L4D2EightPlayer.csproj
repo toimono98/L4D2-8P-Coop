@@ -10,6 +10,8 @@
     <AssemblyName>L4D2-8P-Manager</AssemblyName>
     <RootNamespace>L4D2EightPlayer</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- drawn by tools\make_icon.ps1 -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>L4D2 8-Player Co-op Manager</Product>
     <Description>Installs, checks and launches an 8-player co-op setup for Left 4 Dead 2.</Description>
     <Copyright>MIT License</Copyright>
@@ -28,6 +30,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="components.json" LogicalName="components.json" />
+    <EmbeddedResource Include="Assets\app.ico" LogicalName="app.ico" />
     <!-- Oswald, Barlow and Rubik Dirt (SIL Open Font License, see Fonts\OFL-*.txt) -->
     <EmbeddedResource Include="Fonts\*.ttf" />
     <!-- Plugins written for this tool, compiled on install like the downloaded fixes -->

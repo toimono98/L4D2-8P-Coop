@@ -34,7 +34,7 @@ namespace L4D2EightPlayer.Setup
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             ClientSize = Sz(780, 600);
-            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            Icon = Theme.AppIcon();
             header = new NavBar() { Title = "8-PLAYER CO-OP", Subtitle = "LEFT 4 DEAD 2 · SETUP" };
             Controls.Add(body);
             Controls.Add(header);

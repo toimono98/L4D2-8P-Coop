@@ -3,3 +3,4 @@
 *.vpk binary
 *.png binary
 *.exe binary
+*.ico binary

@@ -60,7 +60,7 @@ namespace L4D2EightPlayer.UI
             MinimumSize = Sz(860, 640);
             Size = Sz(1200, 1000);
             FitToScreen(this);
-            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            Icon = Theme.AppIcon();
 
             BuildUi();
             Theme.Style(this);

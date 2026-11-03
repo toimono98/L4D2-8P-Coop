@@ -47,6 +47,21 @@ namespace L4D2EightPlayer.UI.Themes
         static extern IntPtr AddFontMemResourceEx(IntPtr pbFont, uint cbFont, IntPtr pdv, ref uint pcFonts);
 
         /// <summary>
+        /// The app icon with all its sizes (embedded as "app.ico"), so title bars and the taskbar pick the
+        /// hand-tuned small ones instead of a shrunk 32 px image. Falls back to the exe's own icon.
+        /// </summary>
+        public static Icon AppIcon()
+        {
+            try
+            {
+                using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("app.ico"))
+                    if (s != null) return new Icon(s);
+            }
+            catch { }
+            try { return Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { return null; }
+        }
+
+        /// <summary>
         /// Loads the embedded fonts for both GDI+ (Graphics.DrawString) and GDI (TextRenderer,
         /// which most WinForms controls use). Missing fonts fall back to Windows' Bahnschrift.
         /// </summary>

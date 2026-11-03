@@ -10,6 +10,7 @@
     <AssemblyName>L4D2-8P-Setup</AssemblyName>
     <RootNamespace>L4D2EightPlayer.Setup</RootNamespace>
     <ApplicationManifest>..\L4D2EightPlayer\app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\L4D2EightPlayer\Assets\app.ico</ApplicationIcon>
     <Product>L4D2 8-Player Co-op Setup</Product>
     <Description>Installs the 8-Player Manager (hosts) or the Join app (friends).</Description>
     <Copyright>MIT License</Copyright>
@@ -38,6 +39,7 @@
     <Compile Include="..\L4D2EightPlayer\UI\Theme\*.cs" LinkBase="Theme" />
     <Compile Include="*.cs" />
     <EmbeddedResource Include="..\L4D2EightPlayer\components.json" LogicalName="components.json" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\Assets\app.ico" LogicalName="app.ico" />
     <EmbeddedResource Include="..\L4D2EightPlayer\Fonts\*.ttf" LinkBase="Fonts" />
     <EmbeddedResource Include="..\L4D2EightPlayer\Addon\l4d2_8p_hud.vpk" LogicalName="addon/l4d2_8p_hud.vpk" />
     <EmbeddedResource Include="..\L4D2EightPlayer\bin\$(Configuration)\L4D2-8P-Manager.exe" LogicalName="app/L4D2-8P-Manager.exe" />

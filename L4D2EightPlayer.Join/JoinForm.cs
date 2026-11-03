@@ -85,7 +85,7 @@ namespace L4D2EightPlayer.Join
             Size = Sz(820, 880);
             MinimumSize = Sz(640, 600);
             FitToScreen();
-            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            Icon = Theme.AppIcon();
             BuildUi();
             Theme.Style(this);
             if (!GameLocator.IsGameDir(settings.GamePath)) { settings.GamePath = GameLocator.FindGame(); settings.Save(); }
