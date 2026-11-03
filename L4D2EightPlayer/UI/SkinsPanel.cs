@@ -373,7 +373,9 @@ namespace L4D2EightPlayer.UI
             var r = ClientRectangle;
             using (var b = new SolidBrush(hover ? Theme.Panel2 : Theme.Panel)) g.FillRectangle(b, r);
             Draw.Border(g, r, selected ? Theme.Bone : state?.Conflict == true ? Theme.Amber : Theme.Line, selected ? S(2) : 1);
-            int pad = S(10), pic = r.Height - pad * 2, x = pad;
+            // a skin is on for it: the red edge the Packs view and the picked choice on the right use
+            if (state?.Active != null) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, 0, 0, S(4), r.Height);
+            int pad = S(10), pic = r.Height - pad * 2, x = pad + S(2);
             var box = new Rectangle(x, pad, pic, pic);
             if (thumb != null) g.DrawImage(thumb, box);
             else using (var b = new SolidBrush(Theme.Header)) g.FillRectangle(b, box);

@@ -404,7 +404,8 @@ namespace L4D2EightPlayer.UI.Themes
                 {
                     case LinkLabel _:
                     case Label _:
-                        if (!string.IsNullOrEmpty(c.Text))
+                        // a one-line label that cuts itself with … on purpose (the status bar) isn't clipped
+                        if (!string.IsNullOrEmpty(c.Text) && !(c is Label el && el.AutoEllipsis && !el.AutoSize))
                         {
                             var l = (Label)c;
                             // The label's own measurement (same wrapping rules it paints with).

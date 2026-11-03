@@ -45,7 +45,7 @@ namespace L4D2EightPlayer.UI
             var others = m.Targets.Count(t => inv.ByTarget[t.Id].On.Any(o => o != m));
             string status = !m.Enabled ? "Off" : others > 0 ? $"On · {others} of {m.Targets.Count} also have another skin on" : "On";
             var card = new PackCard(m.Title, $"Skins {m.Targets.Count}: {Names(m.Targets, 3)} · {status}", m.Enabled ? (others > 0 ? Theme.Amber : Theme.Bone) : Theme.Muted, Thumb(m), m.Title.Substring(0, 1))
-            { Selected = packSel == "pack:" + m.Key, Tag = "pack:" + m.Key };
+            { Selected = packSel == "pack:" + m.Key, Tag = "pack:" + m.Key, On = m.Enabled };
             card.Click += (s, e) => SelectPackItem("pack:" + m.Key);
             return card;
         }
@@ -54,7 +54,13 @@ namespace L4D2EightPlayer.UI
         {
             var line = $"{c.Items.Count} items · {c.Installed.Count} downloaded · {c.On} on";
             thumbs.TryGetValue(Workshop.CollectionPicture(c.Saved.Id), out var pic);
-            var card = new PackCard(c.Saved.Title, line, InUse(c) ? Theme.Bone : Theme.Muted, pic, c.Saved.Title.Substring(0, 1)) { Selected = packSel == "col:" + c.Saved.Id, Tag = "col:" + c.Saved.Id };
+            bool inUse = InUse(c), partly = !inUse && c.On > 0;
+            var card = new PackCard(c.Saved.Title, line, inUse ? Theme.Bone : Theme.Muted, pic, c.Saved.Title.Substring(0, 1))
+            {
+                Selected = packSel == "col:" + c.Saved.Id, Tag = "col:" + c.Saved.Id,
+                On = inUse ? true : partly ? (bool?)null : false,
+                Badge = inUse ? "IN USE" : partly ? "PARTLY ON" : null, BadgeAmber = partly,
+            };
             card.Click += (s, e) => SelectPackItem("col:" + c.Saved.Id);
             return card;
         }
@@ -245,6 +251,19 @@ namespace L4D2EightPlayer.UI
         readonly Image thumb;
         bool hover, selected;
         public bool Selected { get => selected; set { selected = value; Invalidate(); } }
+        /// <summary>On (red edge, ON badge), off (dimmed picture and name), or null for a card that's neither (Add a collection).</summary>
+        public bool? On { get; set; }
+        /// <summary>The badge's text when it isn't simply ON ("IN USE", "PARTLY ON"), and whether it's the amber kind.</summary>
+        public string Badge { get; set; }
+        public bool BadgeAmber { get; set; }
+
+        static readonly System.Drawing.Imaging.ImageAttributes Dim = DimAttributes();
+        static System.Drawing.Imaging.ImageAttributes DimAttributes()
+        {
+            var a = new System.Drawing.Imaging.ImageAttributes();
+            a.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.35f });   // a third as opaque: off at a glance
+            return a;
+        }
 
         public PackCard(string title, string line, Color lineColor, Image thumb, string initial)
         {
@@ -267,16 +286,35 @@ namespace L4D2EightPlayer.UI
             var r = ClientRectangle;
             using (var b = new SolidBrush(hover ? Theme.Panel2 : Theme.Panel)) g.FillRectangle(b, r);
             Draw.Border(g, r, selected ? Theme.Bone : Theme.Line, selected ? S(2) : 1);
+            bool off = On == false;
+            // on: a red edge like the picked skin on the right
+            if (On == true) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, 0, 0, S(4), r.Height);
             int pad = S(10), pic = r.Height - pad * 2;
-            var box = new Rectangle(pad, pad, pic, pic);
-            if (thumb != null) g.DrawImage(thumb, box);
+            var box = new Rectangle(pad + S(4), pad, pic, pic);
+            if (thumb != null)
+            {
+                if (off) g.DrawImage(thumb, box, 0, 0, thumb.Width, thumb.Height, GraphicsUnit.Pixel, Dim);
+                else g.DrawImage(thumb, box);
+            }
             else using (var b = new SolidBrush(Theme.Header)) g.FillRectangle(b, box);
             Draw.Border(g, box, Theme.Line);
             if (thumb == null) Draw.Text(g, (initial ?? "").ToUpperInvariant(), Theme.Display(16f), Theme.Bot, box, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            int x = pic + pad * 2, w = r.Width - x - pad;
+            int x = box.Right + pad, right = r.Width - pad;
+            // the badge on the title line: ON, IN USE, PARTLY ON
+            var badge = Badge ?? (On == true ? "ON" : null);
+            if (badge != null)
+            {
+                var bf = Theme.BodyBold(7.5f);
+                var sz = Draw.TagSize(badge, bf);
+                right -= sz.Width;
+                if (BadgeAmber) Draw.TagBox(g, new Rectangle(right, S(10), sz.Width, sz.Height), badge, bf, Color.Empty, Theme.Amber, Theme.Amber);
+                else Draw.TagBox(g, new Rectangle(right, S(10), sz.Width, sz.Height), badge, bf, Theme.Red, Color.Empty, Theme.BoneText);
+                right -= S(10);
+            }
+            int w = r.Width - x - pad;
             var nf = Theme.Stencil(11.5f);
             int nh = Draw.Measure("X", nf).Height;
-            Draw.Text(g, title.ToUpperInvariant(), nf, Theme.Bone, new Rectangle(x, S(10), w, nh), TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+            Draw.Text(g, title.ToUpperInvariant(), nf, off ? Theme.Muted : Theme.Bone, new Rectangle(x, S(10), Math.Max(0, right - x), nh), TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
             Draw.Text(g, line, Theme.Body(9.5f), lineColor, new Rectangle(x, S(10) + nh + S(2), w, r.Height - nh - S(14)), TextFormatFlags.Left | TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis);
         }
     }
