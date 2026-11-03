@@ -241,6 +241,9 @@ namespace L4D2EightPlayer.Setup
         /// <summary>Clears the body and returns the page grid (rows: heading, notes, content…) and its button row.</summary>
         TableLayoutPanel Page(out FlowLayoutPanel buttons, int fillRow = 2)
         {
+            // drawing waits until the new page is built and styled (below), so it never shows half-made or unstyled
+            bool hold = body.IsHandleCreated && body.Visible;
+            if (hold) SendMessage(body.Handle, 0x000B /* WM_SETREDRAW */, IntPtr.Zero, IntPtr.Zero);
             body.Controls.Clear();
             var g = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = P(32, 26, 32, 10) };
             g.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -251,8 +254,18 @@ namespace L4D2EightPlayer.Setup
             body.Controls.Add(buttons);
             // styled once the page is built (BeginInvoke runs after the caller has filled it);
             // the first page is built before the window exists, and OnLoad styles that one
-            if (IsHandleCreated) BeginInvoke((Action)(() => Theme.Style(body)));
+            if (IsHandleCreated) BeginInvoke((Action)(() => { Theme.Style(body); if (hold) Release(); }));
             return g;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RedrawWindow(IntPtr hWnd, IntPtr rect, IntPtr rgn, uint flags);
+
+        /// <summary>Drawing back on for the page, painted in one pass.</summary>
+        void Release()
+        {
+            SendMessage(body.Handle, 0x000B, (IntPtr)1, IntPtr.Zero);
+            RedrawWindow(body.Handle, IntPtr.Zero, IntPtr.Zero, 0x4 | 0x400 | 0x1 | 0x80 | 0x100);
         }
 
         GameButton Btn(string text, ButtonKind kind, Action click)

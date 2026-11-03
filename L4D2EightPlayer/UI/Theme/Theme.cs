@@ -209,11 +209,22 @@ namespace L4D2EightPlayer.UI.Themes
             g.SmoothingMode = old;
         }
 
+        static readonly MethodInfo SetStyleMethod = typeof(Control).GetMethod("SetStyle", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        /// <summary>
+        /// Paints a stock panel or label through a back buffer, background included. Without it the box draws
+        /// its (often see-through) background and then its content in two passes, which shows as a blink.
+        /// </summary>
+        public static void Buffer(Control c) =>
+            SetStyleMethod.Invoke(c, new object[] { ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true });
+
         /// <summary>Walks a control tree and applies the theme to stock WinForms controls.</summary>
         public static void Style(Control root)
         {
             foreach (Control c in root.Controls)
             {
+                // containers and labels paint in one pass (custom controls buffer themselves; native ones can't)
+                if (!(c is Themed) && (c is Panel || c is Label || c is SplitContainer || c is ButtonBase)) Buffer(c);
                 switch (c)
                 {
                     case Themed _:

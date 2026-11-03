@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using static L4D2EightPlayer.UI.Themes.Ui;
 
@@ -25,6 +26,26 @@ namespace L4D2EightPlayer.UI.Themes
                     Audit.Text(text, need, r.Size);
             }
             TextRenderer.DrawText(g, text, font, r, color, flags | TextFormatFlags.NoPrefix);
+        }
+
+        [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll")] static extern bool RedrawWindow(IntPtr hWnd, IntPtr rect, IntPtr rgn, uint flags);
+
+        /// <summary>
+        /// Makes a change (a page or card swap, a refilled panel) with drawing held, then paints the result in
+        /// one pass, so boxes don't appear one by one or flash the old state on the way.
+        /// </summary>
+        public static void Batch(Control c, Action change)
+        {
+            if (c == null || !c.IsHandleCreated || !c.Visible) { change(); return; }
+            SendMessage(c.Handle, 0x000B /* WM_SETREDRAW */, IntPtr.Zero, IntPtr.Zero);
+            try { change(); }
+            finally
+            {
+                SendMessage(c.Handle, 0x000B, (IntPtr)1, IntPtr.Zero);
+                // RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW
+                RedrawWindow(c.Handle, IntPtr.Zero, IntPtr.Zero, 0x4 | 0x400 | 0x1 | 0x80 | 0x100);
+            }
         }
 
         public static Size Measure(string text, Font font) =>
@@ -423,6 +444,7 @@ namespace L4D2EightPlayer.UI.Themes
 
         public Stepper(string label)
         {
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             BackColor = Color.Transparent;
             AccessibleName = label;
             minus = new GameButton("−", ButtonKind.Ghost, 13f) { Size = Sz(44, 44), AutoSizeLocked = true, Margin = P(0), AccessibleName = "Fewer " + label.ToLowerInvariant() };
@@ -506,6 +528,7 @@ namespace L4D2EightPlayer.UI.Themes
         public Pills(string[] values, string[] labels, int width)
         {
             this.values = values;
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             AutoSize = true;
             WrapContents = false;
             Margin = P(0);
@@ -603,19 +626,42 @@ namespace L4D2EightPlayer.UI.Themes
     {
         int value;
         bool marquee;
-        int phase;
-        readonly Timer timer = new Timer { Interval = 40 };
+        int phase;   // the moving block's right edge
+        // The block's place comes from the time since it started, not a fixed step per tick, so it glides at
+        // the same speed however unevenly the timer fires; the timer only asks for a frame about 60 times a second.
+        readonly Timer timer = new Timer { Interval = 15 };
+        readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
 
         public Meter()
         {
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
             Height = S(14);
-            timer.Tick += (s, e) => { phase = (phase + S(6)) % Math.Max(1, Width + S(80)); Invalidate(); };
+            timer.Tick += (s, e) =>
+            {
+                int next = (int)(clock.Elapsed.TotalSeconds * S(170)) % Math.Max(1, Width + S(80));
+                if (next != phase) { phase = next; Invalidate(); }
+            };
             AccessibleRole = AccessibleRole.ProgressBar;
         }
 
-        public int Value { get => value; set { this.value = Math.Max(0, Math.Min(100, value)); AccessibleDescription = this.value + "%"; Invalidate(); } }
-        public bool Marquee { get => marquee; set { marquee = value; timer.Enabled = value; Invalidate(); } }
+        public int Value
+        {
+            get => value;
+            set { var v = Math.Max(0, Math.Min(100, value)); if (v == this.value) return; this.value = v; AccessibleDescription = v + "%"; Invalidate(); }
+        }
+
+        public bool Marquee
+        {
+            get => marquee;
+            set
+            {
+                if (value == marquee) return;
+                marquee = value;
+                if (value) clock.Restart(); else clock.Stop();
+                timer.Enabled = value;
+                Invalidate();
+            }
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -1040,7 +1086,11 @@ namespace L4D2EightPlayer.UI.Themes
         int selected = -1;
         public event EventHandler SelectedIndexChanged;
 
-        public PageHost() { BackColor = Theme.Ground; }
+        public PageHost()
+        {
+            BackColor = Theme.Ground;
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+        }
 
         public void Add(Control page)
         {
@@ -1057,10 +1107,14 @@ namespace L4D2EightPlayer.UI.Themes
             set
             {
                 if (value == selected || value < 0 || value >= pages.Count) return;
-                pages[selected].Visible = false;
+                // the new page is drawn whole, in one pass, instead of box by box over the old one
+                Draw.Batch(this, () =>
+                {
+                    pages[value].Visible = true;
+                    pages[value].BringToFront();
+                    pages[selected].Visible = false;
+                });
                 selected = value;
-                pages[selected].Visible = true;
-                pages[selected].BringToFront();
                 SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }

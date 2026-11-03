@@ -20,6 +20,8 @@ namespace L4D2EightPlayer
         ///   --join-selftest &lt;address&gt; &lt;out&gt;               queries a server the way Check server does
         ///   --join-audit &lt;dir&gt; &lt;scale&gt; &lt;mock&gt; &lt;report&gt;    the join window's layout audit
         ///   --join-shot &lt;file.png&gt; [--tour]               the join window (and each tour stop) to PNGs
+        ///   --shell-test &lt;report&gt;                         the one window: switching sides, size, closing (off-screen)
+        ///   --paint-test &lt;report&gt; [--off-screen]          repaint passes, two-pass boxes and the progress bar's frame rate
         /// </summary>
         [STAThread]
         static void Main(string[] args)
@@ -44,6 +46,7 @@ namespace L4D2EightPlayer
             }
             if (args.Length >= 2 && args[0] == "--join-shot") { JoinShot(args[1], args.Contains("--tour")); return; }
             if (args.Length >= 2 && args[0] == "--shell-test") { Environment.Exit(ShellTest(args[1])); return; }
+            if (args.Length >= 2 && args[0] == "--paint-test") { PaintTest.OffScreen = args.Contains("--off-screen"); Environment.Exit(PaintTest.Run(args[1])); return; }
 
             // an invite on the command line (steam://connect/…, IP:port) opens the join side with it
             var invite = string.Join(" ", args.Where(a => !a.StartsWith("--")));

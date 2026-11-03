@@ -57,11 +57,14 @@ namespace L4D2EightPlayer.UI
                 ? join ?? (join = Embed(new JoinForm(invite ?? ""), "join"))
                 : host ?? (Form)(host = Embed(new MainForm(), "host"));
             if (next == current) return;
-            SuspendLayout();
-            next.Visible = true;
-            next.BringToFront();
-            if (current != null) current.Visible = false;
-            ResumeLayout();
+            var last = current;
+            // the other side appears whole, in one pass
+            Draw.Batch(this, () =>
+            {
+                next.Visible = true;
+                next.BringToFront();
+                if (last != null) last.Visible = false;
+            });
             current = next;
             Text = next.Text;
             if (IsHandleCreated) next.SelectNextControl(null, true, true, true, true);

@@ -281,10 +281,14 @@ namespace L4D2EightPlayer.Join
 
         void ShowEmpty(string title, string body)
         {
-            lblEmptyTitle.Text = title.ToUpperInvariant();
-            lblEmptyBody.Text = body;
-            emptyCard.Visible = true;
-            serverCard.Visible = false;
+            // one pass for the swap, so the server card doesn't flash through
+            Draw.Batch(emptyCard.Parent, () =>
+            {
+                lblEmptyTitle.Text = title.ToUpperInvariant();
+                lblEmptyBody.Text = body;
+                emptyCard.Visible = true;
+                serverCard.Visible = false;
+            });
         }
 
         void UpdateGameLabel()
@@ -402,8 +406,7 @@ namespace L4D2EightPlayer.Join
                 lblNotes.Text = string.Join(Environment.NewLine, notes);
                 lblNotes.Visible = notes.Count > 0;
                 btnJoin.Text = "Join game";
-                emptyCard.Visible = false;
-                serverCard.Visible = true;
+                Draw.Batch(serverCard.Parent, () => { emptyCard.Visible = false; serverCard.Visible = true; });
                 Remember(t, info.Name);
                 return info;
             }
