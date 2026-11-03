@@ -52,7 +52,7 @@ The Steam lobby option needs Internet mode, so LAN only and Just me always use d
 |---|---|
 | Core | Metamod:Source 1.12, SourceMod 1.12, L4DToolZ 2.5.x, Left 4 DHooks, Actions 3.9.2 (last build for SourceMod 1.12), Source Scramble, l4d_CreateSurvivorBot, l4dmultislots, l4d_unreservelobby (dedicated only), Items For 5+ Survivors (built in), Infected For 5+ Survivors (built in), Campaign Rotation (built in, dedicated only) |
 | 5+ survivor fixes | Defib fix, AFK fix, AFK dead-bot fix, upgrade-pack fix, Charger collision, Witch target, trigger-flow fix, vocalize-by-model, changelevel fix, transition-info fix, command-buffer fix, map-tank fix, rescue-vehicle fix, ladder crash fix, mixed-character fix, full-slot bot fix, target-replace fix, Keep Verified Players (built in), Unique Survivors (built in) |
-| Optional (off by default) | Survivor Identity Fix (community build), save weapons, auto take-over, 8-survivor HUD (built in), 8-Player HUD add-on (installs into your own game) |
+| Optional | On by default: Skip the welcome screen (built in: players join without the MOTD panel). Off by default: Survivor Identity Fix (community build), save weapons, auto take-over, 8-survivor HUD (built in), 8-Player HUD add-on (installs into your own game) |
 
 ### Built-in plugins
 

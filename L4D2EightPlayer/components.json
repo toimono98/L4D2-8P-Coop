@@ -790,6 +790,19 @@
       ]
     },
     {
+      "id": "nomotd",
+      "name": "Skip the welcome screen (built in)",
+      "group": "Optional",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "Players join straight into the game, without the server's message-of-the-day panel (\"This third-party server provided by\") that they otherwise have to close first. Untick it, or set l4d2_8p_nomotd_enable 0 in cfg/sourcemod/l4d2_8p_nomotd.cfg, to show it again.",
+      "compile": [
+        "embedded:l4d2_8p_nomotd.sp"
+      ]
+    },
+    {
       "id": "hud8",
       "name": "8-survivor HUD (built in)",
       "group": "Optional",
