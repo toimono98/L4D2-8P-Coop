@@ -74,10 +74,25 @@ namespace L4D2EightPlayer
                 }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.ThreadException += (s, e) =>
-                    MessageBox.Show(e.Exception.Message, "Unexpected error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.ThreadException += (s, e) => UnexpectedError(e.Exception);
                 Application.Run(AppWindow.Instance = new AppWindow(mode, invite));
             }
+        }
+
+        /// <summary>
+        /// An error the app didn't plan for: it keeps running, the full details go to errors.log (and the Log, on the
+        /// Host side), and the message says what that means instead of only .NET's wording.
+        /// </summary>
+        static void UnexpectedError(Exception ex)
+        {
+            var file = Path.Combine(Paths.AppData, "errors.log");
+            try { File.AppendAllText(file, $"{DateTime.Now:s}  {AppInfo.Version}{Environment.NewLine}{ex}{Environment.NewLine}{Environment.NewLine}"); } catch { }
+            try { (AppWindow.Instance?.HostSide as MainForm)?.Error("Unexpected error: " + ex.Message + " (details in errors.log)"); } catch { }
+            MessageBox.Show(
+                "Something went wrong that the app didn't expect, so what you just clicked didn't finish:\n\n" + ex.Message +
+                "\n\nThe app keeps running. Try it again; if it happens again, the full details are in\n" + file +
+                "\nand sending that file with a screenshot helps get it fixed.",
+                "L4D2 8-Player Co-op", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         /// <summary>

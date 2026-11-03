@@ -92,6 +92,13 @@ namespace L4D2EightPlayer.Core
             return workshop && name.All(char.IsDigit) ? "Workshop item " + name : name;
         }
 
+        /// <summary>
+        /// Scripts the game runs from every add-on that has one, each from its own add-on (scripts/vscripts/*_addon.nut:
+        /// director_base_addon.nut, mapspawn_addon.nut, scriptedmode_addon.nut...). Two add-ons with the same one don't clash.
+        /// </summary>
+        public static bool PerAddonScript(string file) =>
+            file.StartsWith("scripts/vscripts/", StringComparison.OrdinalIgnoreCase) && file.EndsWith("_addon.nut", StringComparison.OrdinalIgnoreCase) && file.IndexOf('/', "scripts/vscripts/".Length) < 0;
+
         public static AddonInfo ReadAddon(string path)
         {
             var fi = new FileInfo(path);
@@ -310,7 +317,7 @@ namespace L4D2EightPlayer.Core
 
                     foreach (var file in info.Files)
                     {
-                        if (file.StartsWith("addoninfo.") || file.StartsWith("addonimage")) continue;
+                        if (file.StartsWith("addoninfo.") || file.StartsWith("addonimage") || PerAddonScript(file)) continue;
                         if (!addonsByFile.TryGetValue(file, out var l)) addonsByFile[file] = l = new List<Finding>();
                         if (!l.Contains(f)) l.Add(f);
                     }

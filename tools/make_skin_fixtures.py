@@ -38,6 +38,8 @@ ADDONS = {
     "commons_skin.vpk": {"addoninfo.txt": info("Commons Skin"),
                          "materials/models/infected/common/baggage_handler/common_baggagehandler_upper_01.vtf": b"vtf"},
     "script_mod.vpk": {"addoninfo.txt": info("Script Mod"), "scripts/vscripts/director_base_addon.nut": b"// nothing"},
+    # the game runs every add-on's own director_base_addon.nut, so two of them aren't a clash
+    "other_script_mod.vpk": {"addoninfo.txt": info("Other Script Mod"), "scripts/vscripts/director_base_addon.nut": b"// also nothing"},
     "sound_mod.vpk": {"addoninfo.txt": info("Sound Mod"), "sound/player/survivor/voice/gambler/hey01.wav": b"RIFF"},
     "campaign_with_ak.vpk": {"addoninfo.txt": info("Campaign With AK"), "missions/zzcamp.txt": b'"mission" {}',
                              "maps/zz_m1.bsp": b"VBSP", "models/v_models/v_rifle_ak47.mdl": b"mdl"},

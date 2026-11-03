@@ -41,7 +41,7 @@ namespace L4D2EightPlayer.UI
             string Ids(IEnumerable<Skins.Target> ts) => string.Join(",", ts.Select(t => t.Id).OrderBy(t => t));
             Check("skins found: " + Names(inv.Mods), Names(inv.Mods) == "Campaign With AK, Commons Skin, Hunter Skin, Nick Model Skin, Nick Texture Skin, Rifle Pack, Survivors and AK Pack");
             Check("protected add-ons left out (HUD, lobby mod)", inv.Mods.All(m => !m.Path.EndsWith("l4d2_8p_hud.vpk") && !m.Path.EndsWith("2754956355.vpk")));
-            Check($"script, sound, icon and HUD mods aren't skins (other add-ons on: {inv.Others})", inv.Others == 4);
+            Check($"script, sound, icon and HUD mods aren't skins (other add-ons on: {inv.Others})", inv.Others == 5);
             Check("Nick: model skin, texture skin, pack", Names(inv.ByTarget["nick"].Mods) == "Nick Model Skin, Nick Texture Skin, Survivors and AK Pack");
             Check("the pack covers Nick, Rochelle, Coach, Ellis and the AK-47: " + Ids(M("Survivors and AK Pack").Targets), Ids(M("Survivors and AK Pack").Targets) == "ak47,coach,ellis,nick,rochelle");
             Check("a texture-only skin is recognised (Hunter, commons)", Ids(M("Hunter Skin").Targets) == "hunter" && Ids(M("Commons Skin").Targets) == "common");
@@ -77,11 +77,13 @@ namespace L4D2EightPlayer.UI
             string Pair(Clashes.Clash c) => c.A.Title + " + " + c.B.Title;
             Check("clashes: " + string.Join("; ", clashes.Select(Pair)), string.Join("; ", clashes.Select(Pair)) == "Survivor Icons + Survivors and AK Pack; 8-Player HUD + HUD Mod");
             Check("... skins for the same thing aren't clashes (Nick model skin and the pack share a model)", !clashes.Any(c => c.A.Title == "Nick Model Skin" || c.B.Title == "Nick Model Skin"));
+            Check("... nor two script mods with their own director_base_addon.nut (the game runs both)", !clashes.Any(c => c.A.Title.Contains("Script Mod") || c.B.Title.Contains("Script Mod")));
             Check("described: " + clashes[0].What + " / " + clashes[1].What, clashes[0].What == "survivor portraits on the HUD (2)" && clashes[1].What == "the HUD layout (1)");
             Check("the HUD add-on is marked as one the app needs", clashes[1].A.Protected && !clashes[1].B.Protected);
             var cp = SkinPrefs.Load();
             cp.Picks["nick"] = "workshop\\1000000001.vpk";
-            Clashes.Resolve(game, new[] { clashes[0].B, clashes[1].A }, new[] { clashes[1] }, cp);
+            // the pack turned off twice (as when it loses two pairs in one review) is turned off once
+            Clashes.Resolve(game, new[] { clashes[0].B, clashes[0].B, clashes[1].A }, new[] { clashes[1] }, cp);
             var after = Compat.ReadAddonList(game);
             Check("keeping the icons turns the pack off, never the HUD add-on", !after["workshop\\1000000001.vpk"] && after["l4d2_8p_hud.vpk"]);
             Check("... a skin pick for the add-on turned off is dropped, so the next launch doesn't turn it back on", !SkinPrefs.Load().Picks.ContainsKey("nick"));

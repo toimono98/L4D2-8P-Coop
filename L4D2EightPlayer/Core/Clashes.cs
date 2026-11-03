@@ -52,7 +52,7 @@ namespace L4D2EightPlayer.Core
                 };
                 foreach (var f in info.Files)
                 {
-                    if (f.StartsWith("addoninfo") || f.StartsWith("addonimage")) continue;
+                    if (f.StartsWith("addoninfo") || f.StartsWith("addonimage") || Compat.PerAddonScript(f)) continue;
                     if (!owners.TryGetValue(f, out var l)) owners[f] = l = new List<Addon>();
                     l.Add(a);
                 }
@@ -88,7 +88,7 @@ namespace L4D2EightPlayer.Core
         /// </summary>
         public static void Resolve(string gameDir, IEnumerable<Addon> turnOff, IEnumerable<Clash> keep, SkinPrefs prefs)
         {
-            var off = turnOff.Where(a => !a.Protected).ToList();
+            var off = turnOff.Where(a => !a.Protected).GroupBy(a => a.Key, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();   // one add-on can lose two pairs
             if (off.Count > 0) Compat.SetAddonsEnabled(gameDir, off.ToDictionary(a => a.Key, a => false, StringComparer.OrdinalIgnoreCase));
             foreach (var a in off)
                 foreach (var pick in prefs.Picks.Where(p => string.Equals(p.Value, a.Key, StringComparison.OrdinalIgnoreCase)).ToList())
