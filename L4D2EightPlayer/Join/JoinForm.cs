@@ -71,7 +71,7 @@ namespace L4D2EightPlayer.Join
         TextBox txtTarget, txtPassword;
         ListView lvRecent;
         GameButton btnCheck, btnJoin;
-        LinkLabel lnkMap, lnkLan, lnkGame, lnkHud, lnkSkins;
+        LinkLabel lnkMap, lnkLan, lnkGame, lnkHud, lnkSkins, lnkWorkshop;
         Card serverCard, emptyCard;
         Label lblFound, lblName, lblMap, lblCount, lblPing, lblVersion, lblMapState, lblNotes, lblEmptyTitle, lblEmptyBody;
         PipBar pips;
@@ -250,8 +250,12 @@ namespace L4D2EightPlayer.Join
             lnkSkins = new LinkLabel { Text = "Skins…", AutoSize = true, Font = Theme.Body(9f), Margin = P(0, 0, 24, 0) };
             lnkSkins.LinkClicked += (s, e) => OpenSkins();
             new ToolTip().SetToolTip(lnkSkins, "Pick which skin add-on to use for each survivor, weapon, item and infected (only you see them).");
+            lnkWorkshop = new LinkLabel { Text = "Open Workshop", AutoSize = true, Font = Theme.Body(9f), Margin = P(0, 0, 24, 0) };
+            lnkWorkshop.LinkClicked += (s, e) => Workshop.Open();
+            new ToolTip().SetToolTip(lnkWorkshop, "Left 4 Dead 2's Steam Workshop, for skins and the campaigns your host plays.");
             foot.Controls.Add(lnkGame);
             foot.Controls.Add(lnkSkins);
+            foot.Controls.Add(lnkWorkshop);
             foot.Controls.Add(lnkHud);
 
             // On a screen too short for the whole window, the body scrolls instead of squashing the lists.

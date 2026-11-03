@@ -333,10 +333,9 @@ namespace L4D2EightPlayer.UI
             chkWatch.CheckedChanged += (s, e) => { if (loading) return; settings.WatchMods = chkWatch.Checked; settings.Save(); SetupWatchers(); };
             g.Controls.Add(HeadingRow("Scan", "INFECTION REPORT", chkWatch), 0, 0);
 
-            var tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5, AutoSize = true, Margin = P(0, 0, 0, 14) };
+            var tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6, AutoSize = true, Margin = P(0, 0, 0, 14) };
             for (int i = 0; i < 3; i++) tiles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
-            tiles.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            tiles.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            for (int i = 0; i < 3; i++) tiles.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             tileProblems = new Tile("Problems") { Dock = DockStyle.Fill, Fill = Theme.Red, Border = Color.Empty, NumberColor = Theme.BoneText, LabelColor = Theme.BoneText };
             tileWarnings = new Tile("Warnings") { Dock = DockStyle.Fill, Border = Theme.Amber, NumberColor = Theme.Amber, LabelColor = Theme.Bone };
             tileClear = new Tile("Clear for 8") { Dock = DockStyle.Fill };
@@ -348,12 +347,17 @@ namespace L4D2EightPlayer.UI
                 if (f != null && !string.IsNullOrEmpty(f.Location) && File.Exists(f.Location)) Process.Start("explorer.exe", "/select,\"" + f.Location + "\"");
                 else if (f != null && Directory.Exists(f.Location)) OpenFolder(f.Location);
             });
-            btnOpen.Margin = P(0, 9, 0, 0);
+            btnOpen.Margin = P(0, 9, 10, 0);
+            // more campaigns and skins: subscribed add-ons show up here with the next scan
+            var btnWorkshop = Btn("Open Workshop", (s, e) => Workshop.Open());
+            btnWorkshop.Margin = P(0, 9, 0, 0);
+            new ToolTip().SetToolTip(btnWorkshop, "Left 4 Dead 2's Steam Workshop: campaigns, skins and other add-ons.\nWhat you subscribe to is checked here with the next scan.");
             tiles.Controls.Add(tileProblems, 0, 0);
             tiles.Controls.Add(tileWarnings, 1, 0);
             tiles.Controls.Add(tileClear, 2, 0);
             tiles.Controls.Add(btnScan, 3, 0);
             tiles.Controls.Add(btnOpen, 4, 0);
+            tiles.Controls.Add(btnWorkshop, 5, 0);
             g.Controls.Add(tiles, 0, 1);
 
             var main = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };

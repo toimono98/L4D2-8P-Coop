@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -61,8 +60,9 @@ namespace L4D2EightPlayer.UI
             head.Controls.Add(new TapeLabel("Wardrobe") { Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 14, 6) }, 0, 0);
             head.Controls.Add(new Label { Text = "PICK YOUR SKINS", AutoSize = true, Font = Theme.Display(26f), ForeColor = Theme.Bone, Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 16, 0) }, 1, 0);
             var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Anchor = AnchorStyles.Right | AnchorStyles.Bottom, Margin = P(0, 0, 0, 4) };
-            var browse = new GameButton("Find skins on the Workshop", ButtonKind.Ghost, 10f) { Margin = P(0, 0, 10, 0) };
-            browse.Click += (s, e) => { try { Process.Start("https://steamcommunity.com/workshop/browse/?appid=550&requiredtags[]=Survivors"); } catch { } };
+            var browse = new GameButton("Open Workshop", ButtonKind.Ghost, 10f) { Margin = P(0, 0, 10, 0) };
+            browse.Click += (s, e) => Workshop.Open();
+            new ToolTip().SetToolTip(browse, "Left 4 Dead 2's Steam Workshop. Subscribe to a skin, then click Look again.");
             var refresh = new GameButton("Look again", ButtonKind.Ghost, 10f) { Margin = P(0) };
             refresh.Click += async (s, e) => await Reload();
             buttons.Controls.Add(browse);

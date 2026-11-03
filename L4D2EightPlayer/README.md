@@ -84,6 +84,7 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 ## Custom campaigns
 
 - **Play tab > Campaign** lists the official campaigns by their in-game names (Dead Center to The Last Stand), then every custom campaign in the server's add-ons and your game's add-ons by its own title (read from each add-on's `missions` file). **Start from chapter** picks the level the server starts on, by the chapter's in-game name ("2 · Streets", "5 · Rooftop Finale"); a custom campaign's chapters use the names in its `missions` file, or the map name where it has none. Picking another campaign starts it from chapter 1. A map saved by an older version that isn't in any campaign shows as **Other map**.
+- **Open Workshop** (Mods tab, Skins tab, and the Join side's footer) opens Left 4 Dead 2's Steam Workshop in the Steam client, or in your browser when Steam isn't installed. Subscribe there, and the add-on is checked on the next scan.
 - With **Copy campaigns and script mods to the server** on, campaigns you subscribe to in your game reach the dedicated server on the next Start server.
 - **Copy invite** adds "Needs the <campaign> campaign: <Workshop link>" when the server runs a custom campaign that came from the Workshop. It stays on the invite's single line, so friends can paste the whole invite into the Join side, which then links straight to that Workshop item.
 
@@ -164,6 +165,7 @@ A skin that also ships weapon scripts is marked: those can change how the weapon
 - Servers that enforce pure files (`sv_pure`, `sv_consistency 1`) can block them. Servers made with this app set `sv_consistency 0`.
 - The game reads its add-on list when it starts, so changes need it closed. The picker is read-only while it runs.
 - Cosmetic add-ons aren't copied to the dedicated server.
+- **Open Workshop** takes you to Left 4 Dead 2's Workshop. Subscribe to a skin, let Steam download it, then click **Look again**.
 ## Bot fill
 
 **Play tab > Bot fill: fill every open slot with a bot.**
