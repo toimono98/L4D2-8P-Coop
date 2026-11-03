@@ -1044,17 +1044,33 @@ namespace L4D2EightPlayer.UI
             }
             else
             {
-                args = $"+connect {Launcher.LocalServerAddress()}:{settings.Port}" + (string.IsNullOrEmpty(settings.Password) ? "" : $" +password \"{settings.Password}\"");
-                Info("Starting L4D2 and connecting to your server...");
+                // joining waits for your Workshop add-ons (below): connect on the command line would beat them
+                args = "";
             }
             try
             {
+                var started = DateTime.UtcNow;
                 // Started directly: while srcds runs, Steam thinks L4D2 is already open and ignores -applaunch.
                 if (Launcher.LaunchGameDirect(settings.GamePath, args, dropInsecure: true))
                     Warn("Left -insecure out of your Steam launch options for this launch: an -insecure game can't join a VAC-secured server. " +
                          "Remove it in Steam (L4D2 > Properties > Launch options) if you don't need it.");
+                if (args == "") await JoinOnceAddonsLoad(started);
             }
             catch (Exception ex) { Error(ex.Message); }
+        }
+
+        /// <summary>
+        /// The game just started: once it has loaded your Workshop add-ons (skins, campaigns), it's told to connect to your
+        /// server. Joining straight away would leave the Workshop add-ons out for the whole session.
+        /// </summary>
+        async Task JoinOnceAddonsLoad(DateTime started)
+        {
+            Info("Starting L4D2. It joins your server once your Workshop add-ons have loaded (skins and campaigns need them)...");
+            bool loaded = await Launcher.WaitForWorkshopAddons(settings.ClientGameDir, started, TimeSpan.FromMinutes(2));
+            if (!Launcher.GameRunning()) { Warn("L4D2 closed before it could join."); return; }
+            if (!loaded) Warn("Didn't see your Workshop add-ons finish loading within 2 minutes; joining anyway. If skins are missing, reconnect from the main menu.");
+            Launcher.SendToGame(settings.GamePath, $"+connect {Launcher.LocalServerAddress()}:{settings.Port}" + (string.IsNullOrEmpty(settings.Password) ? "" : $" +password \"{settings.Password}\""));
+            Info("Joining your server.");
         }
 
         void WatchListenGame()

@@ -435,8 +435,11 @@ namespace L4D2EightPlayer.Join
                 {
                     ReapplySkins();   // the remembered skin picks, before the game reads its add-on list
                     if (!SkinsSettled()) return;
-                    Process.Start(new ProcessStartInfo(Path.Combine(steam, "steam.exe"),
-                        $"-applaunch {GameLocator.GameAppId} +connect {t.Address}" + (string.IsNullOrEmpty(t.Password) ? "" : $" +password \"{t.Password}\"")) { UseShellExecute = true });
+                    // the connect waits until the game has loaded the Workshop add-ons: joining straight away leaves them
+                    // (skins, the host's campaign) out for the whole session
+                    var started = DateTime.UtcNow;
+                    Process.Start(new ProcessStartInfo(Path.Combine(steam, "steam.exe"), $"-applaunch {GameLocator.GameAppId}") { UseShellExecute = true });
+                    _ = ConnectOnceAddonsLoad(t, started);
                 }
                 Remember(t, null, joined: true);
                 btnJoin.Text = "Starting L4D2…";
@@ -446,6 +449,17 @@ namespace L4D2EightPlayer.Join
             }
             catch (Exception ex) { MessageBox.Show(this, ex.Message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error); }
             await Task.CompletedTask;
+        }
+
+        /// <summary>The game just started: once it has loaded the Workshop add-ons, it's sent to the server (steam://connect).</summary>
+        async Task ConnectOnceAddonsLoad(JoinTarget t, DateTime started)
+        {
+            lblNotes.Text = "Starting L4D2. It joins once your Workshop add-ons (skins, campaigns) have loaded, usually under a minute.";
+            bool loaded = ClientGameDir != null && await Launcher.WaitForWorkshopAddons(ClientGameDir, started, TimeSpan.FromMinutes(2));
+            if (!loaded && ClientGameDir == null) await Task.Delay(20000);
+            if (IsDisposed || !Launcher.GameRunning()) return;
+            try { Process.Start(t.SteamUrl); } catch (Exception ex) { lblNotes.Text = "Couldn't send the game to the server: " + ex.Message; return; }
+            lblNotes.Text = "Connecting. You'll spawn as a survivor automatically. If you end up spectating, type !join in chat.";
         }
 
         async Task FindLan()

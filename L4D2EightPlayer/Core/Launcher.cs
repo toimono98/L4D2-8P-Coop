@@ -234,6 +234,46 @@ namespace L4D2EightPlayer.Core
         }
 
         /// <summary>
+        /// After starting the game: waits until it has loaded your Workshop add-ons. The game reads its add-on list as it
+        /// starts, but takes the Workshop items on only once Steam has answered for them, then writes the list again with
+        /// every Workshop add-on in it. Joining before that (+connect on the command line) leaves the Workshop add-ons out
+        /// for the whole session: skins don't show. False after the timeout or if the game closed.
+        /// </summary>
+        public static async Task<bool> WaitForWorkshopAddons(string clientGameDir, DateTime startedUtc, TimeSpan timeout)
+        {
+            var list = Path.Combine(clientGameDir ?? "", "addonlist.txt");
+            var ws = Path.Combine(clientGameDir ?? "", "addons", "workshop");
+            var until = DateTime.UtcNow + timeout;
+            while (DateTime.UtcNow < until)
+            {
+                await Task.Delay(1000).ConfigureAwait(false);
+                if (!GameRunning() && DateTime.UtcNow - startedUtc > TimeSpan.FromSeconds(20)) return false;
+                try
+                {
+                    if (!File.Exists(list) || File.GetLastWriteTimeUtc(list) < startedUtc) continue;
+                    var keys = new HashSet<string>(Compat.ReadAddonList(clientGameDir).Keys, StringComparer.OrdinalIgnoreCase);
+                    var items = Directory.Exists(ws) ? Directory.GetFiles(ws, "*.vpk").Select(v => Compat.AddonListKey(clientGameDir, v)) : Enumerable.Empty<string>();
+                    if (items.All(keys.Contains)) { await Task.Delay(2000).ConfigureAwait(false); return true; }
+                }
+                catch (IOException) { }   // the game is writing it
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Passes console commands ("+connect ...") to the game that's already running (-hijack), the way Steam's own
+        /// steam://connect links do. Works while the dedicated server holds app 550 in Steam, too.
+        /// </summary>
+        public static void SendToGame(string gamePath, string args)
+        {
+            var exe = Path.Combine(gamePath, "left4dead2.exe");
+            var psi = new ProcessStartInfo(exe, "-steam -hijack " + args) { WorkingDirectory = gamePath, UseShellExecute = false };
+            psi.EnvironmentVariables["SteamAppId"] = GameLocator.GameAppId.ToString();
+            psi.EnvironmentVariables["SteamGameId"] = GameLocator.GameAppId.ToString();
+            Process.Start(psi);
+        }
+
+        /// <summary>
         /// Starts left4dead2.exe itself, the way Steam does (-steam plus Steam's app id environment). Needed while
         /// the dedicated server runs: srcds registers with the Steam client as app 550, so "steam -applaunch 550"
         /// is treated as "already running" and nothing starts. Carries over the user's Steam launch options;

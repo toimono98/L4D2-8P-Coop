@@ -26,7 +26,7 @@ It's an original take on the style; no Valve art or logos are used.
 1. Install with `L4D2-8P-Setup.exe` › Host a game (or run `L4D2-8P-Coop.exe`; you're on the Host side when HOST is lit at the top). It finds Left 4 Dead 2 through your Steam libraries. You can also click **Browse**.
 2. **Setup**: pick how you'll host, then click **Install / update**. You'll see everything that will be downloaded, and where it comes from, before anything is installed. The line above the button says what's missing or out of date; **Advanced** lists every component, for extras.
 3. **Mods**: the infection report lists every addon and plugin. Fix anything marked PROBLEM (see below).
-4. **Play**: click **Launch L4D2 & join**. It starts the server and puts you in. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds); when it's stopped, they preview your settings. **Start server only** runs the server without your game.
+4. **Play**: click **Launch L4D2 & join**. It starts the server and the game, waits until the game has loaded your Workshop add-ons (usually under a minute: joining sooner would leave your skins and campaigns out for the whole session), then puts you in. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds); when it's stopped, they preview your settings. **Start server only** runs the server without your game.
 5. Still on **Play**: click **Copy invite** and send it to friends along with `L4D2-8P-Setup.exe` (they pick Join a friend), or just `L4D2-8P-Coop.exe` (they click JOIN at the top). Over the internet, **Can friends reach you?** under the settings opens the port on your router.
 
 The app opens maximized. At the bottom, a one-line status bar shows the latest message and progress; **Log** opens the full log, and it opens by itself when something goes wrong.
@@ -264,7 +264,7 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
    - a missing password
    - a full server
    - a custom map you don't have. When the host's invite names the campaign, the link opens that exact Workshop item in Steam, where Subscribe is one click; otherwise it searches the Workshop for the map name
-3. **Join game** starts L4D2 already connecting. If the game is already running, it connects directly.
+3. **Join game** starts L4D2, waits until it has loaded your Workshop add-ons (skins, the host's campaign), then connects. If the game is already running, it connects directly.
 
 **Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the same custom campaign if the host plays one.
 

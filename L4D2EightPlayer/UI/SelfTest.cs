@@ -382,8 +382,13 @@ namespace L4D2EightPlayer.UI
                         else
                         {
                             var pw = st.Password ?? "";
-                            bool dropped = Launcher.LaunchGameDirect(st.GamePath, $"-condebug {Arg("--client-args")} +connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""), dropInsecure: true);
+                            // as Launch L4D2 & join does: start the game, wait for its Workshop add-ons, then connect
+                            var started = DateTime.UtcNow;
+                            bool dropped = Launcher.LaunchGameDirect(st.GamePath, $"-condebug {Arg("--client-args")}", dropInsecure: true);
                             log.Info("game launched directly" + (dropped ? " (left out -insecure)" : ""));
+                            bool loaded = Launcher.WaitForWorkshopAddons(st.ClientGameDir, started, TimeSpan.FromMinutes(2)).GetAwaiter().GetResult();
+                            log.Info($"Workshop add-ons loaded: {loaded} after {(DateTime.UtcNow - started).TotalSeconds:0} s; addon list has {Compat.ReadAddonList(st.ClientGameDir).Count} entries");
+                            Launcher.SendToGame(st.GamePath, $"+connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""));
                             int seen = 0;
                             for (var until = DateTime.Now.AddSeconds(150); seen == 0 && DateTime.Now < until; Thread.Sleep(3000))
                             {
