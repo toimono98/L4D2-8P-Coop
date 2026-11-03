@@ -91,6 +91,30 @@ namespace L4D2EightPlayer.UI
             Compat.SetAddonEnabled(game, "hud_mod.vpk", false);
             File.Delete(SkinPrefs.FilePath);
 
+            // packs and collections (the Packs & collections view)
+            inv = Skins.Scan(game, manifest);
+            Check("packs: " + string.Join(", ", Packs.Of(inv).Select(m => m.Title)), string.Join(", ", Packs.Of(inv).Select(m => m.Title)) == "Survivors and AK Pack, Rifle Pack");
+            var col = new SkinPrefs.Collection { Id = "9", Title = "Test Collection", Items = new List<string> { "1000000001", "1000000002", "2754956355", "1234" } };
+            var cst = Packs.State(game, inv, manifest, col);
+            Check($"collection: {cst.Installed.Count} downloaded, {cst.Missing} missing, the lobby mod marked as needed", cst.Installed.Count == 3 && cst.Missing == 1 && cst.Items.Single(i => i.Id == "2754956355").Protected);
+            var usec = Packs.UseCollection(inv, cst);
+            Check("using it: its own skins picked, the AK-47 shared by two of them, Nick's model skin off, the campaign stays on: picks " + Ids(usec.Picks.Keys) + " / shared " + Ids(usec.Shared) + " / off " + string.Join(",", usec.TurnOff.Values),
+                Ids(usec.Picks.Keys) == "coach,ellis,m16,nick,rochelle" && Ids(usec.Shared) == "ak47" && string.Join(",", usec.TurnOff.Values) == "Nick Model Skin" && usec.StaysOn.Single().Title == "Campaign With AK");
+            var colPrefs = SkinPrefs.Load();
+            Packs.Apply(game, usec, colPrefs);
+            Check("... written: Nick's model skin off, Nick picked as the pack", !Compat.ReadAddonList(game)["nick_model.vpk"] && SkinPrefs.Load().Picks["nick"] == "workshop\\1000000001.vpk");
+            inv = Skins.Scan(game, manifest);
+            var offc = Packs.TurnOffCollection(Packs.State(game, inv, manifest, col));
+            Packs.Apply(game, offc, colPrefs);
+            var afterOff = Compat.ReadAddonList(game);
+            Check("turning it off: both packs off, the lobby mod never, and their picks dropped",
+                !afterOff["workshop\\1000000001.vpk"] && !afterOff["workshop\\1000000002.vpk"] && !offc.TurnOff.ContainsKey("workshop\\2754956355.vpk") && !SkinPrefs.Load().Picks.ContainsKey("nick"));
+            Compat.SetAddonsEnabled(game, new Dictionary<string, bool> { ["workshop\\1000000001.vpk"] = true, ["workshop\\1000000002.vpk"] = true, ["nick_model.vpk"] = true });
+            inv = Skins.Scan(game, manifest);
+            var usep = Packs.UsePack(inv, M("Rifle Pack"));
+            Check("using the rifle pack: the survivors pack off (it has an AK-47), the campaign stays on", string.Join(",", usep.TurnOff.Values) == "Survivors and AK Pack" && usep.StaysOn.Single().Title == "Campaign With AK" && Ids(usep.Picks.Keys) == "ak47,m16");
+            File.Delete(SkinPrefs.FilePath);
+
             // 4. applying and remembering
             var prefs = SkinPrefs.Load();
             Skins.Apply(inv, cs, prefs);
@@ -133,6 +157,8 @@ namespace L4D2EightPlayer.UI
             if (Directory.Exists(work)) Directory.Delete(work, true);
             Copy(Path.Combine(fixtures, "left4dead2"), Path.Combine(work, "left4dead2"));
             SkinPrefs.FilePath = Path.Combine(work, "skins.json");
+            // a collection added earlier (written directly: the panel itself never saves here)
+            Json.Save(SkinPrefs.FilePath, new SkinPrefs { Collections = { new SkinPrefs.Collection { Id = "9", Title = "Survivor Remix Collection", Items = new List<string> { "1000000001", "1000000002", "2754956355", "1234", "1235" }, Fetched = "2026-11-03T12:00:00" } } });
             SkinPrefs.ReadOnly = true;
             Directory.CreateDirectory(dir);
             // a real picture where Steam keeps the pack's Workshop thumbnail (the fixtures' one is a placeholder)
@@ -190,6 +216,14 @@ namespace L4D2EightPlayer.UI
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); q.Choose(0, 0); Pump(400); Save(q, "skins-clash-long"); q.Close();
             }
+            f.Panel.ShowPacks("pack:workshop\\1000000001.vpk"); Pump(400); Save(f, "skins-packs");
+            using (var q = f.Panel.PlanQuestion("Survivors and AK Pack"))
+            {
+                q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
+                q.Show(); Pump(400); Save(q, "skins-pack-use"); q.Close();
+            }
+            f.Panel.ShowPacks("col:9"); Pump(400); Save(f, "skins-collection");
+            f.Panel.ShowPacks("add"); Pump(400); Save(f, "skins-add-collection");
             SkinsPanel.PretendGameOpen = true;
             var again = f.Panel.Reload();
             for (var until = DateTime.Now.AddSeconds(20); !again.IsCompleted && DateTime.Now < until; ) Pump(100);

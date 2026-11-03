@@ -34,6 +34,18 @@ namespace L4D2EightPlayer.Core
             }
         }
 
+        /// <summary>POSTs form fields and returns the response body (Steam's public Web API takes these).</summary>
+        public static async Task<string> PostForm(string url, IEnumerable<KeyValuePair<string, string>> fields, CancellationToken ct = default)
+        {
+            using (var content = new FormUrlEncodedContent(fields))
+            using (var resp = await Client.PostAsync(url, content, ct).ConfigureAwait(false))
+            {
+                if (!resp.IsSuccessStatusCode)
+                    throw new IOException($"HTTP {(int)resp.StatusCode} from {url}");
+                return await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+            }
+        }
+
         /// <summary>POSTs a JSON body. The error names only the status, never the URL (webhook URLs are secrets).</summary>
         public static async Task PostJson(string url, string json, CancellationToken ct = default)
         {
@@ -66,7 +78,7 @@ namespace L4D2EightPlayer.Core
                     {
                         await dst.WriteAsync(buf, 0, n, ct).ConfigureAwait(false);
                         done += n;
-                        if (total > 0) log.Progress("Downloading " + name, (double)done / total.Value);
+                        if (total > 0) log?.Progress("Downloading " + name, (double)done / total.Value);
                     }
                 }
             }

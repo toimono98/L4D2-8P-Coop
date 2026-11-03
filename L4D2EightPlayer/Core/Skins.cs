@@ -480,6 +480,18 @@ namespace L4D2EightPlayer.Core
         public Dictionary<string, string> KeepOverlap { get; set; } = new Dictionary<string, string>();
         /// <summary>Add-on pairs ("key|key") left on together when asked before a launch, with how many files they share.</summary>
         public Dictionary<string, string> KeepClash { get; set; } = new Dictionary<string, string>();
+        /// <summary>Workshop collections added on the Packs tab (their item lists, read from Steam).</summary>
+        public List<Collection> Collections { get; set; } = new List<Collection>();
+
+        public sealed class Collection
+        {
+            public string Id { get; set; }
+            public string Title { get; set; }
+            /// <summary>Workshop item numbers, collections inside it already opened.</summary>
+            public List<string> Items { get; set; } = new List<string>();
+            /// <summary>When the list was read from Steam.</summary>
+            public string Fetched { get; set; }
+        }
 
         /// <summary>Set by tests and audits: never write the file.</summary>
         public static bool ReadOnly;

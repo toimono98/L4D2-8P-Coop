@@ -17,7 +17,7 @@ namespace L4D2EightPlayer.UI
     /// the one clicked, as cards; clicking one turns it on (and the others for that target off). A pack asks
     /// first, listing everything it changes. Picks are remembered (SkinPrefs) and put back each launch.
     /// </summary>
-    public sealed class SkinsPanel : Panel
+    public sealed partial class SkinsPanel : Panel
     {
         readonly Func<string> gameDir;
         readonly Func<Manifest> manifest;
@@ -81,6 +81,11 @@ namespace L4D2EightPlayer.UI
             var subStack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, Margin = P(0) };
             subStack.Controls.Add(sub);
             subStack.Controls.Add(banner);
+            // one target at a time, or whole packs and Workshop collections
+            viewSwitch = new Pills(new[] { "skins", "packs" }, new[] { "By what they change", "Packs & collections" }, 440) { Margin = P(0, 0, 0, 8) };
+            viewSwitch.SelectedIndex = 0;
+            viewSwitch.SelectedIndexChanged += (s, e) => { packsView = viewSwitch.SelectedIndex == 1; Fill(); ShowOptions(); };
+            subStack.Controls.Add(viewSwitch);
             g.Controls.Add(subStack, 0, 1);
             g.SetColumnSpan(subStack, 2);
 
@@ -124,12 +129,14 @@ namespace L4D2EightPlayer.UI
             {
                 var dir = gameDir();
                 var man = manifest();
-                var (scanned, images) = await Task.Run(() =>
+                var (scanned, images, cols) = await Task.Run(() =>
                 {
                     var i = Skins.Scan(dir, man);
                     var pics = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
                     foreach (var m in i.Mods) if (!thumbs.ContainsKey(m.Path)) pics[m.Path] = Thumbnail(m);
-                    return (i, pics);
+                    var c = SkinPrefs.Load().Collections.Select(x => Packs.State(dir, i, man, x)).ToList();
+                    foreach (var x in c) { var pic = Workshop.CollectionPicture(x.Saved.Id); if (!thumbs.ContainsKey(pic)) pics[pic] = Thumbnail(pic); }
+                    return (i, pics, c);
                 });
                 // back on the window's thread before touching any control (a caller without a message loop's
                 // context would otherwise get the rest of this on a pool thread)
@@ -137,6 +144,7 @@ namespace L4D2EightPlayer.UI
                 {
                     foreach (var kv in images) thumbs[kv.Key] = kv.Value;
                     inv = scanned;
+                    collections = cols;
                     prefs = SkinPrefs.Load();
                     if (selected == null) selected = Skins.Targets[0];
                     SuspendLayout();
@@ -175,6 +183,7 @@ namespace L4D2EightPlayer.UI
             banner.Visible = dir == null || GameOpen;
             banner.Text = dir == null ? "Left 4 Dead 2 wasn't found, so there are no skins to show. Set the game folder first."
                         : "Left 4 Dead 2 is running: close it to change skins (it rewrites its add-on list when it exits).";
+            if (packsView) { FillPacks(); list.ResumeLayout(); SizeSectionBreaks(); return; }
 
             foreach (var section in new[] { Skins.Survivors, Skins.Weapons, Skins.Items, Skins.Infected })
             {
@@ -210,7 +219,14 @@ namespace L4D2EightPlayer.UI
 
         void SizeSectionBreaks()
         {
-            foreach (Control c in list.Controls) if (c.Tag as string == "break") c.MinimumSize = new Size(list.ClientSize.Width - S(12), 0);
+            foreach (Control c in list.Controls)
+                if (c.Tag as string == "break")
+                {
+                    c.MinimumSize = new Size(list.ClientSize.Width - S(12), 0);
+                    foreach (var l in c.Controls.OfType<Label>()) l.MaximumSize = new Size(Math.Max(S(200), list.ClientSize.Width - S(16)), 0);   // long notes wrap
+                }
+            // pack cards take a whole row: their names are long
+            foreach (var c in list.Controls.OfType<PackCard>()) c.Width = Math.Max(S(220), list.ClientSize.Width - S(12));
         }
 
         TargetCard Card(Skins.Target t)
@@ -231,6 +247,7 @@ namespace L4D2EightPlayer.UI
             options.SuspendLayout();
             options.Controls.Clear();
             options.RowStyles.Clear();
+            if (packsView) { ShowPackOptions(); options.ResumeLayout(); return; }
             if (selected == null || inv == null)
             {
                 options.Controls.Add(new Label { Text = "Looking for skins…", AutoSize = true, Font = Theme.Body(10.5f), ForeColor = Theme.Muted });
@@ -297,7 +314,22 @@ namespace L4D2EightPlayer.UI
             try
             {
                 var jpg = Path.ChangeExtension(m.Path, ".jpg");
-                byte[] bytes = File.Exists(jpg) ? File.ReadAllBytes(jpg) : Vpk.Open(m.Path).Read("addonimage.jpg", 4 * 1024 * 1024);
+                return File.Exists(jpg) ? Thumbnail(jpg) : Picture(Vpk.Open(m.Path).Read("addonimage.jpg", 4 * 1024 * 1024));
+            }
+            catch { return null; }
+        }
+
+        /// <summary>A picture file (a collection's), scaled for a card; null if it's missing or unreadable.</summary>
+        static Image Thumbnail(string file)
+        {
+            try { return File.Exists(file) ? Picture(File.ReadAllBytes(file)) : null; }
+            catch { return null; }
+        }
+
+        static Image Picture(byte[] bytes)
+        {
+            try
+            {
                 if (bytes == null) return null;
                 using (var ms = new MemoryStream(bytes))
                 using (var img = Image.FromStream(ms))
