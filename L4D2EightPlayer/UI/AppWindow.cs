@@ -42,6 +42,7 @@ namespace L4D2EightPlayer.UI
             Size = mode == StartMode.Join ? Sz(860, 880) : Sz(1200, 1000);
             MainForm.FitToScreen(this);
             if (Test) { StartPosition = FormStartPosition.Manual; Location = new Point(-30000, -30000); ShowInTaskbar = false; }
+            else WindowState = FormWindowState.Maximized;   // opens full screen; restoring goes back to the size above
             Switch(mode);
             FormClosing += OnClosingWindow;
         }

@@ -41,24 +41,14 @@ namespace L4D2EightPlayer.UI
             catch (Exception ex) { Warn("Skins: couldn't put your picks back (" + ex.Message + ")."); }
         }
 
-        /// <summary>
-        /// Before the game starts: overlapping skins with nothing picked are asked about, then add-ons that replace the
-        /// same files. False when the user went to choose on the Skins tab (or cancelled), so the launch stops there.
-        /// </summary>
-        async Task<bool> SkinsSettled()
+        /// <summary>The Skins tab on one target ("Choose skins" before a launch).</summary>
+        async Task ShowSkinsFor(string target)
         {
-            if (Preview || settings.ClientGameDir == null) return true;
-            var choose = OverlapDialog.Check(this, settings.ClientGameDir, manifest);
-            if (choose == null) return ClashDialog.Check(this, settings.ClientGameDir, manifest);   // then add-ons replacing the same files
-            if (choose != "")
-            {
-                skins.SelectTarget(choose);   // kept while the list is read
-                bool first = !skinsLoaded;
-                tabs.SelectedIndex = TabSkins;
-                if (!first) await skins.Reload();
-                Info("Skins: pick one skin for each highlighted target, then launch again.");
-            }
-            return false;
+            skins.SelectTarget(target);   // kept while the list is read
+            bool first = !skinsLoaded;
+            tabs.SelectedIndex = TabSkins;
+            if (!first) await skins.Reload();
+            Info("Skins: pick one skin for each highlighted target, then launch again.");
         }
     }
 }

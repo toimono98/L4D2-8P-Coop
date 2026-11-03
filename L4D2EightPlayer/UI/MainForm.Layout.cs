@@ -19,7 +19,7 @@ namespace L4D2EightPlayer.UI
         PageHost tabs;
         NavBar nav;
         TextBox txtGame, txtServer, txtComponentInfo, txtLog, txtFindingDetails, txtJoinInfo, txtServerName, txtPassword, txtLobbyAddress;
-        Label lblGameStatus, lblServerStatus, lblSummary, lblServerState, lblStatus, lblRoster, lblFillNote, lblCampaign, lblConnect, lblFindingTitle, lblFindingPath;
+        Label lblGameStatus, lblSetupSummary, lblServerStatus, lblSummary, lblServerState, lblStatus, lblRoster, lblFillNote, lblCampaign, lblConnect, lblFindingTitle, lblFindingPath;
         ChoiceCard rbDedicated, rbListen, rbDirect, rbLobby;
         ListView lvComponents, lvFindings;
         GameButton btnInstall, btnCheckUpdates, btnUninstall, btnUninstallAll, btnScan, btnFix, btnStart, btnStop, btnJoin, btnCancel, btnServerBrowse;
@@ -44,7 +44,7 @@ namespace L4D2EightPlayer.UI
         bool rosterBusy;
 
         /// <summary>The pages, in nav order.</summary>
-        internal const int TabSetup = 0, TabMods = 1, TabSkins = 2, TabPlay = 3, TabInternet = 4;
+        internal const int TabSetup = 0, TabMods = 1, TabSkins = 2, TabPlay = 3;
 
         /// <summary>Set by the screenshot self-test: never touch the router or saved state.</summary>
         public static bool Preview;
@@ -84,7 +84,7 @@ namespace L4D2EightPlayer.UI
 
         void BuildUi()
         {
-            nav = new NavBar("Setup", "Mods", "Skins", "Play", "Internet");
+            nav = new NavBar("Setup", "Mods", "Skins", "Play");
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
             nav.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
             nav.Help = "? TOUR";
@@ -94,54 +94,80 @@ namespace L4D2EightPlayer.UI
             nav.Mode = 0;
             nav.ModeClicked += (s, i) => AppWindow.Instance?.Switch(StartMode.Join);
 
-            var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, FixedPanel = FixedPanel.Panel2, SplitterWidth = 1 };
-
             // NavBar is the tab row; PageHost shows one page at a time.
             tabs = new PageHost { Dock = DockStyle.Fill };
             tabs.SelectedIndexChanged += async (s, e) =>
             {
                 nav.Selected = tabs.SelectedIndex;
                 if (tabs.SelectedIndex == TabSkins && !skinsLoaded) { skinsLoaded = true; await skins.Reload(); }
-                if (tabs.SelectedIndex == TabInternet && !routerSearched && !busy) await CheckNetwork(verbose: false);
+                if (tabs.SelectedIndex == TabSetup) await MaybeCheckUpdates();
+                // friends over the internet: the route check runs the first time Play is shown
+                if (tabs.SelectedIndex == TabPlay && settings.Internet && !routerSearched && !busy) await CheckNetwork(verbose: false);
             };
-            split.Panel1.Controls.Add(tabs);
             tabs.Add(BuildSetupTab());
             tabs.Add(BuildCompatTab());
             tabs.Add(BuildSkinsTab());
             tabs.Add(BuildPlayTab());
-            tabs.Add(BuildHostingTab());
 
-            split.Panel2.Controls.Add(BuildLogPanel());
-            split.Panel2MinSize = 120;
-            Shown += (s, e) => { try { split.SplitterDistance = Math.Max(S(300), split.Height - S(140)); } catch { } };
-
-            Controls.Add(split);
+            // docked last-added first: the nav on top, the status bar at the very bottom, the log drawer above it
+            Controls.Add(tabs);
+            Controls.Add(BuildLogDrawer());
+            Controls.Add(BuildStatusBar());
             Controls.Add(nav);
         }
 
-        Control BuildLogPanel()
+        Panel logDrawer;
+        GameButton btnMore;
+        /// <summary>Direct connect / Steam lobby: only a choice when friends join over the internet.</summary>
+        Control joinMethodBox;
+        GameButton btnLog;
+
+        /// <summary>One line at the bottom: the latest message (or what's running), progress, Cancel, and Log for the full log.</summary>
+        Control BuildStatusBar()
         {
-            var t = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 2, Padding = P(26, 10, 26, 12), BackColor = Theme.Header };
+            var t = new TableLayoutPanel { Dock = DockStyle.Bottom, ColumnCount = 5, AutoSize = true, Padding = P(26, 6, 26, 6), BackColor = Theme.Header };
             t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(260)));
+            t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(220)));
             t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            t.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            t.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            var caption = SmallCaps("Radio log");
-            caption.Margin = P(0, 10, 16, 6);
-            lblStatus = new Label { Text = "Ready.", AutoSize = true, Anchor = AnchorStyles.Left, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 6, 0, 6) };
-            progress = new Meter { Dock = DockStyle.Fill, Margin = P(12, 12, 12, 10) };
-            btnCancel = new GameButton("Cancel", ButtonKind.Ghost, 9f) { Enabled = false, Margin = P(0, 0, 0, 6) };
+            t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            var caption = SmallCaps("Radio");
+            caption.Anchor = AnchorStyles.Left;
+            caption.Margin = P(0, 0, 14, 0);
+            // one line, cut with … when long (the Log button has the whole of it)
+            lblStatus = new Label { Text = "Ready.", AutoSize = false, AutoEllipsis = true, Anchor = AnchorStyles.Left | AnchorStyles.Right, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0) };
+            lblStatus.Height = TextRenderer.MeasureText("Xg", lblStatus.Font).Height + S(4);
+            lblStatus.Click += (s, e) => ToggleLog();
+            progress = new Meter { Dock = DockStyle.Fill, Margin = P(12, 10, 12, 10) };
+            btnCancel = new GameButton("Cancel", ButtonKind.Ghost, 9f) { Enabled = false, Margin = P(0, 0, 8, 0) };
             btnCancel.Click += (s, e) => cts?.Cancel();
-            txtLog = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = Theme.Mono(9f) };
+            btnLog = new GameButton("Log ▴", ButtonKind.Ghost, 9f) { Margin = P(0) };
+            btnLog.Click += (s, e) => ToggleLog();
             t.Controls.Add(caption, 0, 0);
             t.Controls.Add(lblStatus, 1, 0);
             t.Controls.Add(progress, 2, 0);
             t.Controls.Add(btnCancel, 3, 0);
-            t.Controls.Add(txtLog, 0, 1);
-            t.SetColumnSpan(txtLog, 4);
+            t.Controls.Add(btnLog, 4, 0);
             return t;
+        }
+
+        /// <summary>The full log, above the status bar while it's open.</summary>
+        Control BuildLogDrawer()
+        {
+            logDrawer = new Panel { Dock = DockStyle.Bottom, Height = S(190), Padding = P(26, 10, 26, 6), BackColor = Theme.Header, Visible = false };
+            txtLog = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = Theme.Mono(9f) };
+            logDrawer.Controls.Add(txtLog);
+            return logDrawer;
+        }
+
+        void ToggleLog() => ShowLog(!logDrawer.Visible);
+
+        void ShowLog(bool open)
+        {
+            if (logDrawer.Visible == open) return;
+            logDrawer.Visible = open;
+            btnLog.Text = open ? "Log ▾" : "Log ▴";
+            if (open) { txtLog.SelectionStart = txtLog.TextLength; txtLog.ScrollToCaret(); }
         }
 
         // ================================================================== helpers
@@ -219,28 +245,25 @@ namespace L4D2EightPlayer.UI
         {
             var page = Page(980, 640);
             var g = Grid(1);
-            for (int i = 0; i < 6; i++) g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            for (int i = 0; i < 7; i++) g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             g.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             lblGameStatus = new Label { AutoSize = true, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 4, 0, 10) };
             g.Controls.Add(HeadingRow("Supplies", "WHAT GETS INSTALLED", new GraffitiLabel("backups made before anything changes", 13f) { Angle = -2f }), 0, 0);
 
             // Game folder
-            var gameRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, AutoSize = true, Margin = P(0, 0, 0, 10) };
+            // the game is found automatically at startup; Browse is for an unusual install
+            var gameRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, AutoSize = true, Margin = P(0, 0, 0, 10) };
             gameRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(140)));
             gameRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            gameRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             gameRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             txtGame = new TextBox { Anchor = AnchorStyles.Left | AnchorStyles.Right, Font = Theme.Body(10.5f), Margin = P(0, 0, 10, 0) };
             txtGame.Leave += (s, e) => { settings.GamePath = txtGame.Text.Trim(); SaveAndRefresh(); };
             gameRow.Controls.Add(Caption("Game folder"), 0, 0);
             gameRow.Controls.Add(txtGame, 1, 0);
             gameRow.Controls.Add(Btn("Browse", (s, e) => BrowseGame()), 2, 0);
-            gameRow.Controls.Add(Btn("Detect", (s, e) => DetectGame(true)), 3, 0);
             gameRow.Controls.Add(lblGameStatus, 1, 1);
-            gameRow.SetColumnSpan(lblGameStatus, 3);
+            gameRow.SetColumnSpan(lblGameStatus, 2);
             g.Controls.Add(gameRow, 0, 1);
 
             // Hosting mode
@@ -284,7 +307,23 @@ namespace L4D2EightPlayer.UI
             lblServerStatus = new Label { AutoSize = true, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(140, 4, 0, 14) };
             g.Controls.Add(lblServerStatus, 0, 4);
 
-            g.Controls.Add(SmallCaps("Components"), 0, 5);
+            // what most people need: one line on where things stand, and one button
+            lblSetupSummary = new Label { AutoSize = true, MaximumSize = Sz(900, 0), Font = Theme.BodySemi(11f), ForeColor = Theme.Bone, Margin = P(0, 0, 0, 10) };
+            g.Controls.Add(lblSetupSummary, 0, 5);
+            btnInstall = Btn("Install / update", ButtonKind.Primary, async (s, e) => await InstallSelected(), 13f);
+            var advancedToggle = Btn("Advanced ▸", ButtonKind.Ghost, null, 10f);
+            advancedToggle.Margin = P(6, 0, 0, 0);
+            g.Controls.Add(Row(btnInstall, advancedToggle), 0, 6);
+
+            // the component list and the rarely needed buttons, folded away
+            var advanced = Stack(P(0, 14, 0, 0));
+            advanced.Visible = false;
+            advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            advanced.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            advancedToggle.Click += (s, e) => { advanced.Visible = !advanced.Visible; advancedToggle.Text = advanced.Visible ? "Advanced ▾" : "Advanced ▸"; };
+            advanced.Controls.Add(SmallCaps("Components (ticked ones are installed and kept up to date)"), 0, 0);
             lvComponents = new ListView { View = View.Details, CheckBoxes = true, FullRowSelect = true, Dock = DockStyle.Fill, HideSelection = false, HeaderStyle = ColumnHeaderStyle.Nonclickable };
             lvComponents.Columns.Add("Item", S(470));
             lvComponents.Columns.Add("Status", S(230));
@@ -301,19 +340,20 @@ namespace L4D2EightPlayer.UI
             HoverTips.Attach(lvComponents);
             var listBorder = new Card { Dock = DockStyle.Fill, Padding = P(1), Margin = P(0, 0, 0, 8) };
             listBorder.Controls.Add(DarkList.WithHeader(lvComponents));
-            g.Controls.Add(listBorder, 0, 6);
+            listBorder.MinimumSize = new Size(0, S(260));
+            advanced.Controls.Add(listBorder, 0, 1);
 
             txtComponentInfo = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, Height = S(44), Font = Theme.Body(9.5f), Margin = P(0, 0, 0, 10),
                                              Text = "Highlight a component to see what it does and where it comes from." };
-            g.Controls.Add(txtComponentInfo, 0, 7);
+            advanced.Controls.Add(txtComponentInfo, 0, 2);
 
-            btnInstall = Btn("Download & install", ButtonKind.Primary, async (s, e) => await InstallSelected(), 13f);
-            btnCheckUpdates = Btn("Check for updates", ButtonKind.Outline, async (s, e) => await CheckUpdates());
+            btnCheckUpdates = Btn("Check for updates", ButtonKind.Ghost, async (s, e) => await CheckUpdates());
             btnUninstall = Btn("Remove highlighted", async (s, e) => await UninstallHighlighted());
             btnUninstallAll = Btn("Remove everything", async (s, e) => await UninstallAll());
             var manualLink = new LinkLabel { Text = "Forum-only extras…", AutoSize = true, Font = Theme.BodySemi(10f), Margin = P(6, 16, 0, 0) };
             manualLink.LinkClicked += (s, e) => ShowManualExtras();
-            g.Controls.Add(Row(btnInstall, btnCheckUpdates, btnUninstall, btnUninstallAll, manualLink), 0, 8);
+            advanced.Controls.Add(Row(btnCheckUpdates, btnUninstall, btnUninstallAll, manualLink), 0, 3);
+            g.Controls.Add(advanced, 0, 7);
 
             page.Controls.Add(g);
             return page;
@@ -456,21 +496,29 @@ namespace L4D2EightPlayer.UI
 
         Panel BuildPlayTab()
         {
-            var page = Page(1040, 720);
+            // the page: the settings scroll, the footer (launch buttons and invite) stays at the bottom
+            var page = new Panel { BackColor = Theme.Ground };
+            var scroller = Page(1040, 600);
+            scroller.Dock = DockStyle.Fill;
             var outer = Grid(2);
+            // grows with its fold-outs (More settings, the route check) and the page scrolls
+            outer.Dock = DockStyle.Top;
+            outer.AutoSize = true;
+            outer.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             // the settings column scrolls on short windows: room for its scrollbar, so the 360 px of
             // cards and pill rows never get clipped on the right when it appears
             outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(360) + SystemInformation.VerticalScrollBarWidth));
-            outer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            outer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            outer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             outer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             // ---- left: the group
-            var left = Stack(P(0, 0, 24, 0));
+            var left = Stack(P(0, 0, 24, 0), autoSize: true);
             left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             left.RowStyles.Add(new RowStyle(SizeType.Absolute, Math.Max(S(236), SurvivorCard.MinHeight * 2 + S(12))));
             left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var head = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, AutoSize = true, Margin = P(0, 0, 0, 12) };
             head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -501,15 +549,15 @@ namespace L4D2EightPlayer.UI
             lblFillNote = new Label { AutoSize = true, MaximumSize = Sz(720, 0), Font = Theme.Body(10f), ForeColor = Theme.Muted, Margin = P(0, 8, 0, 10) };
             left.Controls.Add(lblFillNote, 0, 2);
 
-            var joinCard = new Card("Who can join") { Dock = DockStyle.Fill, Margin = P(0) };
-            var jc = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, Margin = P(0) };
+            var joinCard = new Card("Who can join") { Dock = DockStyle.Top, AutoSize = true, Margin = P(0) };
+            var jc = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, AutoSize = true, Margin = P(0) };
             jc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
             jc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
             jc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 24));
             jc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             jc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             jc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            jc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            jc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             cmbNetwork = new Pills(new[] { "internet", "lan", "local" }, new[] { "Internet", "LAN only", "Just me" }, 420) { Margin = P(0, 0, 0, 6) };
             lblNetworkNote = new Label { AutoSize = true, MaximumSize = Sz(700, 0), Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 0, 0, 10) };
             jc.Controls.Add(cmbNetwork, 0, 0);
@@ -520,6 +568,7 @@ namespace L4D2EightPlayer.UI
             rbLobby = new ChoiceCard("Steam lobby", "8 Slots Lobby Mod") { Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, Margin = P(0, 0, 10, 10) };
             txtLobbyAddress = new TextBox { Dock = DockStyle.Top, Font = Theme.Body(10f) };
             var lobbyBox = Stack(P(0, 0, 0, 10), autoSize: true);
+            joinMethodBox = lobbyBox;
             lobbyBox.Controls.Add(new Label { Text = "Lobby address", AutoSize = true, Font = Theme.Body(8.5f), ForeColor = Theme.Muted, Margin = P(0, 2, 0, 4) });
             new ToolTip().SetToolTip(txtLobbyAddress, "IP:port the lobby sends everyone to. Leave blank to use your public IP.");
             lobbyBox.Controls.Add(txtLobbyAddress);
@@ -538,9 +587,9 @@ namespace L4D2EightPlayer.UI
 
             // ---- right: settings
             var right = Stack(P(0));
-            right.AutoScroll = true;
+            right.AutoSize = true;
             Theme.DarkScrollbars(right);
-            for (int i = 0; i < 10; i++) right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            for (int i = 0; i < 5; i++) right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var camp = new Card("Campaign") { Dock = DockStyle.Fill, AutoSize = true };
             var cc = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, Margin = P(0) };
@@ -580,30 +629,44 @@ namespace L4D2EightPlayer.UI
 
             right.Controls.Add(SettingRow("Bot fill", "Bots hold every empty slot", chkFill = new ToggleSwitch { AccessibleName = "Bot fill" }), 0, 2);
             new ToolTip().SetToolTip(chkFill, "On: the round starts with a full team and bots hold every empty slot; joining players take them over.\nOff: the game's normal 4 survivors; extra survivors appear only when players 5+ join.");
-            right.Controls.Add(SettingRow("Max players", null, numPlayers = new Stepper("Players") { Minimum = 5, Maximum = 16 }), 0, 3);
-            right.Controls.Add(ModeRow("More items for 5+", "Weapons, throwables and healing", out cmbItemsMode, out lnkItemsRules,
+
+            // everything else folds away: most groups never change it
+            var more = Stack(P(0), autoSize: true);
+            more.Visible = false;
+            var moreToggle = Btn("More settings ▸", ButtonKind.Ghost, null, 10f);
+            moreToggle.Dock = DockStyle.Top;
+            moreToggle.AutoSizeLocked = true;
+            moreToggle.Margin = P(0, 0, 0, 10);
+            moreToggle.Click += (s, e) => { more.Visible = !more.Visible; moreToggle.Text = more.Visible ? "More settings ▾" : "More settings ▸"; };
+            right.Controls.Add(moreToggle, 0, 3);
+            right.Controls.Add(more, 0, 4);
+            moreSettings = more;
+            btnMore = moreToggle;
+
+            more.Controls.Add(SettingRow("Max players", null, numPlayers = new Stepper("Players") { Minimum = 5, Maximum = 16 }));
+            more.Controls.Add(ModeRow("More items for 5+", "Weapons, throwables and healing", out cmbItemsMode, out lnkItemsRules,
                 "Weapon piles, throwables and healing items scale with the survivors in the game, bots included.\n" +
                 "Auto: x survivors / 4, so 8 survivors get twice the map's items (a pile of 5 holds 10, each kit can be taken twice).\n" +
                 "Half: half that (8 survivors: 1.5x). Custom: your own % per category. Off: the map's normal items for 4.\n" +
-                "Survivors joining mid-chapter top up what's left."), 0, 4);
-            right.Controls.Add(ModeRow("Harder infected for 5+", "Specials, horde size and Tank health", out cmbInfectedMode, out lnkInfectedRules,
+                "Survivors joining mid-chapter top up what's left."));
+            more.Controls.Add(ModeRow("Harder infected for 5+", "Specials, horde size and Tank health", out cmbInfectedMode, out lnkInfectedRules,
                 "Special infected, hordes and the Tank scale with the survivors in the game, bots included.\n" +
                 "Auto: x survivors / 4, so 8 survivors face 4 specials at once instead of 2, hordes of 60 instead of 30 and an 8000 HP Tank on Normal.\n" +
                 "Half: half that (8 survivors: 1.5x). Custom: your own % rules, including faster special respawns. Off: the game's own director.\n" +
-                "Co-op, realism and survival."), 0, 5);
-            right.Controls.Add(ChoiceRow("After the finale", "Where the server goes after the rescue", Settings.RotationModes,
+                "Co-op, realism and survival."));
+            more.Controls.Add(ChoiceRow("After the finale", "Where the server goes after the rescue", Settings.RotationModes,
                 new[] { "Stay", "Next", "Random", "Vote" }, out cmbRotation, out _,
                 "Stay: the game's own behaviour (the server sits on the finale).\n" +
                 "Next: the next campaign in order (Dead Center, Dark Carnival, … then your custom campaigns).\n" +
                 "Random: any other campaign. Vote: the players choose between a few, and can start the vote early with !mapvote.\n" +
-                "The change comes a few seconds after the rescue, once the credits start. Co-op and realism.", false), 0, 6);
+                "The change comes a few seconds after the rescue, once the credits start. Co-op and realism.", false));
             lnkItemsRules.LinkClicked += (s, e) => EditItemRules();
             lnkInfectedRules.LinkClicked += (s, e) => EditInfectedRules();
 
             lnkHudAddon = new LinkLabel { AutoSize = true, Font = Theme.BodySemi(9f), Margin = P(0, 4, 0, 0) };
             lnkHudAddon.LinkClicked += (s, e) => ToggleHudAddon();
-            right.Controls.Add(SettingRow("HUD bars + icons", "Every player needs the HUD add-on",
-                chkHudLook = new ToggleSwitch { AccessibleName = "HUD bars and icons" }, lnkHudAddon), 0, 7);
+            more.Controls.Add(SettingRow("HUD bars + icons", "Every player needs the HUD add-on",
+                chkHudLook = new ToggleSwitch { AccessibleName = "HUD bars and icons" }, lnkHudAddon));
             new ToolTip().SetToolTip(chkHudLook, "On: the 8-Player HUD shows survivors without a stock panel as dark boxes with a health bar coloured by state and the game's own kit/pills icons.\n" +
                 "Everyone needs the HUD add-on (the app's JOIN side installs it); without it they see stray boxes.\nOff: plain text that works for everyone.");
 
@@ -619,29 +682,33 @@ namespace L4D2EightPlayer.UI
             sg.Controls.Add(Caption("Name"), 0, 0); sg.Controls.Add(txtServerName, 1, 0); sg.SetColumnSpan(txtServerName, 3);
             sg.Controls.Add(Caption("Port"), 0, 1); sg.Controls.Add(numPort, 1, 1);
             var pwCap = Caption("Password"); pwCap.Margin = P(14, 8, 12, 6); sg.Controls.Add(pwCap, 2, 1); sg.Controls.Add(txtPassword, 3, 1);
-            grpServer.Controls.Add(sg);
-            right.Controls.Add(grpServer, 0, 8);
-
-            var opts = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 0, 0, 4) };
+            var opts = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 6, 0, 0) };
             chkSync = new GameCheck { Text = "Copy campaigns and script mods to the server", AutoSize = true, Font = Theme.Body(9.5f) };
             chkUpdateOnStart = new GameCheck { Text = "Update the server before starting", AutoSize = true, Font = Theme.Body(9.5f) };
             chkScanFirst = new GameCheck { Text = "Check compatibility before launching", AutoSize = true, Font = Theme.Body(9.5f) };
             opts.Controls.AddRange(new Control[] { chkSync, chkUpdateOnStart, chkScanFirst });
-            right.Controls.Add(opts, 0, 9);
+            sg.Controls.Add(opts, 0, 2); sg.SetColumnSpan(opts, 4);
+            grpServer.Controls.Add(sg);
+            more.Controls.Add(grpServer);
+            more.Controls.Add(BuildDiscordCard());
             outer.Controls.Add(right, 1, 0);
 
-            // ---- footer
-            btnStart = Btn("Start server", ButtonKind.Primary, async (s, e) => await StartServer(), 14f);
-            btnJoin = Btn("Launch L4D2 & join", ButtonKind.Outline, async (s, e) => await LaunchGame(), 11f);
+            // ---- friends over the internet: the route check, shown while Who can join is Internet
+            netPanel = BuildNetworkPanel();
+            outer.Controls.Add(netPanel, 0, 1);
+            outer.SetColumnSpan(netPanel, 2);
+
+            // ---- footer: one main button (it starts the server too), and the one invite
+            btnJoin = Btn("Launch L4D2 & join", ButtonKind.Primary, async (s, e) => await LaunchGame(), 14f);
             btnJoin.Margin = P(0, 0, 10, 4);
+            btnStart = Btn("Start server only", ButtonKind.Ghost, async (s, e) => await StartServer(), 10f);
+            btnStart.Margin = P(0, 0, 10, 4);
             btnStop = Btn("Stop", ButtonKind.Ghost, async (s, e) => { StopServer(); await Task.CompletedTask; }, 10f);
             btnStop.Margin = P(0, 0, 10, 4);
-            lblServerState = new Label { AutoSize = true, Font = Theme.BodyBold(9f), ForeColor = Theme.Muted, Margin = P(6, 20, 0, 0) };
-            var footer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, Margin = P(0, 16, 0, 0) };
-            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            lblServerState.Margin = P(2, 8, 0, 0); // shows whether your game stays VAC-secure
-            var actions = Row(btnStart, btnJoin, btnStop);
+            lblServerState = new Label { AutoSize = true, Font = Theme.BodyBold(9f), ForeColor = Theme.Muted, Margin = P(2, 8, 0, 0) };   // whether your game stays VAC-secure
+            // the invite wraps under the buttons when the window is too narrow for both on one line
+            var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true, Padding = P(26, 12, 26, 14), BackColor = Theme.Ground };
+            var actions = Row(btnJoin, btnStart, btnStop);
             actions.WrapContents = false;
             var actionStack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0) };
             actionStack.Controls.Add(actions);
@@ -650,22 +717,19 @@ namespace L4D2EightPlayer.UI
             lnkHealth = new LinkLabel { AutoSize = true, Font = Theme.BodyBold(9f), Margin = P(2, 4, 0, 0), Visible = false, LinkColor = Theme.Amber, ActiveLinkColor = Theme.Bone };
             lnkHealth.LinkClicked += (s, e) => ShowHealthDetails();
             actionStack.Controls.Add(lnkHealth);
-            footer.Controls.Add(actionStack, 0, 0);
+            actionStack.Margin = P(0, 0, 40, 0);
+            footer.Controls.Add(actionStack);
 
-            var connectBox = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Margin = P(0), Anchor = AnchorStyles.Right };
-            var cap = SmallCaps("Friends join with");
-            lblConnect = new Label { AutoSize = true, Font = Theme.Mono(10f), ForeColor = Theme.Bone, BackColor = Theme.Panel, Padding = P(10, 8, 10, 8), Margin = P(0, 0, 8, 0), BorderStyle = BorderStyle.FixedSingle };
-            var btnCopy = Btn("Copy", ButtonKind.Ghost, (s, e) => CopyConnect(), 10f);
-            var btnIp = Btn("Find my IP", ButtonKind.Ghost, async (s, e) => await FindPublicIp(), 10f);
-            btnIp.Margin = P(0);
-            connectBox.Controls.Add(cap, 0, 0);
-            connectBox.SetColumnSpan(cap, 3);
-            connectBox.Controls.Add(lblConnect, 0, 1);
-            connectBox.Controls.Add(btnCopy, 1, 1);
-            connectBox.Controls.Add(btnIp, 2, 1);
-            footer.Controls.Add(connectBox, 1, 0);
-            outer.Controls.Add(footer, 0, 1);
-            outer.SetColumnSpan(footer, 2);
+            var inviteBox = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Margin = P(0) };
+            var cap = SmallCaps("Invite · friends paste it into JOIN, or open it in Steam");
+            lblConnect = new Label { AutoSize = true, AutoEllipsis = true, MaximumSize = Sz(420, 0), Font = Theme.Mono(10f), ForeColor = Theme.Bone, BackColor = Theme.Panel, Padding = P(10, 8, 10, 8), Margin = P(0, 0, 8, 0), BorderStyle = BorderStyle.FixedSingle };
+            var btnCopy = Btn("Copy invite", ButtonKind.Outline, (s, e) => CopyInvite(), 10.5f);
+            btnCopy.Margin = P(0);
+            inviteBox.Controls.Add(cap, 0, 0);
+            inviteBox.SetColumnSpan(cap, 2);
+            inviteBox.Controls.Add(lblConnect, 0, 1);
+            inviteBox.Controls.Add(btnCopy, 1, 1);
+            footer.Controls.Add(inviteBox);
 
             foreach (Control c in new Control[] { txtServerName, txtPassword, txtLobbyAddress })
                 c.Leave += (s, e) => ReadPlaySettings();
@@ -689,7 +753,9 @@ namespace L4D2EightPlayer.UI
             rbDirect.CheckedChanged += (s, e) => ReadPlaySettings();
             rbLobby.CheckedChanged += (s, e) => ReadPlaySettings();
 
-            page.Controls.Add(outer);
+            scroller.Controls.Add(outer);
+            page.Controls.Add(scroller);
+            page.Controls.Add(footer);
             return page;
         }
 

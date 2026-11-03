@@ -10,15 +10,14 @@ using static L4D2EightPlayer.UI.Themes.Ui;
 
 namespace L4D2EightPlayer.UI
 {
-    /// <summary>The "Internet hosting" tab: router port forwarding (UPnP), firewall rule, reachability and invites.</summary>
+    /// <summary>Friends over the internet (on the Play tab): router port forwarding (UPnP), firewall rule, reachability and the invite.</summary>
     public sealed partial class MainForm
     {
-        TextBox txtNetStatus, txtInvite, txtNetHelp;
+        TextBox txtNetStatus, txtNetHelp;
         CheckBox chkAutoForward;
         GameButton btnNetCheck, btnForward, btnUnforward, btnFirewall, btnReach;
         HopCard hopPc, hopRouter, hopInternet, hopFriends;
         Connector linkPcRouter, linkRouterNet, linkNetFriends;
-        GraffitiLabel netNote;
         Label lblVerdict;
         Upnp router;
         bool routerSearched;
@@ -26,19 +25,22 @@ namespace L4D2EightPlayer.UI
 
         const string MappingName = "L4D2 8-Player Co-op";
 
-        Panel BuildHostingTab()
-        {
-            var page = Page(1040, 650);
-            var g = Grid(1);
-            g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            g.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        /// <summary>The More settings fold on the Play tab, and the route check under it.</summary>
+        Control moreSettings, netPanel;
+        /// <summary>What the main network button does right now: open the port, test it, or open the router's page.</summary>
+        Func<Task> netAction;
 
-            netNote = new GraffitiLabel("one door left to open", 14f) { Angle = -3f };
-            g.Controls.Add(HeadingRow("Radio", "CAN YOUR FRIENDS REACH YOU?", netNote), 0, 0);
+        /// <summary>
+        /// "Can friends reach you?": the route from this PC to friends, one button for the next step (open the port,
+        /// then test it), and the rest (firewall, closing the port, forwarding by hand, the raw details) folded away.
+        /// </summary>
+        Control BuildNetworkPanel()
+        {
+            var card = new Card("Can friends reach you?") { Dock = DockStyle.Fill, AutoSize = true, Margin = P(0, 14, 0, 0) };
+            var g = Stack(P(0), autoSize: true);
 
             // The route: this PC -> router -> internet -> friends
-            var route = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 7, Height = HopCard.PreferredHeight + S(4), Margin = P(0, 0, 0, 18) };
+            var route = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 7, Height = HopCard.PreferredHeight + S(4), Margin = P(0, 0, 0, 12) };
             route.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
             route.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(44)));
             route.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
@@ -63,83 +65,59 @@ namespace L4D2EightPlayer.UI
             route.Controls.Add(hopInternet, 4, 0);
             route.Controls.Add(linkNetFriends, 5, 0);
             route.Controls.Add(hopFriends, 6, 0);
-            g.Controls.Add(route, 0, 1);
+            g.Controls.Add(route);
             routeRow = route;
 
-            var main = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(440) + SystemInformation.VerticalScrollBarWidth));
-            main.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            // the next step, and what it means
+            var step = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, AutoSize = true, Margin = P(0, 0, 0, 4) };
+            step.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            step.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            step.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            btnForward = Btn("Checking…", ButtonKind.Primary, async (s, e) => { if (netAction != null) await netAction(); }, 11f);
+            btnForward.Margin = P(0, 0, 16, 0);
+            lblVerdict = new Label { AutoSize = true, MaximumSize = Sz(620, 0), Font = Theme.BodySemi(10.5f), ForeColor = Theme.Bone, Anchor = AnchorStyles.Left, Margin = P(0), UseMnemonic = false };
+            var helpToggle = new LinkLabel { Text = "Help & details ▸", AutoSize = true, Font = Theme.BodySemi(9.5f), Anchor = AnchorStyles.Right, Margin = P(12, 0, 0, 0), UseMnemonic = false };
+            step.Controls.Add(btnForward, 0, 0);
+            step.Controls.Add(lblVerdict, 1, 0);
+            step.Controls.Add(helpToggle, 2, 0);
+            g.Controls.Add(step);
 
-            var left = Stack(P(0, 0, 24, 0));
-            for (int i = 0; i < 4; i++) left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            btnForward = Btn("Open port automatically (UPnP)", ButtonKind.Primary, async (s, e) => await ForwardNow(), 15f);
-            btnForward.Dock = DockStyle.Top;
-            btnForward.AutoSizeLocked = true;
-            btnForward.Margin = P(0, 0, 0, 12);
-            left.Controls.Add(btnForward, 0, 0);
-
-            btnFirewall = Btn("Allow in firewall", ButtonKind.Outline, async (s, e) => await AllowFirewall(), 10f);
+            // the rest, folded away
+            var help = Stack(P(0, 12, 0, 0), autoSize: true);
+            help.Visible = false;
+            helpToggle.LinkClicked += (s, e) => { help.Visible = !help.Visible; helpToggle.Text = help.Visible ? "Help & details ▾" : "Help & details ▸"; };
+            btnFirewall = Btn("Allow in firewall", ButtonKind.Ghost, async (s, e) => await AllowFirewall(), 10f);
             btnReach = Btn("Test from outside", ButtonKind.Ghost, async (s, e) => await TestReachability(), 10f);
             btnNetCheck = Btn("Check again", ButtonKind.Ghost, async (s, e) => await CheckNetwork(verbose: true), 10f);
             btnUnforward = Btn("Close port", ButtonKind.Ghost, async (s, e) => await UnforwardNow(), 10f);
-            var btnRouter = Btn("Router settings", ButtonKind.Ghost, (s, e) =>
-            {
-                var gw = Network.Gateway();
-                if (gw != null) System.Diagnostics.Process.Start("http://" + gw);
-            }, 10f);
-            var secondary = Row(btnFirewall, btnReach, btnNetCheck, btnUnforward, btnRouter);
-            secondary.Margin = P(0, 0, 0, 12);
-            left.Controls.Add(secondary, 0, 1);
-
-            chkAutoForward = new GameCheck { Text = "Open the port while I host, and close it when I stop", AutoSize = true, Font = Theme.Body(10.5f), Checked = settings.AutoPortForward, Margin = P(0, 0, 0, 10) };
+            var btnRouter = Btn("Router settings", ButtonKind.Ghost, (s, e) => OpenRouterPage(), 10f);
+            var buttons = Row(btnFirewall, btnReach, btnNetCheck, btnUnforward, btnRouter);
+            buttons.Margin = P(0, 0, 0, 8);
+            help.Controls.Add(buttons);
+            chkAutoForward = new GameCheck { Text = "Open the port while I host, and close it when I stop", AutoSize = true, Font = Theme.Body(10f), Checked = settings.AutoPortForward, Margin = P(0, 0, 0, 10) };
             chkAutoForward.CheckedChanged += (s, e) => { settings.AutoPortForward = chkAutoForward.Checked; settings.PortForwardAsked = true; settings.Save(); };
-            left.Controls.Add(chkAutoForward, 0, 2);
+            help.Controls.Add(chkAutoForward);
+            var texts = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, Height = S(230), Margin = P(0) };
+            texts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
+            texts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
+            texts.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            txtNetHelp = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None, Font = Theme.Body(9.5f), Margin = P(0, 0, 16, 0) };
+            txtNetStatus = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical,
+                                         Text = "Click Check again to test your connection." };
+            texts.Controls.Add(txtNetHelp, 0, 0);
+            texts.Controls.Add(txtNetStatus, 1, 0);
+            help.Controls.Add(texts);
+            g.Controls.Add(help);
 
-            lblVerdict = new Label { AutoSize = true, MaximumSize = Sz(560, 0), Font = Theme.BodySemi(11f), ForeColor = Theme.Bone, Margin = P(0, 0, 0, 10) };
-            left.Controls.Add(lblVerdict, 0, 3);
-
-            txtNetHelp = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None, Font = Theme.Body(9.5f) };
-            left.Controls.Add(txtNetHelp, 0, 4);
-            main.Controls.Add(left, 0, 0);
-
-            // scrolls on a short window (large display scaling) instead of cutting off the cards at the bottom
-            var right = Stack(P(0));
-            right.AutoScroll = true;
-            Theme.DarkScrollbars(right);
-            right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            // The invite card is "paper": bone background, dark ink.
-            var invite = new Card { Dock = DockStyle.Fill, AutoSize = true, BackColor = Theme.Bone, BorderColor = Theme.Bone, Padding = P(18, 14, 18, 16), Margin = P(0, 0, 0, 14) };
-            var ic = Stack(P(0), autoSize: true);
-            ic.BackColor = Theme.Bone;
-            ic.Controls.Add(new Label { Text = "INVITE FOR YOUR GROUP", AutoSize = true, Font = Theme.BodyBold(8.5f), ForeColor = Theme.Ground, Margin = P(0, 0, 0, 4) }, 0, 0);
-            ic.Controls.Add(new Label { Text = "Send this to friends", AutoSize = true, Font = Theme.Display(15f), ForeColor = Theme.Ground, Margin = P(0, 0, 0, 8) }, 0, 1);
-            txtInvite = new TextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = Theme.Mono(10.5f), Margin = P(0, 0, 0, 8) };
-            ic.Controls.Add(txtInvite, 0, 2);
-            ic.Controls.Add(new Label { Text = "They paste it into L4D2 8-Player Co-op (JOIN at the top), or open it in a browser to launch the game.", AutoSize = true, MaximumSize = Sz(390, 0), Font = Theme.Body(10f), ForeColor = Theme.Ground, Margin = P(0, 0, 0, 10) }, 0, 3);
-            var copy = Btn("Copy invite", ButtonKind.Dark, (s, e) => CopyInvite(), 11f);
-            copy.Dock = DockStyle.Top;
-            copy.AutoSizeLocked = true;
-            ic.Controls.Add(copy, 0, 4);
-            invite.Controls.Add(ic);
-            right.Controls.Add(invite, 0, 0);
-            right.Controls.Add(BuildDiscordCard(), 0, 1);
-
-            right.Controls.Add(SmallCaps("Details"), 0, 2);
-            txtNetStatus = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical, MinimumSize = new Size(0, S(110)),
-                                         Text = "Open this tab or click Check again to test your connection." };
-            right.Controls.Add(txtNetStatus, 0, 3);
-            main.Controls.Add(right, 1, 0);
-            g.Controls.Add(main, 0, 2);
-
-            page.Controls.Add(g);
+            card.Controls.Add(g);
             UpdateNetHelp();
-            return page;
+            return card;
+        }
+
+        void OpenRouterPage()
+        {
+            var gw = Network.Gateway();
+            if (gw != null) System.Diagnostics.Process.Start("http://" + gw);
         }
 
         TextBox txtWebhook;
@@ -148,10 +126,10 @@ namespace L4D2EightPlayer.UI
         /// <summary>"Post to Discord": a channel webhook, when to post, and a test button.</summary>
         Card BuildDiscordCard()
         {
-            var card = new Card("Post to Discord") { Dock = DockStyle.Fill, AutoSize = true, Margin = P(0, 0, 0, 14) };
+            var card = new Card("Post to Discord") { Dock = DockStyle.Fill, AutoSize = true, Margin = P(0, 0, 0, 10) };
             var st = Stack(P(0), autoSize: true);
             st.Controls.Add(new Label { Text = "Paste a channel webhook (in Discord: channel settings › Integrations › Webhooks › Copy Webhook URL). Treat it like a password.",
-                AutoSize = true, MaximumSize = Sz(390, 0), Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 0, 0, 8) }, 0, 0);
+                AutoSize = true, MaximumSize = Sz(320, 0), Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 0, 0, 8) }, 0, 0);
             txtWebhook = new TextBox { Dock = DockStyle.Fill, Font = Theme.Mono(9.5f), UseSystemPasswordChar = true, Text = settings.DiscordWebhook ?? "", Margin = P(0, 0, 0, 8), AccessibleName = "Discord webhook URL" };
             txtWebhook.TextChanged += (s, e) => { settings.DiscordWebhook = txtWebhook.Text.Trim(); settings.Save(); };
             st.Controls.Add(txtWebhook, 0, 1);
@@ -224,19 +202,12 @@ namespace L4D2EightPlayer.UI
             if (ready) hopFriends.Set("Can join", $"connect {publicIp}:{HostPort}", "Ready", true);
             else hopFriends.Set("Can't get in yet", cgnat ? "Use a virtual LAN instead" : "Open the port first", null, true, pending: true);
 
-            netNote.Text = ready ? "the door is open" : cgnat ? "find another way in" : "one door left to open";
-            btnForward.Text = forwarded ? $"Port {HostPort} is open" : $"Open port {HostPort} on my router";
-            btnForward.Enabled = !forwarded && !cgnat;
-
-            if (!settings.Internet)
-            {
-                // LAN only / Just me: nothing to open; show who can actually get in.
-                bool lanMode = settings.NetworkMode == "lan";
-                btnForward.Text = lanMode ? "No port needed: LAN only" : "No port needed: just me";
-                btnForward.Enabled = false;
-                linkNetFriends.Set(false, true, null);
-                hopFriends.Set(lanMode ? "On your network" : "Only this PC", lanMode ? $"connect {lan}:{HostPort}" : "Off the internet · Launch & join", "Ready", true);
-            }
+            // one button: the next step from where things stand
+            if (cgnat) { btnForward.Text = "Router can't let friends in"; netAction = null; }
+            else if (upnp == null) { btnForward.Text = "Open router settings"; netAction = () => { OpenRouterPage(); return Task.CompletedTask; }; }
+            else if (!forwarded) { btnForward.Text = $"Open port {HostPort} on my router"; netAction = ForwardNow; }
+            else { btnForward.Text = "Test from outside"; netAction = TestReachability; }
+            btnForward.Enabled = netAction != null;
         }
 
         int HostPort => settings.Mode == "listen" ? 27015 : settings.Port;
@@ -289,23 +260,15 @@ namespace L4D2EightPlayer.UI
                     sb.Append("✖ Your router's internet address is not your public address. There is a second router, or your ISP uses carrier-grade NAT (CGNAT), so port forwarding on this router can't let friends in." + nl +
                               "  Fixes: put the ISP modem in bridge mode and forward on it too, ask your ISP for a public IPv4, or use a virtual LAN (Tailscale, ZeroTier, Radmin VPN) and have friends connect to your virtual-LAN IP.");
                 else if (upnp != null && udp == lan)
-                    sb.Append($"✔ Ready. Friends can join with:  connect {publicIp ?? "<your public IP>"}:{HostPort}");
+                    sb.Append("✔ Ready: friends can get in with the invite. Test from outside checks it while the server runs.");
                 else if (upnp != null)
-                    sb.Append("➜ Click the red button to open the port now, or leave the auto option on and it opens whenever you start hosting.");
+                    sb.Append("➜ Open the port now, or just start hosting: it opens by itself while you host (Help & details).");
                 else
-                    sb.Append("➜ Your router has UPnP turned off. Turn it on in the router settings, or forward the port by hand (steps below).");
+                    sb.Append("➜ Your router has UPnP turned off. Turn it on in the router settings, or forward the port by hand (Help & details).");
                 txtNetStatus.Text = sb.ToString();
                 ShowRoute(lan, firewall, upnp, gw, udp, cgnat);
                 lblVerdict.Text = sb.ToString().Split(new[] { nl + nl }, StringSplitOptions.None).Last().Trim();
                 lblVerdict.ForeColor = cgnat ? Theme.Hex("#ff8a7a") : upnp != null && udp == lan ? Theme.Bone : Theme.Amber;
-                if (!settings.Internet)
-                {
-                    lblVerdict.Text = settings.NetworkMode == "lan"
-                        ? $"LAN only is on (Play tab): no port forwarding needed. Friends on your network join with connect {lan}:{HostPort}."
-                        : "Just me is on (Play tab): the server only accepts this PC, so nothing here needs changing.";
-                    lblVerdict.ForeColor = Theme.Bone;
-                    netNote.Text = settings.NetworkMode == "lan" ? "home turf only" : "just you and the bots";
-                }
                 if (verbose) Info("Network check: " + (cgnat ? "CGNAT / double NAT detected" : upnp == null ? "UPnP not available" : udp == lan ? "port forwarded" : "port not forwarded yet"));
             }
             catch (Exception ex) { txtNetStatus.Text = "Network check failed: " + ex.Message; }
@@ -317,7 +280,7 @@ namespace L4D2EightPlayer.UI
             var upnp = await Router();
             if (upnp == null)
             {
-                if (!quiet) MessageBox.Show(this, "Your router didn't answer a UPnP request. Turn on UPnP in the router settings, or forward the port by hand (steps on the Internet hosting tab).", Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (!quiet) MessageBox.Show(this, "Your router didn't answer a UPnP request. Turn on UPnP in the router settings, or forward the port by hand (Play tab: Help & details).", Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 Warn("Automatic port forwarding: no UPnP router found. Forward the port by hand if friends can't join.");
                 return false;
             }
@@ -328,7 +291,7 @@ namespace L4D2EightPlayer.UI
                     var current = await upnp.MappedTo(HostPort, proto);
                     if (current != null && current != upnp.LocalAddress)
                     {
-                        Warn($"Port {HostPort} {proto} is already forwarded to {current}, another device. Pick another port on the Play tab or change it on the router.");
+                        Warn($"Port {HostPort} {proto} is already forwarded to {current}, another device. Pick another port (Play tab, More settings) or change it on the router.");
                         return false;
                     }
                     await upnp.Add(HostPort, proto, MappingName);
@@ -341,7 +304,7 @@ namespace L4D2EightPlayer.UI
             catch (Exception ex)
             {
                 Error("Automatic port forwarding failed: " + ex.Message);
-                if (!quiet) MessageBox.Show(this, "The router refused the port forward:\n" + ex.Message + "\n\nForward it by hand instead (steps on the Internet hosting tab).", Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (!quiet) MessageBox.Show(this, "The router refused the port forward:\n" + ex.Message + "\n\nForward it by hand instead (Play tab: Help & details).", Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
         }
@@ -382,7 +345,7 @@ namespace L4D2EightPlayer.UI
                 {
                     settings.PortForwardAsked = true;
                     settings.AutoPortForward = MessageBox.Show(this,
-                        $"Open port {HostPort} on your router automatically (UPnP) so friends can join over the internet?\n\nIt is closed again when you stop hosting. You can change this on the Internet hosting tab.",
+                        $"Open port {HostPort} on your router automatically (UPnP) so friends can join over the internet?\n\nIt is closed again when you stop hosting. You can change this on the Play tab, under Help & details.",
                         Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
                     if (chkAutoForward != null) chkAutoForward.Checked = settings.AutoPortForward;
                     settings.Save();
@@ -455,7 +418,6 @@ namespace L4D2EightPlayer.UI
             var t = new JoinTarget { Host = ShareHost(), Port = HostPort, Password = settings.Mode == "listen" ? "" : settings.Password };
             var text = $"Join my L4D2 8-player game: {t.SteamUrl}   (or in the L4D2 console: {t.ConsoleCommand})" + CampaignNeeds();
             Clipboard.SetText(text);
-            txtInvite.Text = text;
             Info("Copied invite: " + text + (publicIp == null ? "  (LAN address only; no internet address found)" : ""));
         }
 
@@ -463,10 +425,9 @@ namespace L4D2EightPlayer.UI
         {
             if (txtNetHelp == null) return;
             var nl = Environment.NewLine;
-            txtInvite.Text = InviteText();
             txtNetHelp.Text =
                 "FORWARDING BY HAND (if automatic doesn't work)" + nl +
-                $"1. Click 'Open router settings' (or browse to http://{Network.Gateway() ?? "<router IP>"}) and log in. The password is often on a sticker on the router." + nl +
+                $"1. Click 'Router settings' (or browse to http://{Network.Gateway() ?? "<router IP>"}) and log in. The password is often on a sticker on the router." + nl +
                 "2. Find 'Port Forwarding', 'Virtual Server', 'NAT' or 'Applications & Gaming'." + nl +
                 $"3. Add a rule: external port {HostPort}, internal port {HostPort}, protocol UDP and TCP (or 'Both'), device/IP {Network.LanAddress()}." + nl +
                 "4. Save, then come back here and click Check again." + nl +

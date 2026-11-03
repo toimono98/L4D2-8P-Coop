@@ -362,6 +362,31 @@ namespace L4D2EightPlayer.UI
             }
             lvComponents.EndUpdate();
             loading = false;
+            ShowSetupSummary();
+        }
+
+        /// <summary>The Setup tab's one line: what Install / update would do.</summary>
+        void ShowSetupSummary()
+        {
+            var items = lvComponents.Items.Cast<ListViewItem>().Where(i => i.Tag is Component && i.Checked).ToList();
+            int missing = items.Count(i => i.SubItems[1].Text == "Not installed");
+            int updates = items.Count(i => i.SubItems[1].Text.StartsWith("Update"));
+            bool checkedOnline = updatesKnown || Preview;
+            lblSetupSummary.Text = missing > 0 ? $"{missing} of {items.Count} components aren't installed yet. Install / update gets them." + (updates > 0 ? $" {updates} update{(updates == 1 ? "" : "s")} too." : "")
+                : updates > 0 ? $"Everything is installed. {updates} update{(updates == 1 ? " is" : "s are")} available: Install / update applies {(updates == 1 ? "it" : "them")}."
+                : checkedOnline ? "Everything is installed and up to date."
+                : "Everything is installed. Checking for updates…";
+            lblSetupSummary.ForeColor = missing > 0 || updates > 0 ? Theme.Amber : Theme.Bone;
+        }
+
+        bool updatesChecked, updatesKnown;
+
+        /// <summary>The first time Setup is opened in a session: look for updates by itself.</summary>
+        async Task MaybeCheckUpdates()
+        {
+            if (updatesChecked || Preview || busy || settings.TargetGameDir == null || !Directory.Exists(settings.TargetGameDir)) return;
+            updatesChecked = true;
+            await CheckUpdates();
         }
 
         /// <summary>Status of a piece that lives in the player's own game (the HUD add-on) rather than the server.</summary>
@@ -483,7 +508,7 @@ namespace L4D2EightPlayer.UI
                     + string.Join("\n", list.Select(c => "   - " + c.name))
                     + $"\n\nDownloads come from: {string.Join(", ", hosts)}{(needServer ? ", Valve (Steam)" : "")}.\n"
                     + "Any existing file that gets replaced is backed up first, and 'Remove everything' puts it back.\n\nDownload and install now?";
-            if (MessageBox.Show(this, msg, "Download & install", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (MessageBox.Show(this, msg, "Install / update", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
             await RunBusy("Installing", async ct =>
             {
@@ -562,9 +587,10 @@ namespace L4D2EightPlayer.UI
                     var sv = GameLocator.PatchVersion(settings.ServerInstallDir);
                     if (cv != null && sv != null && cv != sv) { updates++; Warn($"Server is {sv} but your game is {cv}. Install will update the server with SteamCMD."); }
                 }
-                Info(updates == 0 ? "Everything is up to date. Plugins from GitHub are re-downloaded at their latest version whenever you click Install."
-                                  : $"{updates} update(s) available. Click 'Download & install selected' to apply them.");
+                Info(updates == 0 ? "Everything is up to date."
+                                  : $"{updates} update(s) available. Install / update on the Setup tab applies them.");
             });
+            updatesKnown = true;
             RefreshComponents();
         }
 
@@ -758,17 +784,18 @@ namespace L4D2EightPlayer.UI
             btnStart.Visible = btnStop.Visible = !listen;
             btnStart.Enabled = !running && !busy;
             btnStop.Enabled = running;
-            btnJoin.Kind = listen ? ButtonKind.Primary : ButtonKind.Outline;
             btnJoin.Text = listen ? "Launch L4D2 to host" : "Launch L4D2 & join";
             lblServerState.Text = listen ? "⚠ YOUR GAME RUNS -INSECURE (NO VAC) WHILE YOU HOST" : "✔ YOUR GAME STAYS VAC-SECURE · THE MODS RUN ON THE SERVER";
             lblServerState.ForeColor = listen ? Theme.Amber : Theme.Muted;
             rbLobby.Enabled = !listen && settings.Internet;
+            rbDirect.Visible = rbLobby.Visible = joinMethodBox.Visible = settings.Internet && !listen;
             txtLobbyAddress.Enabled = rbLobby.Enabled;
             lblNetworkNote.Text = NetworkNote();
             nav.Status = listen ? (gameWatch.Enabled ? "● Hosting from your game" : "Host from my game") : running ? $"● Server live · port {settings.Port}" : "○ Server offline";
             nav.StatusColor = running || gameWatch.Enabled ? Theme.Amber : Theme.Muted;
             txtJoinInfo.Text = JoinInstructions(publicIp);
-            lblConnect.Text = $"connect {ShareHost()}:{(listen ? 27015 : settings.Port)}";
+            lblConnect.Text = new JoinTarget { Host = ShareHost(), Port = HostPort }.SteamUrl;
+            if (netPanel != null) netPanel.Visible = settings.Internet;
             lblCampaign.Text = CampaignTitle(SelectedMap);
             UpdateRoster();
         }
@@ -789,7 +816,7 @@ namespace L4D2EightPlayer.UI
                 case "lan": return $"Same network only · not listed online · router untouched · connect {Launcher.LanAddress()}:{port}";
                 case "local": return settings.Mode == "listen"
                     ? "Just you (and your LAN) · for testing maps, mods and bot fill"
-                    : "Just you · off the internet, nothing opened on your router · for testing maps, mods and bot fill";
+                    : "Just you · off the internet · for testing maps, mods and bot fill";
                 default: return $"Friends anywhere · port {port} opens on your router while you host";
             }
         }
@@ -800,13 +827,13 @@ namespace L4D2EightPlayer.UI
             var addr = (ip ?? "<your public IP>") + ":" + settings.Port;
             if (settings.NetworkMode == "local")
                 return "JUST ME" + nl +
-                       (settings.Mode == "listen" ? "1. Click 'Launch L4D2 to host', then start a game with Local Server." : "1. Click 'Start server', then 'Launch L4D2 & join'. You connect automatically.") + nl +
+                       (settings.Mode == "listen" ? "1. Click 'Launch L4D2 to host', then start a game with Local Server." : "1. Click 'Launch L4D2 & join'. The server starts and you connect automatically.") + nl +
                        "2. Turn on Bot fill to see a full team of 8 survivors." + nl + nl +
                        "Use this to try new maps and mods before inviting friends. Switch to Internet or LAN only when they're ready to join." + nl + nl +
                        "The server stays off the internet. Someone on your own network could still join if they know your address; set a password to stop that.";
             if (settings.NetworkMode == "lan")
                 return "LAN ONLY" + nl +
-                       (settings.Mode == "listen" ? "1. Click 'Launch L4D2 to host'." : "1. Click 'Start server', then 'Launch L4D2 & join'.") + nl +
+                       (settings.Mode == "listen" ? "1. Click 'Launch L4D2 to host'." : "1. Click 'Launch L4D2 & join'.") + nl +
                        "2. Friends on the same network open the console (~) and type:" + nl + nl +
                        $"      connect {Launcher.LanAddress()}:{(settings.Mode == "listen" ? 27015 : settings.Port)}" + nl + nl +
                        "   Or they open L4D2 8-Player Co-op, switch to JOIN and click 'Find games on my network'." + nl + nl +
@@ -820,17 +847,17 @@ namespace L4D2EightPlayer.UI
                        "Your friends only need the same campaign addons; they install nothing else.";
             if (settings.JoinMethod == "lobby")
                 return "STEAM LOBBY" + nl +
-                       "1. Start the server, then click 'Launch L4D2 and join'. The game starts with mm_dedicated_force_servers pointed at your server." + nl +
+                       "1. Click 'Launch L4D2 & join'. The game starts with mm_dedicated_force_servers pointed at your server." + nl +
                        "2. Create a lobby (8 slots with the 8 Slots Lobby Mod), set Server Type to 'Best Available Dedicated', invite friends and start." + nl +
                        "3. Everyone is sent to your server. Once 4 players are in, l4d_unreservelobby opens the remaining slots." + nl + nl +
                        $"Friends who aren't in the lobby can still join with:  connect {addr}" + nl + nl +
-                       "Internet play: the Internet hosting tab opens the router port for you and makes an invite link for friends.";
+                       "Internet play: Can friends reach you? (under the settings) opens the router port, and Copy invite makes the link for friends.";
             return "DIRECT CONNECT" + nl +
-                   "1. Click 'Start server', then 'Launch L4D2 and join'. You connect automatically." + nl +
+                   "1. Click 'Launch L4D2 & join'. The server starts and you connect automatically." + nl +
                    "2. Friends open the console (~) and type:" + nl + nl +
                    $"      connect {addr}" + (string.IsNullOrEmpty(settings.Password) ? "" : $";password {settings.Password}") + nl + nl +
                    $"   Friends on the same network:  connect {Launcher.LanAddress()}:{settings.Port}" + nl + nl +
-                   "Internet play: the Internet hosting tab opens the router port for you and makes an invite link for friends." + nl +
+                   "Internet play: Can friends reach you? (under the settings) opens the router port, and Copy invite makes the link for friends." + nl +
                    "Friends need no mods, only the same custom campaigns if you play one." + nl +
                    "Console not opening? Steam > Library > L4D2 > Properties > Launch Options:  -console";
         }
@@ -847,13 +874,6 @@ namespace L4D2EightPlayer.UI
             catch (Exception ex) { Error("Could not look up your public IP: " + ex.Message); }
         }
 
-        void CopyConnect()
-        {
-            var cmd = $"connect {(publicIp ?? Launcher.LanAddress())}:{settings.Port}";
-            Clipboard.SetText(cmd);
-            Info("Copied: " + cmd + (publicIp == null ? "  (LAN address; click 'Find my public IP' for internet play)" : ""));
-        }
-
         bool EnsureInstalled()
         {
             var target = settings.TargetGameDir;
@@ -864,20 +884,28 @@ namespace L4D2EightPlayer.UI
             return false;
         }
 
-        async Task<bool> PreflightScan()
+        /// <summary>
+        /// Before a launch, one look at everything (LaunchReview): the skins and add-ons in your game when skins is set,
+        /// and the compatibility check's problems when problems is set and that check is on. False stops the launch.
+        /// </summary>
+        async Task<bool> ReviewBeforeLaunch(bool skins, bool problems)
         {
-            if (!settings.ScanBeforeLaunch) return true;
-            await RunScan(auto: false, quiet: true);
-            var problems = findings.Where(f => f.Severity == Severity.Problem).ToList();
-            if (problems.Count == 0) return true;
-            var list = string.Join("\n", problems.Take(8).Select(p => "• " + p.Name + ": " + p.Details.FirstOrDefault(d => d.StartsWith("[Problem]"))?.Substring(10)));
-            var r = MessageBox.Show(this, $"The compatibility check found {problems.Count} problem(s) that can break 8-player games:\n\n{list}\n\nLaunch anyway?",
-                Title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-            if (r != DialogResult.Yes) { tabs.SelectedIndex = TabMods; return false; }
-            return true;
+            if (Preview) return true;
+            var found = new List<string>();
+            if (problems && settings.ScanBeforeLaunch)
+            {
+                await RunScan(auto: false, quiet: true);
+                found = findings.Where(f => f.Severity == Severity.Problem)
+                    .Select(f => f.Name + ": " + (f.Details.FirstOrDefault(d => d.StartsWith("[Problem]"))?.Substring(10) ?? f.Summary)).ToList();
+            }
+            var (outcome, target) = LaunchReview.Check(this, skins ? settings.ClientGameDir : null, manifest, found, modsButton: true);
+            if (outcome == LaunchReview.Outcome.ChooseSkins && target != null) await ShowSkinsFor(target);
+            if (outcome == LaunchReview.Outcome.OpenMods) tabs.SelectedIndex = TabMods;
+            return outcome == LaunchReview.Outcome.Launch;
         }
 
-        async Task StartServer()
+        /// <param name="launching">Launch L4D2 & join is starting it: the review covers your skins too.</param>
+        async Task StartServer(bool launching = false)
         {
             ReadPlaySettings();
             if (!EnsureInstalled()) return;
@@ -893,7 +921,7 @@ namespace L4D2EightPlayer.UI
                 if (settings.SyncAddons && GameLocator.IsGameDir(settings.GamePath))
                     await Task.Run(() => AddonSync.Sync(settings.ClientGameDir, settings.TargetGameDir, InstallState.Load(settings.TargetGameDir), this), ct);
             });
-            if (!ok || !await PreflightScan()) return;
+            if (!ok || !await ReviewBeforeLaunch(skins: launching, problems: true)) return;
 
             try
             {
@@ -933,7 +961,7 @@ namespace L4D2EightPlayer.UI
             {
                 Warn($"Server check: {issues.Count} plugin problem(s) on this start.");
                 foreach (var i in issues) Warn("  " + i);
-                Warn("This usually follows a game update. Check for updates on the Setup tab, then Download & install.");
+                Warn("This usually follows a game update. Install / update on the Setup tab gets the fixed versions.");
             }
             UpdateHealthLink();
         }
@@ -949,8 +977,8 @@ namespace L4D2EightPlayer.UI
         {
             if (healthIssues == null || healthIssues.Count == 0) return;
             var text = string.Join(Environment.NewLine + Environment.NewLine, healthIssues.Select(i => "• " + i)) + Environment.NewLine + Environment.NewLine +
-                "These usually follow a Left 4 Dead 2 update that a plugin hasn't caught up with yet. Check for updates on the Setup tab, " +
-                "then Download & install. The rest of the server keeps running.\n\nOpen SourceMod's log folder?";
+                "These usually follow a Left 4 Dead 2 update that a plugin hasn't caught up with yet. Install / update on the Setup tab " +
+                "gets the fixed versions. The rest of the server keeps running.\n\nOpen SourceMod's log folder?";
             if (MessageBox.Show(this, text, "Plugin problems on the last start", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
                 var logs = Path.Combine(settings.TargetGameDir ?? "", "addons", "sourcemod", "logs");
@@ -975,12 +1003,11 @@ namespace L4D2EightPlayer.UI
             }
             if (!EnsureInstalled()) return;
             ReapplySkins();
-            if (!await SkinsSettled()) return;
 
             if (settings.Mode == "listen")
             {
                 ServerConfig.Apply(settings, settings.ClientGameDir, customCampaigns);
-                if (!await PreflightScan()) return;
+                if (!await ReviewBeforeLaunch(skins: true, problems: true)) return;
                 var inst = new Installer(settings.ClientGameDir, this);
                 inst.SetLoaders(manifest, true);
                 Launcher.LaunchGame("-insecure " + Launcher.LanArg(settings));
@@ -994,16 +1021,14 @@ namespace L4D2EightPlayer.UI
 
             if (serverProcess == null || serverProcess.HasExited)
             {
-                if (MessageBox.Show(this, "The server isn't running. Start it first?", Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                {
-                    await StartServer();
-                    if (serverProcess == null || serverProcess.HasExited) return;
-                    Info("Waiting for the server to load the map...");
-                    // Joining before the map is up fails after 10 retries.
-                    await Launcher.WaitUntilReady(settings, serverProcess, TimeSpan.FromSeconds(90));
-                    if (serverProcess.HasExited) { Error("The server closed while loading. Check its console window."); return; }
-                }
+                await StartServer(launching: true);   // its review covers your skins too
+                if (serverProcess == null || serverProcess.HasExited) return;
+                Info("Waiting for the server to load the map...");
+                // Joining before the map is up fails after 10 retries.
+                await Launcher.WaitUntilReady(settings, serverProcess, TimeSpan.FromSeconds(90));
+                if (serverProcess.HasExited) { Error("The server closed while loading. Check its console window."); return; }
             }
+            else if (!await ReviewBeforeLaunch(skins: true, problems: false)) return;
 
             string args;
             if (settings.JoinMethod == "lobby" && settings.Internet)
@@ -1082,7 +1107,8 @@ namespace L4D2EightPlayer.UI
         {
             foreach (var b in new[] { btnInstall, btnCheckUpdates, btnUninstall, btnUninstallAll, btnScan, btnFix, btnJoin }) b.Enabled = !on;
             btnCancel.Enabled = on;
-            lblStatus.Text = label + (on ? "..." : "");
+            lblStatus.Text = on ? label + "..." : lastLine ?? label;
+            lblStatus.ForeColor = on ? Theme.Bone : lastColor;
             progress.Marquee = on;
             progress.Value = 0;
             UpdatePlayState();
@@ -1093,7 +1119,15 @@ namespace L4D2EightPlayer.UI
             if (IsDisposed) return;
             if (InvokeRequired) { BeginInvoke((Action)(() => Append(prefix, message))); return; }
             txtLog.AppendText($"{DateTime.Now:HH:mm:ss} {prefix}{message}{Environment.NewLine}");
+            // the status bar shows the latest line; an error opens the log so it isn't missed
+            lastLine = prefix + message;
+            lastColor = prefix == "" ? Theme.Muted : Theme.Amber;
+            if (!busy) { lblStatus.Text = lastLine; lblStatus.ForeColor = lastColor; }
+            if (prefix == "✖ ") ShowLog(true);
         }
+
+        string lastLine;
+        Color lastColor = Theme.Muted;
 
         public void Info(string message) => Append("", message);
         public void Warn(string message) => Append("⚠ ", message);

@@ -30,23 +30,23 @@ namespace L4D2EightPlayer.Join
         }
 
         /// <summary>
-        /// Before Join game starts the game: overlapping skins with nothing picked are asked about, and the Skins
-        /// window opens on the first one; then add-ons that replace the same files. False when the user cancelled.
+        /// Before Join game starts the game: one look at overlapping skins and add-ons that replace the same files
+        /// (LaunchReview). Choose skins opens the Skins window, then looks again. False when the user cancelled.
         /// </summary>
         bool SkinsSettled()
         {
             if (Preview || ClientGameDir == null) return true;
-            string choose;
-            while ((choose = OverlapDialog.Check(this, ClientGameDir, Manifest.BuiltIn())) != null)
+            while (true)
             {
-                if (choose == "") return false;
+                var (outcome, target) = LaunchReview.Check(this, ClientGameDir, Manifest.BuiltIn(), null, modsButton: false);
+                if (outcome != LaunchReview.Outcome.ChooseSkins || target == null) return outcome == LaunchReview.Outcome.Launch;
+                // the picker, then a fresh look
                 using (var f = new SkinsForm(() => ClientGameDir))
                 {
-                    f.Panel.SelectTarget(choose);
+                    f.Panel.SelectTarget(target);
                     f.ShowDialog(TopLevelControl as Form ?? this);
                 }
             }
-            return ClashDialog.Check(this, ClientGameDir, Manifest.BuiltIn());   // then add-ons replacing the same files
         }
     }
 }

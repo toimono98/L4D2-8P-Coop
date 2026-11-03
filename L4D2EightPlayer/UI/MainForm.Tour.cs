@@ -62,8 +62,8 @@ namespace L4D2EightPlayer.UI
                     Before = () => Tab(TabSetup),
                     Targets = () => new Control[] { btnInstall.Parent },
                     Title = "Get the server and mods",
-                    Body = "Download & install fetches the server and every ticked mod in the list above, backing up anything it changes. " +
-                           "Required items stay ticked; highlight a row to read what it does. Check for updates every so often.",
+                    Body = "Install / update fetches the server and the mods, backing up anything it changes, and the line above it says what's missing or out of date. " +
+                           "Updates are looked for each time you open this tab. Advanced lists every component, if you want to pick extras.",
                 },
                 new TourStep
                 {
@@ -84,26 +84,27 @@ namespace L4D2EightPlayer.UI
                 new TourStep
                 {
                     Before = () => Tab(TabPlay),
-                    Targets = () => new[] { CardOf(chkFill), CardOf(numPlayers), CardOf(cmbItemsMode), CardOf(cmbInfectedMode) },
+                    Targets = () => new Control[] { CardOf(chkFill), btnMore },
                     Title = "Set it up for your group",
                     Body = "Click a survivor card on the left to play as them; friends pick from the rest in game. " +
                            "Bot fill keeps every empty slot filled with a bot that a friend takes over when they join. " +
-                           "More items and Harder infected scale the supplies and the infected to the number of survivors; Auto suits most groups.",
+                           "More settings has the player limit, and scales the supplies and the infected to the number of survivors; Auto suits most groups.",
                 },
                 new TourStep
                 {
                     Before = () => Tab(TabPlay),
-                    Targets = () => new Control[] { btnStart.Parent.Parent.Parent },
+                    Targets = () => new Control[] { btnJoin.Parent.Parent.Parent },
                     Title = "Start and invite",
-                    Body = "Start server brings it up, and the survivor cards go live as people join. " +
-                           "Copy the line under Friends join with and send it: friends paste it into this app's JOIN side or open it in Steam.",
+                    Body = "Launch L4D2 & join starts the server and puts you in, and the survivor cards go live as people join. " +
+                           "Copy invite and send it: friends paste it into this app's JOIN side or open it in Steam.",
                 },
                 new TourStep
                 {
-                    Before = () => Tab(TabInternet),
-                    Targets = () => new[] { routeRow },
+                    Before = () => Tab(TabPlay),
+                    Targets = () => new[] { settings.Internet ? routeRow : CardOf(cmbNetwork) },
                     Title = "Let friends in",
-                    Body = "Friends outside your home need a way through your router. This tab checks each step of the way; Open port automatically does the router part for you, and Test from outside proves it works.",
+                    Body = "Friends outside your home need a way through your router. With Who can join on Internet, Can friends reach you? checks each step of the way: " +
+                           "its button opens the port on your router for you, then tests it from outside.",
                 },
                 new TourStep
                 {

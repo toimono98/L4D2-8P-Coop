@@ -194,12 +194,15 @@ namespace L4D2EightPlayer.UI
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); Pump(400); Save(q, "skins-pack-question"); q.Close();
             }
-            using (var q = new OverlapDialog(Skins.Overlaps(Path.Combine(work, "left4dead2"), Manifest.BuiltIn(), new SkinPrefs())))
+            // the one review before a launch: overlapping skins alone, then everything at once
+            var shotGame = Path.Combine(work, "left4dead2");
+            using (var q = new LaunchReview(Skins.Overlaps(shotGame, Manifest.BuiltIn(), new SkinPrefs()), null, null, modsButton: true))
             {
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); Pump(400); Save(q, "skins-overlap-question"); q.Close();
             }
-            using (var q = new ClashDialog(Clashes.Find(Path.Combine(work, "left4dead2"), Manifest.BuiltIn(), new SkinPrefs())))
+            using (var q = new LaunchReview(Skins.Overlaps(shotGame, Manifest.BuiltIn(), new SkinPrefs()), Clashes.Find(shotGame, Manifest.BuiltIn(), new SkinPrefs()),
+                new List<string> { "Example Mutation: caps its lobby at 4 players" }, modsButton: true))
             {
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); q.Choose(0, 0); Pump(400); Save(q, "skins-clash-question"); q.Close();
@@ -211,7 +214,7 @@ namespace L4D2EightPlayer.UI
                 B = new Clashes.Addon { Key = "survivor_icons.vpk", Title = "Scott Pilgrim Takes Off Styled Survivor Icons" },
                 Files = Enumerable.Range(0, 12).Select(i => "materials/vgui/s_panel_" + i + ".vtf").Concat(Enumerable.Range(0, 4).Select(i => "materials/vgui/select_" + i + ".vtf")).ToList(),
             };
-            using (var q = new ClashDialog(new List<Clashes.Clash> { longPair }))
+            using (var q = new LaunchReview(null, new List<Clashes.Clash> { longPair }, null, modsButton: true))
             {
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); q.Choose(0, 0); Pump(400); Save(q, "skins-clash-long"); q.Close();

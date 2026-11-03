@@ -115,9 +115,9 @@ namespace L4D2EightPlayer.UI
             window.Show();
             Pump(9000);
             var tabs = All(form).OfType<PageHost>().First();
-            // every tab once, so later switches only redraw (--first-visit leaves the Internet tab for the test)
-            for (int i = 0; i < tabs.Count; i++) { if (first && i == MainForm.TabInternet) continue; tabs.SelectedIndex = i; Pump(i == MainForm.TabInternet ? 4000 : 700); }
-            log.AppendLine($"window: {window.Size}{(form.TopLevel ? ", host side on its own" : ", host side inside the app window")}{(max ? " (maximized)" : "")}{(first ? ", the Internet tab opened for the first time in the test" : "")}");
+            // every tab once, so later switches only redraw (--first-visit leaves the Play tab, and its network check, for the test)
+            for (int i = 0; i < tabs.Count; i++) { if (first && i == MainForm.TabPlay) continue; tabs.SelectedIndex = i; Pump(i == MainForm.TabPlay ? 4000 : 700); }
+            log.AppendLine($"window: {window.Size}{(form.TopLevel ? ", host side on its own" : ", host side inside the app window")}{(max ? " (maximized)" : "")}{(first ? ", the Play tab opened for the first time in the test" : "")}");
 
             // 1. a dropdown repainting 400 times: any captured frame unlike its settled look is a blink
             tabs.SelectedIndex = MainForm.TabPlay;
@@ -149,7 +149,7 @@ namespace L4D2EightPlayer.UI
             // 2. tab switches: frames that are neither the old page nor the new one
             var client = window.RectangleToScreen(window.ClientRectangle);
             int totalMixed = 0;
-            foreach (var to in new[] { MainForm.TabInternet, MainForm.TabPlay, MainForm.TabMods, MainForm.TabPlay, MainForm.TabSetup, MainForm.TabPlay })   // from the Play tab
+            foreach (var to in new[] { MainForm.TabPlay, MainForm.TabPlay, MainForm.TabMods, MainForm.TabPlay, MainForm.TabSetup, MainForm.TabPlay })   // from the Play tab
             {
                 var from = tabs.SelectedIndex;
                 rec = new Recorder();

@@ -24,10 +24,12 @@ It's an original take on the style; no Valve art or logos are used.
 ## Quick start
 
 1. Install with `L4D2-8P-Setup.exe` › Host a game (or run `L4D2-8P-Coop.exe`; you're on the Host side when HOST is lit at the top). It finds Left 4 Dead 2 through your Steam libraries. You can also click **Browse**.
-2. **Setup**: pick how you'll host, then click **Download & install**. You'll see everything that will be downloaded, and where it comes from, before anything is installed.
+2. **Setup**: pick how you'll host, then click **Install / update**. You'll see everything that will be downloaded, and where it comes from, before anything is installed. The line above the button says what's missing or out of date; **Advanced** lists every component, for extras.
 3. **Mods**: the infection report lists every addon and plugin. Fix anything marked PROBLEM (see below).
-4. **Play**: click **Start server**, then **Launch L4D2 & join**. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds). When it's stopped, they preview your settings.
-5. **Internet**: click **Copy invite** and send it to friends along with `L4D2-8P-Setup.exe` (they pick Join a friend), or just `L4D2-8P-Coop.exe` (they click JOIN at the top).
+4. **Play**: click **Launch L4D2 & join**. It starts the server and puts you in. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds); when it's stopped, they preview your settings. **Start server only** runs the server without your game.
+5. Still on **Play**: click **Copy invite** and send it to friends along with `L4D2-8P-Setup.exe` (they pick Join a friend), or just `L4D2-8P-Coop.exe` (they click JOIN at the top). Over the internet, **Can friends reach you?** under the settings opens the port on your router.
+
+The app opens maximized. At the bottom, a one-line status bar shows the latest message and progress; **Log** opens the full log, and it opens by itself when something goes wrong.
 
 ## Hosting modes
 
@@ -40,7 +42,7 @@ It's an original take on the style; no Valve art or logos are used.
 
 In listen mode the loader files (`metamod.vdf`, `l4dtoolz.vdf`) stay switched off. The tool switches them on only for a launch from the Play tab, then off again when you quit, so a normal Steam launch is always clean.
 
-**VAC:** in dedicated mode the mods run only in the separate server program, which itself runs VAC-secured. Your game client stays stock, so you can still join other VAC servers. The Play tab shows this under the Start button. Switching to "Host from my game" asks you to confirm, because that mode needs `-insecure`.
+**VAC:** in dedicated mode the mods run only in the separate server program, which itself runs VAC-secured. Your game client stays stock, so you can still join other VAC servers. The Play tab shows this under the launch buttons. Switching to "Host from my game" asks you to confirm, because that mode needs `-insecure`.
 
 ## Who can join (Play tab)
 
@@ -50,7 +52,11 @@ In listen mode the loader files (`metamod.vdf`, `l4dtoolz.vdf`) stay switched of
 | **LAN only** | People on your home network | `sv_lan 1`, never touches the router; friends use your LAN IP or *Find games on my network* on the Join side |
 | **Just me** | Only this PC | `sv_lan 1` and no port forwarding, so it stays off the internet. Someone on your own network could still join if they know your address (set a password to stop that). Good for testing maps, mods and bot fill on your own |
 
-The Steam lobby option needs Internet mode, so LAN only and Just me always use direct connect. The invite, the connect line and the Internet tab all follow the mode you pick.
+The Steam lobby option needs Internet mode, so it only shows there; LAN only and Just me always use direct connect. The invite and the network check follow the mode you pick.
+
+**Play tab layout:** the survivor cards and Who can join on the left; campaign, chapter, difficulty and Bot fill on the right. **More settings** opens the rest: Max players, More items and Harder infected for 5+, After the finale, HUD bars, the dedicated server's name, port and password (plus updating it, copying campaigns to it and checking compatibility before launch), and Post to Discord. The launch buttons and the invite stay at the bottom.
+
+**Before you launch**, one window lists anything worth a look, and only when there is something: skins for the same thing that are on together (**Choose skins**), add-ons that replace the same files (keep one or both for each pair), and the compatibility check's problems (**Open the Mods tab**). Launch goes ahead with your choices.
 
 ## What gets installed
 
@@ -85,7 +91,7 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 
 - **Play tab > Campaign** lists the official campaigns by their in-game names (Dead Center to The Last Stand), then every custom campaign in the server's add-ons and your game's add-ons by its own title (read from each add-on's `missions` file). **Start from chapter** picks the level the server starts on, by the chapter's in-game name ("2 · Streets", "5 · Rooftop Finale"); a custom campaign's chapters use the names in its `missions` file, or the map name where it has none. Picking another campaign starts it from chapter 1. A map saved by an older version that isn't in any campaign shows as **Other map**.
 - **Open Workshop** (Mods tab, Skins tab, and the Join side's footer) opens Left 4 Dead 2's Steam Workshop in the Steam client, or in your browser when Steam isn't installed. Subscribe there, and the add-on is checked on the next scan.
-- With **Copy campaigns and script mods to the server** on, campaigns you subscribe to in your game reach the dedicated server on the next Start server.
+- With **Copy campaigns and script mods to the server** on, campaigns you subscribe to in your game reach the dedicated server the next time it starts.
 - **Copy invite** adds "Needs the <campaign> campaign: <Workshop link>" when the server runs a custom campaign that came from the Workshop. It stays on the invite's single line, so friends can paste the whole invite into the Join side, which then links straight to that Workshop item.
 
 ## After the finale (campaign rotation)
@@ -99,7 +105,7 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 | **Random** | Any other campaign |
 | **Vote** | The players vote between the next campaign, a few random ones and "Surprise me". Anyone can start it early by typing **!mapvote**; the result is kept for the finale. Nobody voting means Next |
 
-- The list is rewritten on every **Start server**. Custom campaigns only join it when the server has their maps (see [Custom campaigns](#custom-campaigns)); any it can't load are skipped.
+- The list is rewritten every time the server starts. Custom campaigns only join it when the server has their maps (see [Custom campaigns](#custom-campaigns)); any it can't load are skipped.
 - **Moving on after wipes** is off by default. `l4d2_8p_rotation_wipes 3` in `cfg/sourcemod/l4d2_8p_rotation.cfg` moves on after 3 wipes on a finale (wipes on other chapters don't count). `l4d2_8p_rotation_delay` sets the seconds after the rescue (default 15).
 - Admins can type `sm_nextcampaign` to move on now (in Vote mode it starts the vote), and `sm_8protation` shows the list and what comes next.
 - Co-op and realism only. Listen servers (Host from my game) don't use it.
@@ -155,7 +161,7 @@ You can tick **Don't ask again for this add-on**.
 
 **Workshop collections** live on the same view. Click **Add a collection** and paste a collection's link. The app reads its list of items from Steam's public Web API (no sign-in, nothing downloaded), and shows how many items the game has downloaded and which are on. **Use this collection** turns on every downloaded item (skins, maps, sounds, anything) and turns off skins from outside it for the same things. A target two of its own skins cover is left to the question before launch. **Open on the Workshop** goes to the collection's page, where **Subscribe to all** gets the rest; the game downloads them when it starts. **Update the list** reads it from Steam again. The list of collections is kept in `skins.json`.
 
-**Remembered:** your picks are saved in `skins.json` and put back each time the app starts the game (Start server, Launch L4D2 & join, Join game). The game's Add-ons menu or a new Workshop subscription can't quietly undo them. The Radio log lists anything that had to be put back. A newly installed skin for something you've picked is asked about: use it, or keep your pick.
+**Remembered:** your picks are saved in `skins.json` and put back each time the app starts the game (Launch L4D2 & join, Start server only, Join game). The game's Add-ons menu or a new Workshop subscription can't quietly undo them. The Radio log lists anything that had to be put back. A newly installed skin for something you've picked is asked about: use it, or keep your pick.
 
 **Checked before each launch:** the game turns on every new Workshop subscription, so two skins for the same thing can end up on with nothing picked. Then only one of them shows, and which one isn't predictable, while every extra add-on still loads. Before **Launch L4D2 & join** or **Join game** starts the game, the app lists these and offers **Choose skins** (opens the picker on the first one), **Launch anyway** (keeps them, and doesn't ask again until another skin for the same thing turns up) or **Cancel**.
 
@@ -198,7 +204,7 @@ The game is tuned for 4 survivors. Two built-in plugins, both required installs 
 | **Custom** | your own % per survivor beyond 4, for each rule (**Custom rules…**) | 2 × your % | 4 × your % |
 | **Off** | the game's normal amounts for 4 | 1× | 1× |
 
-With 4 or fewer survivors nothing changes. In Custom, 25% per survivor beyond 4 matches Auto. Changes apply the next time you click **Start server**.
+With 4 or fewer survivors nothing changes. In Custom, 25% per survivor beyond 4 matches Auto. Changes apply the next time the server starts.
 
 ### More items for 5+ (*Items For 5+ Survivors*)
 
@@ -231,22 +237,19 @@ With 4 or fewer survivors nothing changes. In Custom, 25% per survivor beyond 4 
 - The count is the most survivors seen this round, so a player leaving mid-round doesn't make it easier until the next map.
 - Co-op, realism and survival only. In versus and scavenge the infected are players, so nothing changes.
 - In `cfg/sourcemod/l4d2_8p_infected.cfg`: `l4d2_8p_infected_max_specials` (default 12) and `l4d2_8p_infected_max_common` (default 100) are hard caps. Admins can type `sm_8pinfected` to see every value it has changed.
-## Internet hosting (port forwarding)
+## Friends over the internet (port forwarding)
 
-The **4. Internet hosting** tab handles the network side:
+With **Who can join** on **Internet**, the Play tab shows **Can friends reach you?** under the settings:
 
-- **Check my network** shows your LAN and public address, whether your router supports UPnP, whether the game port is forwarded (and to which PC), and whether the Windows Firewall rule exists.
-- It **detects setups where forwarding can't work**: a second router or carrier-grade NAT (CGNAT). When it finds one, it suggests fixes such as bridge mode, asking your ISP for a public IP, or a virtual LAN like Tailscale, ZeroTier or Radmin VPN.
-- **Open port automatically (UPnP)** forwards UDP+TCP on the game port to this PC. It warns instead if another device already holds that port.
-- **Auto mode** (it asks you once): the port opens when you start hosting and closes when you stop. If the tool was closed mid-game, the port is closed the next time it starts.
-- **Allow through Windows Firewall** adds an inbound rule for the port and `srcds.exe`. Windows asks for permission.
-- **Test if friends can reach me** queries your server through your public address. Many routers can't loop back to themselves, so if this test fails, have a friend check with the Join side.
-- **Copy invite for friends** gives a `steam://connect/...` link plus the console command.
-- If UPnP is off, the tab shows step-by-step manual forwarding instructions with your own values filled in.
+- **The route**, step by step: this PC, your router (and whether it supports UPnP), your public address, and whether friends can get in. It runs the first time you open Play, and finds the setups where forwarding can't work: a second router or carrier-grade NAT (CGNAT), with fixes such as bridge mode, asking your ISP for a public IP, or a virtual LAN like Tailscale, ZeroTier or Radmin VPN.
+- **One button for the next step**: **Open port 27015 on my router** forwards UDP+TCP on the game port to this PC (it warns instead if another device already holds that port); once it's open, the same button becomes **Test from outside**, which queries your server through your public address. Many routers can't loop back to themselves, so if that test fails, have a friend check with the Join side. With UPnP off, it opens your router's settings page.
+- **Help & details** has the rest: **Allow in firewall** (an inbound rule for the port and `srcds.exe`; Windows asks), **Check again**, **Close port**, **Router settings**, the **auto mode** box (the port opens when you host and closes when you stop; if the app was closed mid-game, the port is closed next time it starts), step-by-step manual forwarding with your own values filled in, and the raw details.
+
+The invite at the bottom of Play (**Copy invite**) is a `steam://connect/...` link plus the console command, and the campaign's Workshop link when you run a custom one.
 
 ## Post to Discord
 
-**Internet tab > Post to Discord** posts your invite to a Discord channel when the server is up:
+**Play tab > More settings > Post to Discord** posts your invite to a Discord channel when the server is up:
 
 1. In Discord: the channel's settings › **Integrations** › **Webhooks** › **New Webhook** › **Copy Webhook URL**.
 2. Paste it into the app (Host side). It's hidden like a password, because anyone with it can post to that channel.
@@ -267,16 +270,16 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
 
 ## Friends joining (manual)
 
-- **Direct connect (default):** forward UDP+TCP port 27015 on your router to this PC, and allow `srcds.exe` when Windows Firewall asks. Friends open the console and type `connect <your public IP>:27015`. **Find my public IP** and **Copy connect command** help with this.
+- **Direct connect (default):** forward UDP+TCP port 27015 on your router to this PC, and allow `srcds.exe` when Windows Firewall asks. Friends open the console and type `connect <your public IP>:27015`; **Copy invite** includes that line.
 - **Steam lobby:** create an 8-slot lobby, choose *Best Available Dedicated* and start. The tool launches your game with `mm_dedicated_force_servers` aimed at your server. When 4 players are in, `l4d_unreservelobby` opens slots 5-8.
 
 ## Keeping it current
 
 - **New versions** are announced in the window's header ("Version X is out · Download", which opens the release page). The app asks GitHub at most once a day and stay quiet when offline.
-- **Built-in plugins update themselves.** When a new version of the app brings changed built-in plugins, **Start server** rebuilds them on the server first (the Radio log lists each one).
-- **Check for updates** compares SourceMod, Metamod, L4DToolZ and Source Scramble with their latest releases. It also warns when the dedicated server is behind your game version.
-- **Download & install selected** always pulls the latest plugin builds and gamedata from GitHub. Run it after every L4D2 update, because outdated gamedata is the usual cause of crashes.
-- **Server check after every start.** Once the server answers, the app reads SourceMod's error log for that start. Any plugin or extension that failed to load or hit an error is listed in the Radio log by component name, with a warning under the Start button (**Details** opens the list and the log folder). Nothing listed means every plugin loaded cleanly. A game update that changes the server's code is the usual cause; the built-in plugins log a plain message when their hook can't be found (Unique Survivors keeps working, only the L4D1 ready pose is lost).
+- **Built-in plugins update themselves.** When a new version of the app brings changed built-in plugins, they are rebuilt on the server the next time it starts (the log lists each one).
+- **Updates are looked for by themselves** the first time you open Setup in a session: SourceMod, Metamod, L4DToolZ and Source Scramble against their latest releases, and the dedicated server against your game version. The line above **Install / update** says what's out of date (**Advanced › Check for updates** looks again).
+- **Install / update** always pulls the latest plugin builds and gamedata from GitHub. Run it after every L4D2 update, because outdated gamedata is the usual cause of crashes.
+- **Server check after every start.** Once the server answers, the app reads SourceMod's error log for that start. Any plugin or extension that failed to load or hit an error is listed in the Radio log by component name, with a warning under the launch buttons (**Details** opens the list and the log folder). Nothing listed means every plugin loaded cleanly. A game update that changes the server's code is the usual cause; the built-in plugins log a plain message when their hook can't be found (Unique Survivors keeps working, only the L4D1 ready pose is lost).
 - The component list (`components.json`) is built into the exe. To change sources without rebuilding, put an edited `components.json` next to the exe.
 
 ## Where things are

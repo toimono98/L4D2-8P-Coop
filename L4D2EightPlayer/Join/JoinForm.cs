@@ -372,7 +372,7 @@ namespace L4D2EightPlayer.Join
                 {
                     ShowEmpty("No answer from " + t.Address,
                         Network.IsPrivate(t.Host)
-                            ? $"{t.Host} is a local network address. It only works on the host's network (or the same Tailscale/ZeroTier/Radmin network). Ask the host for the invite from their Internet tab."
+                            ? $"{t.Host} is a local network address. It only works on the host's network (or the same Tailscale/ZeroTier/Radmin network). Ask the host for the invite (Copy invite on their Play tab)."
                             : $"The server may not be started yet, the host's router may not be forwarding port {t.Port}, or the address is wrong. You can still try Join: some servers don't answer queries.");
                     serverCard.Visible = false;
                     return null;

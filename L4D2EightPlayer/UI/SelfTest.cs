@@ -160,7 +160,7 @@ namespace L4D2EightPlayer.UI
                     for (int i = 0; i < tabs.Count; i++)
                     {
                         tabs.SelectedIndex = i;
-                        var t2 = DateTime.Now.AddSeconds(i == MainForm.TabInternet ? 10 : 1);
+                        var t2 = DateTime.Now.AddSeconds(i == MainForm.TabPlay ? 10 : 1);
                         while (DateTime.Now < t2) { System.Windows.Forms.Application.DoEvents(); Thread.Sleep(20); }
                         using (var bmp = new System.Drawing.Bitmap(form.Width, form.Height))
                         {
