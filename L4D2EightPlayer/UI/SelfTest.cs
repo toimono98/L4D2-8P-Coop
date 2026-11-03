@@ -365,6 +365,7 @@ namespace L4D2EightPlayer.UI
                 {
                     // The dedicated "Launch L4D2 & join" path with the saved settings, checked by a player query.
                     var st = Settings.Load();
+                    if (Arg("--map") != null) st.Map = Arg("--map");   // a different map for this run only (never saved)
                     ServerConfig.Apply(st, st.TargetGameDir);
                     var srvInst = new Installer(st.TargetGameDir, log);
                     foreach (var c in srvInst.OutdatedBuiltIns(manifest)) srvInst.Install(c, CancellationToken.None).GetAwaiter().GetResult();
@@ -407,8 +408,13 @@ namespace L4D2EightPlayer.UI
                                 Thread.Sleep(75000);
                                 foreach (var g in System.Diagnostics.Process.GetProcessesByName("left4dead2")) try { g.Kill(); g.WaitForExit(10000); } catch { }
                                 log.Info("game killed, rejoining");
-                                Launcher.LaunchGameDirect(st.GamePath, $"+connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""), dropInsecure: true);
-                                Thread.Sleep(120000);
+                                // the same way the app joins: a custom campaign's map is in a Workshop add-on, so it waits for those
+                                var again = DateTime.UtcNow;
+                                Launcher.LaunchGameDirect(st.GamePath, Arg("--client-args") ?? "", dropInsecure: true);
+                                bool reloaded = Launcher.WaitForWorkshopAddons(st.ClientGameDir, again, TimeSpan.FromMinutes(2)).GetAwaiter().GetResult();
+                                log.Info($"Workshop add-ons loaded again: {reloaded} after {(DateTime.UtcNow - again).TotalSeconds:0} s");
+                                Launcher.SendToGame(st.GamePath, $"+connect {host}:{st.Port}" + (pw.Length == 0 ? "" : $" +password \"{pw}\""));
+                                Thread.Sleep(90000);
                                 var players = ServerQuery.Players(host, st.Port).GetAwaiter().GetResult();
                                 log.Info("on the server after rejoining: " + (players == null || players.Count == 0 ? "nobody" : string.Join(", ", players)));
                                 if (players == null || players.Count == 0) rc = 1;
