@@ -112,6 +112,8 @@ namespace L4D2EightPlayer.Core
             // The 8-Player HUD plugin's look: 1 = health bars and icons, which every player needs the add-on for.
             WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_hud.cfg"),
                 new[] { "l4d2_8p_hud_style " + (s.HudAddonLook ? 1 : 0) });
+            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_skipintro.cfg"),
+                new[] { "l4d2_8p_skipintro_enable " + (s.SkipIntros ? 1 : 0) });
 
             // Unique Survivors: the host's survivor (Play tab), kept for them; the host is told apart by Steam account.
             // Everyone else picks from the rest in game (!char).

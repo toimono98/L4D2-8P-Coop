@@ -24,7 +24,7 @@ namespace L4D2EightPlayer.UI
         ListView lvComponents, lvFindings;
         GameButton btnInstall, btnCheckUpdates, btnUninstall, btnUninstallAll, btnScan, btnFix, btnStart, btnStop, btnJoin, btnCancel, btnServerBrowse;
         CheckBox chkWatch, chkSync, chkUpdateOnStart, chkScanFirst;
-        ToggleSwitch chkFill, chkHudLook;
+        ToggleSwitch chkFill, chkHudLook, chkSkipIntros;
         LinkLabel lnkHudAddon, lnkItemsRules, lnkInfectedRules, lnkHealth;
         Pills cmbItemsMode, cmbInfectedMode, cmbRotation;
         Stepper numPlayers;
@@ -644,6 +644,9 @@ namespace L4D2EightPlayer.UI
             btnMore = moreToggle;
 
             more.Controls.Add(SettingRow("Max players", null, numPlayers = new Stepper("Players") { Minimum = 5, Maximum = 16 }));
+            more.Controls.Add(SettingRow("Skip intros", "Straight into the game, no cutscene", chkSkipIntros = new ToggleSwitch { AccessibleName = "Skip intros" }));
+            new ToolTip().SetToolTip(chkSkipIntros, "On: your game starts without the Valve and Turtle Rock videos (-novid), and the server cuts the opening cutscene\n" +
+                "of a campaign's first chapter short, so everyone can move as soon as they load. Off: both play as usual.");
             more.Controls.Add(ModeRow("More items for 5+", "Weapons, throwables and healing", out cmbItemsMode, out lnkItemsRules,
                 "Weapon piles, throwables and healing items scale with the survivors in the game, bots included.\n" +
                 "Auto: x survivors / 4, so 8 survivors get twice the map's items (a pile of 5 holds 10, each kit can be taken twice).\n" +
@@ -746,7 +749,7 @@ namespace L4D2EightPlayer.UI
                 ReadPlaySettings();
             };
             cmbChapter.SelectedIndexChanged += (s, e) => ReadPlaySettings();
-            foreach (var c in new CheckBox[] { chkFill, chkHudLook, chkSync, chkUpdateOnStart, chkScanFirst }) c.CheckedChanged += (s, e) => ReadPlaySettings();
+            foreach (var c in new CheckBox[] { chkFill, chkHudLook, chkSkipIntros, chkSync, chkUpdateOnStart, chkScanFirst }) c.CheckedChanged += (s, e) => ReadPlaySettings();
             cmbItemsMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbInfectedMode.SelectedIndexChanged += (s, e) => ReadPlaySettings();
             cmbRotation.SelectedIndexChanged += (s, e) => ReadPlaySettings();

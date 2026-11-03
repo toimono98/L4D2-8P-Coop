@@ -15,6 +15,8 @@ namespace L4D2EightPlayer.Core
         public int Port { get; set; } = 27015;
         public int MaxPlayers { get; set; } = 8;
         public bool FillWithBots { get; set; } = false;
+        /// <summary>Straight into the game: no startup videos (-novid) and no opening cutscene on first chapters (l4d2_8p_skipintro).</summary>
+        public bool SkipIntros { get; set; } = true;
         public bool HudAddonLook { get; set; } = false;           // 8-Player HUD: health bars + icons (everyone needs the add-on)
         public string HostCharacter { get; set; } = "";           // the host's survivor (Unique Survivors): "" = any, else "nick", "zoey"...
         public bool ScaleItems { get; set; } = true;              // before 1.2: the items on/off switch (read once into ItemsMode)

@@ -803,6 +803,19 @@
       ]
     },
     {
+      "id": "skipintro",
+      "name": "Skip the opening cutscene (built in)",
+      "group": "Optional",
+      "default": true,
+      "requires": [
+        "sourcemod"
+      ],
+      "description": "The first chapter of a campaign starts right away: the opening cutscene (camera flight, survivor chatter, everyone frozen) is cut short the moment it starts, using the map's own end-of-intro step. Turn it off with Skip intros on the Play tab (More settings), or l4d2_8p_skipintro_enable 0 in cfg/sourcemod/l4d2_8p_skipintro.cfg.",
+      "compile": [
+        "embedded:l4d2_8p_skipintro.sp"
+      ]
+    },
+    {
       "id": "hud8",
       "name": "8-survivor HUD (built in)",
       "group": "Optional",

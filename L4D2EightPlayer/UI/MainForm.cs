@@ -150,6 +150,7 @@ namespace L4D2EightPlayer.UI
             numPlayers.Value = Math.Max(numPlayers.Minimum, Math.Min(numPlayers.Maximum, settings.MaxPlayers));
             chkFill.Checked = settings.FillWithBots;
             chkHudLook.Checked = settings.HudAddonLook;
+            chkSkipIntros.Checked = settings.SkipIntros;
             cmbItemsMode.SelectedItem = settings.ItemsModeOrDefault;
             if (cmbItemsMode.SelectedIndex < 0) cmbItemsMode.SelectedIndex = 1;
             cmbInfectedMode.SelectedItem = settings.InfectedMode;
@@ -183,6 +184,7 @@ namespace L4D2EightPlayer.UI
             settings.MaxPlayers = (int)numPlayers.Value;
             settings.FillWithBots = chkFill.Checked;
             settings.HudAddonLook = chkHudLook.Checked;
+            settings.SkipIntros = chkSkipIntros.Checked;
             settings.ItemsMode = cmbItemsMode.SelectedItem as string ?? "auto";
             settings.InfectedMode = cmbInfectedMode.SelectedItem as string ?? "auto";
             settings.RotationMode = cmbRotation.SelectedItem as string ?? "next";
@@ -918,6 +920,9 @@ namespace L4D2EightPlayer.UI
                 inst.ApplySourceModGuard(manifest);
                 // the plugins this app builds itself: a newer app may bring fixed versions
                 foreach (var c in inst.OutdatedBuiltIns(manifest)) await inst.Install(c, ct);
+                // Skip intros needs its plugin on the server (servers set up before it existed don't have it yet)
+                var skip = manifest.Get("skipintro");
+                if (settings.SkipIntros && skip != null && inst.Status(skip) == ComponentStatus.NotInstalled) await inst.Install(skip, ct);
                 if (settings.SyncAddons && GameLocator.IsGameDir(settings.GamePath))
                     await Task.Run(() => AddonSync.Sync(settings.ClientGameDir, settings.TargetGameDir, InstallState.Load(settings.TargetGameDir), this), ct);
             });
@@ -1010,7 +1015,7 @@ namespace L4D2EightPlayer.UI
                 if (!await ReviewBeforeLaunch(skins: true, problems: true)) return;
                 var inst = new Installer(settings.ClientGameDir, this);
                 inst.SetLoaders(manifest, true);
-                Launcher.LaunchGame("-insecure " + Launcher.LanArg(settings));
+                Launcher.LaunchGame("-insecure " + NoVid + Launcher.LanArg(settings));
                 await AutoForward(true);
                 gameSeen = false;
                 gameLaunchAt = DateTime.Now;
@@ -1031,6 +1036,7 @@ namespace L4D2EightPlayer.UI
             else if (!await ReviewBeforeLaunch(skins: true, problems: false)) return;
 
             string args;
+            bool joinAfter = false;
             if (settings.JoinMethod == "lobby" && settings.Internet)
             {
                 var addr = settings.LobbyAddress;
@@ -1039,13 +1045,14 @@ namespace L4D2EightPlayer.UI
                     if (publicIp == null) await FindPublicIp();
                     addr = (publicIp ?? Launcher.LanAddress()) + ":" + settings.Port;
                 }
-                args = "+mm_dedicated_force_servers " + addr;
+                args = NoVid + "+mm_dedicated_force_servers " + addr;
                 Info("Starting L4D2 for a lobby game pointed at " + addr + ". Create a lobby and choose 'Best Available Dedicated'.");
             }
             else
             {
                 // joining waits for your Workshop add-ons (below): connect on the command line would beat them
-                args = "";
+                args = NoVid.Trim();
+                joinAfter = true;
             }
             try
             {
@@ -1054,10 +1061,13 @@ namespace L4D2EightPlayer.UI
                 if (Launcher.LaunchGameDirect(settings.GamePath, args, dropInsecure: true))
                     Warn("Left -insecure out of your Steam launch options for this launch: an -insecure game can't join a VAC-secured server. " +
                          "Remove it in Steam (L4D2 > Properties > Launch options) if you don't need it.");
-                if (args == "") await JoinOnceAddonsLoad(started);
+                if (joinAfter) await JoinOnceAddonsLoad(started);
             }
             catch (Exception ex) { Error(ex.Message); }
         }
+
+        /// <summary>Skip intros: the game starts without its startup videos.</summary>
+        string NoVid => settings.SkipIntros ? "-novid " : "";
 
         /// <summary>
         /// The game just started: once it has loaded your Workshop add-ons (skins, campaigns), it's told to connect to your
