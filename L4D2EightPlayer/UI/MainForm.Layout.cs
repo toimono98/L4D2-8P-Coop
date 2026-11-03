@@ -43,6 +43,9 @@ namespace L4D2EightPlayer.UI
         List<string> livePlayers;
         bool rosterBusy;
 
+        /// <summary>The pages, in nav order.</summary>
+        internal const int TabSetup = 0, TabMods = 1, TabSkins = 2, TabPlay = 3, TabInternet = 4;
+
         /// <summary>Set by the screenshot self-test: never touch the router or saved state.</summary>
         public static bool Preview;
 
@@ -65,7 +68,7 @@ namespace L4D2EightPlayer.UI
             BuildUi();
             Theme.Style(this);
             tray = new NotifyIcon { Icon = Icon ?? SystemIcons.Application, Text = Title, Visible = true };
-            tray.BalloonTipClicked += (s, e) => { AppWindow.Instance?.Switch(StartMode.Host); (TopLevelControl as Form ?? this).Activate(); tabs.SelectedIndex = 1; };
+            tray.BalloonTipClicked += (s, e) => { AppWindow.Instance?.Switch(StartMode.Host); (TopLevelControl as Form ?? this).Activate(); tabs.SelectedIndex = TabMods; };
 
             rescanTimer.Tick += async (s, e) => { rescanTimer.Stop(); await RunScan(auto: true); };
             gameWatch.Tick += (s, e) => WatchListenGame();
@@ -81,7 +84,7 @@ namespace L4D2EightPlayer.UI
 
         void BuildUi()
         {
-            nav = new NavBar("Setup", "Mods", "Play", "Internet");
+            nav = new NavBar("Setup", "Mods", "Skins", "Play", "Internet");
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
             nav.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
             nav.Help = "? TOUR";
@@ -98,11 +101,13 @@ namespace L4D2EightPlayer.UI
             tabs.SelectedIndexChanged += async (s, e) =>
             {
                 nav.Selected = tabs.SelectedIndex;
-                if (tabs.SelectedIndex == 3 && !routerSearched && !busy) await CheckNetwork(verbose: false);
+                if (tabs.SelectedIndex == TabSkins && !skinsLoaded) { skinsLoaded = true; await skins.Reload(); }
+                if (tabs.SelectedIndex == TabInternet && !routerSearched && !busy) await CheckNetwork(verbose: false);
             };
             split.Panel1.Controls.Add(tabs);
             tabs.Add(BuildSetupTab());
             tabs.Add(BuildCompatTab());
+            tabs.Add(BuildSkinsTab());
             tabs.Add(BuildPlayTab());
             tabs.Add(BuildHostingTab());
 

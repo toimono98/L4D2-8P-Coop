@@ -61,6 +61,11 @@ namespace L4D2EightPlayer.Core
             public string Title;
             public string Error;
             public bool Campaign, Gameplay, Mutation, Talker, Ui, SurvivorModels;
+            /// <summary>Weapon or melee scripts (scripts/weapon_*, scripts/melee/*): stats, or the model a skin points at.</summary>
+            public bool WeaponScripts;
+            /// <summary>Replaces models or materials (a skin, or part of a bigger mod).</summary>
+            public bool Models;
+            public bool Sounds, Scripts;
             public List<string> Files = new List<string>();
             public List<(Severity sev, string text)> ScriptNotes = new List<(Severity, string)>();
             public List<string> Missions = new List<string>();
@@ -75,7 +80,8 @@ namespace L4D2EightPlayer.Core
         public static AddonInfo ReadAddon(string path)
         {
             var fi = new FileInfo(path);
-            if (VpkCache.TryGetValue(path, out var c) && c.size == fi.Length && c.mtime == fi.LastWriteTimeUtc) return c.info;
+            lock (VpkCache)   // the Skins tab reads add-ons in the background while the Mods tab may scan
+                if (VpkCache.TryGetValue(path, out var c) && c.size == fi.Length && c.mtime == fi.LastWriteTimeUtc) return c.info;
 
             var info = new AddonInfo();
             try
@@ -102,10 +108,13 @@ namespace L4D2EightPlayer.Core
                     else if (f.StartsWith("maps/") && f.EndsWith(".bsp")) info.Campaign = true;
                     else if (f.StartsWith("modes/") && f.EndsWith(".txt")) info.Mutation = true;
                     else if (f.StartsWith("scripts/talker/")) info.Talker = true;
-                    else if (f.StartsWith("scripts/vscripts/") || f.StartsWith("scripts/weapon_") || f.StartsWith("scripts/melee/")
-                          || f == "scripts/population.txt" || f.StartsWith("scripts/survival") || f.StartsWith("scripts/itemstats")) info.Gameplay = true;
+                    else if (f.StartsWith("scripts/weapon_") || f.StartsWith("scripts/melee/")) info.WeaponScripts = true;
+                    else if (f.StartsWith("scripts/vscripts/") || f == "scripts/population.txt" || f.StartsWith("scripts/survival") || f.StartsWith("scripts/itemstats"))
+                    { info.Gameplay = true; if (f.StartsWith("scripts/vscripts/")) info.Scripts = true; }
                     else if (f.StartsWith("resource/ui/") || f.StartsWith("resource/") || f == "scripts/hudlayout.res") info.Ui = true;
                     else if (f.StartsWith("models/survivors/survivor_")) info.SurvivorModels = true;
+                    if (f.StartsWith("models/") || f.StartsWith("materials/models/")) info.Models = true;
+                    if (f.StartsWith("sound/")) info.Sounds = true;
 
                     if (f.EndsWith(".nut") && scriptsRead < 60)
                     {
@@ -131,8 +140,11 @@ namespace L4D2EightPlayer.Core
                 }
             }
             catch (Exception ex) { info.Error = ex.Message; }
+            // Weapon scripts alone are a gameplay mod (stats) and belong on the server too. Next to models they're
+            // a skin pointing the weapon at its new model: cosmetic, and not copied to the server.
+            if (info.WeaponScripts && !info.Models) info.Gameplay = true;
 
-            VpkCache[path] = (fi.Length, fi.LastWriteTimeUtc, info);
+            lock (VpkCache) VpkCache[path] = (fi.Length, fi.LastWriteTimeUtc, info);
             return info;
         }
 
@@ -145,8 +157,20 @@ namespace L4D2EightPlayer.Core
             var path = Path.Combine(gameDir, "addonlist.txt");
             if (!File.Exists(path)) return result;
             foreach (Match m in Regex.Matches(File.ReadAllText(path), "\"([^\"]+\\.vpk)\"\\s+\"(\\d)\"", RegexOptions.IgnoreCase))
-                result[m.Groups[1].Value.Replace('/', '\\')] = m.Groups[2].Value != "0";
+                result[m.Groups[1].Value.Replace('/', '\\').Replace("\\\\", "\\")] = m.Groups[2].Value != "0";
             return result;
+        }
+
+        /// <summary>
+        /// Add-ons the skin picker never turns off and doesn't count as skins: the 8-Player HUD add-on, the 8 Slots
+        /// Lobby Mod and the component list's Workshop requirements.
+        /// </summary>
+        public static bool IsProtected(string vpkPath, Manifest manifest)
+        {
+            var file = Path.GetFileName(vpkPath);
+            var id = Path.GetFileNameWithoutExtension(vpkPath);
+            return string.Equals(file, HudAddon.FileName, StringComparison.OrdinalIgnoreCase) || id == LobbyModId
+                || manifest?.workshop?.Any(w => w.id == id) == true;
         }
 
         public static string AddonListKey(string gameDir, string vpkPath)
@@ -577,8 +601,10 @@ namespace L4D2EightPlayer.Core
             return null;
         }
 
-        public static void SetAddonEnabled(string gameDir, string key, bool enabled)
+        /// <summary>Several add-ons on or off in one write (keys as AddonListKey gives them).</summary>
+        public static void SetAddonsEnabled(string gameDir, IDictionary<string, bool> changes)
         {
+            if (changes.Count == 0) return;
             var path = Path.Combine(gameDir, "addonlist.txt");
             var backup = Path.Combine(InstallState.Dir(gameDir), "addonlist.txt.original");
             string text = File.Exists(path) ? File.ReadAllText(path) : "\"AddonList\"\n{\n}\n";
@@ -588,18 +614,24 @@ namespace L4D2EightPlayer.Core
                 File.Copy(path, backup);
             }
 
-            var value = enabled ? "1" : "0";
-            var keyPattern = Regex.Escape(key).Replace("\\\\", "[\\\\/]{1,2}");
-            var rx = new Regex("(\"" + keyPattern + "\"\\s+\")(\\d)(\")", RegexOptions.IgnoreCase);
-            if (rx.IsMatch(text)) text = rx.Replace(text, "${1}" + value + "${3}");
-            else
+            foreach (var kv in changes)
             {
-                int close = text.LastIndexOf('}');
-                var line = "\t\"" + key + "\"\t\t\"" + value + "\"\n";
-                text = close >= 0 ? text.Substring(0, close) + line + text.Substring(close) : text + line;
+                var value = kv.Value ? "1" : "0";
+                var keyPattern = Regex.Escape(kv.Key).Replace("\\\\", "[\\\\/]{1,2}");
+                var rx = new Regex("(\"" + keyPattern + "\"\\s+\")(\\d)(\")", RegexOptions.IgnoreCase);
+                if (rx.IsMatch(text)) text = rx.Replace(text, "${1}" + value + "${3}");
+                else
+                {
+                    int close = text.LastIndexOf('}');
+                    var line = "\t\"" + kv.Key + "\"\t\t\"" + value + "\"\n";
+                    text = close >= 0 ? text.Substring(0, close) + line + text.Substring(close) : text + line;
+                }
             }
             File.WriteAllText(path, text, new UTF8Encoding(false));
         }
+
+        public static void SetAddonEnabled(string gameDir, string key, bool enabled) =>
+            SetAddonsEnabled(gameDir, new Dictionary<string, bool> { [key] = enabled });
 
         // ------------------------------------------------------------------ helpers
 

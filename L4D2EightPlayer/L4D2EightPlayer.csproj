@@ -37,6 +37,8 @@
     <EmbeddedResource Include="Plugins\*.sp;Plugins\*.txt" LogicalName="plugins/%(Filename)%(Extension)" />
     <!-- The client HUD add-on, built by ..\HudAddon\build_addon.py -->
     <EmbeddedResource Include="Addon\l4d2_8p_hud.vpk" LogicalName="addon/l4d2_8p_hud.vpk" />
+    <!-- Skin picker: which game materials belong to which survivor, weapon, item or infected (made by the skin-catalog dev flag) -->
+    <EmbeddedResource Include="Resources\skin_targets.json" LogicalName="skin_targets.json" />
   </ItemGroup>
 
 </Project>

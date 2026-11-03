@@ -527,7 +527,7 @@ namespace L4D2EightPlayer.UI
             RefreshAll();
             await RunScan(auto: false, quiet: true);
             OfferLobbyMod();
-            tabs.SelectedIndex = findings.Any(f => f.Severity == Severity.Problem) ? 1 : 2;
+            tabs.SelectedIndex = findings.Any(f => f.Severity == Severity.Problem) ? TabMods : TabPlay;
         }
 
         void OfferLobbyMod()
@@ -860,7 +860,7 @@ namespace L4D2EightPlayer.UI
             var ms = manifest.Get("multislots");
             if (target != null && Directory.Exists(target) && ms != null && new Installer(target, this).Status(ms) != ComponentStatus.NotInstalled) return true;
             if (MessageBox.Show(this, "The 8-player mods are not installed for this hosting mode yet. Go to Setup and install them now?", Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                tabs.SelectedIndex = 0;
+                tabs.SelectedIndex = TabSetup;
             return false;
         }
 
@@ -873,7 +873,7 @@ namespace L4D2EightPlayer.UI
             var list = string.Join("\n", problems.Take(8).Select(p => "• " + p.Name + ": " + p.Details.FirstOrDefault(d => d.StartsWith("[Problem]"))?.Substring(10)));
             var r = MessageBox.Show(this, $"The compatibility check found {problems.Count} problem(s) that can break 8-player games:\n\n{list}\n\nLaunch anyway?",
                 Title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-            if (r != DialogResult.Yes) { tabs.SelectedIndex = 1; return false; }
+            if (r != DialogResult.Yes) { tabs.SelectedIndex = TabMods; return false; }
             return true;
         }
 
@@ -881,6 +881,7 @@ namespace L4D2EightPlayer.UI
         {
             ReadPlaySettings();
             if (!EnsureInstalled()) return;
+            ReapplySkins();   // before the add-on sync, which goes by what's on
             bool ok = await RunBusy("Preparing server", async ct =>
             {
                 if (settings.UpdateServerOnStart) await SteamCmd.UpdateServer(settings.ServerRoot, settings.ServerInstallDir, this, ct);
@@ -970,6 +971,7 @@ namespace L4D2EightPlayer.UI
                 return;
             }
             if (!EnsureInstalled()) return;
+            ReapplySkins();
 
             if (settings.Mode == "listen")
             {

@@ -75,7 +75,7 @@ namespace L4D2EightPlayer.UI
             Pump(9000);   // startup scan and checks
             var tabs = All(form).OfType<PageHost>().First();
             // visit every tab once so every box has its window, then watch them all
-            for (int i = 0; i < tabs.Count; i++) { tabs.SelectedIndex = i; Pump(i == 3 ? 4000 : 500); }
+            for (int i = 0; i < tabs.Count; i++) { tabs.SelectedIndex = i; Pump(i == MainForm.TabInternet ? 4000 : 500); }
             tabs.SelectedIndex = 0;
             Pump(500);
             foreach (var c in All(form).Where(c => c.IsHandleCreated)) spies.Add(new Spy(c));
@@ -88,7 +88,7 @@ namespace L4D2EightPlayer.UI
             // each tab, from the one before it: paint passes that reach the screen, and the time to draw it all
             int totalPasses = 0;
             double totalMs = 0;
-            foreach (var i in new[] { 1, 2, 3, 0, 2 })
+            foreach (var i in new[] { MainForm.TabMods, MainForm.TabPlay, MainForm.TabInternet, MainForm.TabSetup, MainForm.TabPlay })
             {
                 foreach (var s in spies) { s.Paints = s.Erases = 0; }
                 var sw = Stopwatch.StartNew();

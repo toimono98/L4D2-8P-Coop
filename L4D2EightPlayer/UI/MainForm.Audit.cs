@@ -32,31 +32,35 @@ namespace L4D2EightPlayer.UI
 
         internal List<(string name, Func<Task> act)> AuditSteps() => new List<(string, Func<Task>)>
         {
-            ("setup-dedicated", async () => { tabs.SelectedIndex = 0; AuditMode("dedicated"); await Task.CompletedTask; }),
+            ("setup-dedicated", async () => { tabs.SelectedIndex = TabSetup; AuditMode("dedicated"); await Task.CompletedTask; }),
             ("setup-component-highlighted", async () => { AuditSelect(lvComponents, i => i.Tag is Component); ShowComponentInfo(); await Task.CompletedTask; }),
             ("setup-listen", async () => { AuditMode("listen"); await Task.CompletedTask; }),
-            ("mods-nothing-selected", async () => { AuditMode("dedicated"); tabs.SelectedIndex = 1; AuditSelect(lvFindings, i => false); ShowFindingDetail(null); await Task.CompletedTask; }),
+            ("mods-nothing-selected", async () => { AuditMode("dedicated"); tabs.SelectedIndex = TabMods; AuditSelect(lvFindings, i => false); ShowFindingDetail(null); await Task.CompletedTask; }),
             ("mods-problem-selected", async () => { AuditSelect(lvFindings, i => ((Finding)i.Tag).Severity == Severity.Problem); await Task.CompletedTask; }),
             ("mods-clear-selected", async () => { AuditSelect(lvFindings, i => ((Finding)i.Tag).Severity == Severity.Ok); await Task.CompletedTask; }),
             ("mods-requirement-selected", async () => { AuditSelect(lvFindings, i => ((Finding)i.Tag).Kind == "Requirement"); await Task.CompletedTask; }),
-            ("play-internet-direct-fill-off", async () => { tabs.SelectedIndex = 2; cmbNetwork.SelectedItem = "internet"; rbDirect.Checked = true; chkFill.Checked = false; numPlayers.Value = 8; await Task.CompletedTask; }),
+            ("play-internet-direct-fill-off", async () => { tabs.SelectedIndex = TabPlay; cmbNetwork.SelectedItem = "internet"; rbDirect.Checked = true; chkFill.Checked = false; numPlayers.Value = 8; await Task.CompletedTask; }),
             ("play-internet-lobby-fill-on", async () => { rbLobby.Checked = true; chkFill.Checked = true; await Task.CompletedTask; }),
             ("play-lan", async () => { cmbNetwork.SelectedItem = "lan"; await Task.CompletedTask; }),
             ("play-just-me", async () => { cmbNetwork.SelectedItem = "local"; await Task.CompletedTask; }),
             ("play-5-players", async () => { cmbNetwork.SelectedItem = "internet"; rbDirect.Checked = true; numPlayers.Value = 5; await Task.CompletedTask; }),
             ("play-16-players", async () => { numPlayers.Value = 16; await Task.CompletedTask; }),
             ("play-difficulty-expert", async () => { numPlayers.Value = 8; cmbDifficulty.SelectedItem = "Impossible"; await Task.CompletedTask; }),
-            ("play-listen-mode", async () => { cmbDifficulty.SelectedItem = "Normal"; AuditMode("listen"); tabs.SelectedIndex = 2; await Task.CompletedTask; }),
-            ("play-campaign-dropdown-open", async () => { AuditMode("dedicated"); tabs.SelectedIndex = 2; cmbCampaign.Focus(); cmbCampaign.DroppedDown = true; await Task.CompletedTask; }),
+            ("play-listen-mode", async () => { cmbDifficulty.SelectedItem = "Normal"; AuditMode("listen"); tabs.SelectedIndex = TabPlay; await Task.CompletedTask; }),
+            ("play-campaign-dropdown-open", async () => { AuditMode("dedicated"); tabs.SelectedIndex = TabPlay; cmbCampaign.Focus(); cmbCampaign.DroppedDown = true; await Task.CompletedTask; }),
             ("play-chapter-dropdown-open", async () => { cmbCampaign.DroppedDown = false; cmbCampaign.SelectedIndex = 10; cmbChapter.Focus(); cmbChapter.DroppedDown = true; await Task.CompletedTask; }),
             ("play-mode-dropdown-open", async () => { cmbChapter.DroppedDown = false; cmbMode.Focus(); cmbMode.DroppedDown = true; await Task.CompletedTask; }),
             ("play-host-survivor-zoey", async () => { cmbMode.DroppedDown = false; PickHostCharacter(5); await Task.CompletedTask; }),
             ("play-host-zoey-5-players", async () => { numPlayers.Value = 5; await Task.CompletedTask; }),
             ("play-host-any-again", async () => { PickHostCharacter(5); numPlayers.Value = 8; await Task.CompletedTask; }),
-            ("internet-checked", async () => { cmbMode.DroppedDown = false; tabs.SelectedIndex = 3; await CheckNetwork(verbose: false); }),
+            ("internet-checked", async () => { cmbMode.DroppedDown = false; tabs.SelectedIndex = TabInternet; await CheckNetwork(verbose: false); }),
             ("internet-lan-mode", async () => { cmbNetwork.SelectedItem = "lan"; await CheckNetwork(verbose: false); }),
             ("internet-just-me", async () => { cmbNetwork.SelectedItem = "local"; await CheckNetwork(verbose: false); }),
-            ("internet-listen-mode", async () => { cmbNetwork.SelectedItem = "internet"; AuditMode("listen"); tabs.SelectedIndex = 3; await CheckNetwork(verbose: false); }),
+            ("internet-listen-mode", async () => { cmbNetwork.SelectedItem = "internet"; AuditMode("listen"); tabs.SelectedIndex = TabInternet; await CheckNetwork(verbose: false); }),
+            ("skins-tab", async () => { AuditMode("dedicated"); tabs.SelectedIndex = TabSkins; await skins.Reload(); }),
+            // the narrowest window: the five tabs, HOST | JOIN and TOUR must all still fit in the top bar
+            ("narrow-window-skins", async () => { var top = TopLevelControl as Form ?? this; top.WindowState = FormWindowState.Normal; top.Size = top.MinimumSize; await Task.Delay(300); }),
+            ("narrow-window-play", async () => { tabs.SelectedIndex = TabPlay; await Task.CompletedTask; }),
         };
     }
 }

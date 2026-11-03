@@ -160,7 +160,7 @@ namespace L4D2EightPlayer.UI
                     for (int i = 0; i < tabs.Count; i++)
                     {
                         tabs.SelectedIndex = i;
-                        var t2 = DateTime.Now.AddSeconds(i == 3 ? 10 : 1);
+                        var t2 = DateTime.Now.AddSeconds(i == MainForm.TabInternet ? 10 : 1);
                         while (DateTime.Now < t2) { System.Windows.Forms.Application.DoEvents(); Thread.Sleep(20); }
                         using (var bmp = new System.Drawing.Bitmap(form.Width, form.Height))
                         {
@@ -181,7 +181,7 @@ namespace L4D2EightPlayer.UI
                         }
                     }
                     // the Play tab with both scaling settings on Custom (shows the rules links), and the rules dialog
-                    tabs.SelectedIndex = 2;
+                    tabs.SelectedIndex = MainForm.TabPlay;
                     foreach (var name in new[] { "cmbItemsMode", "cmbInfectedMode" })
                     {
                         var pills = (Themes.Pills)typeof(MainForm).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(form);
@@ -199,7 +199,7 @@ namespace L4D2EightPlayer.UI
                     using (var bmp = new System.Drawing.Bitmap(form.Width, form.Height))
                     {
                         form.DrawToBitmap(bmp, new System.Drawing.Rectangle(0, 0, form.Width, form.Height));
-                        bmp.Save(Path.Combine(dir, "tab3-custom.png"), System.Drawing.Imaging.ImageFormat.Png);
+                        bmp.Save(Path.Combine(dir, "play-custom.png"), System.Drawing.Imaging.ImageFormat.Png);
                     }
                     var rules = new[]
                     {

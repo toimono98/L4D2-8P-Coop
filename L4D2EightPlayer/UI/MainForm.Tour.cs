@@ -44,14 +44,14 @@ namespace L4D2EightPlayer.UI
             {
                 new TourStep
                 {
-                    Before = () => Tab(0),
+                    Before = () => Tab(TabSetup),
                     Title = "Welcome to the safe room",
                     Body = "This quick tour shows the few things you need to get 8 survivors into one game. " +
                            "Next (or the → key) moves on and Esc skips it.",
                 },
                 new TourStep
                 {
-                    Before = () => Tab(0),
+                    Before = () => Tab(TabSetup),
                     Targets = () => new[] { modeRow },
                     Title = "How you host",
                     Body = "Dedicated server is the one to pick: it runs as its own program, so your game stays VAC-secure and up to 16 can play. " +
@@ -59,7 +59,7 @@ namespace L4D2EightPlayer.UI
                 },
                 new TourStep
                 {
-                    Before = () => Tab(0),
+                    Before = () => Tab(TabSetup),
                     Targets = () => new Control[] { btnInstall.Parent },
                     Title = "Get the server and mods",
                     Body = "Download & install fetches the server and every ticked mod in the list above, backing up anything it changes. " +
@@ -67,7 +67,7 @@ namespace L4D2EightPlayer.UI
                 },
                 new TourStep
                 {
-                    Before = () => Tab(1),
+                    Before = () => Tab(TabMods),
                     Targets = () => new Control[] { tileProblems.Parent },
                     Title = "Check your mods",
                     Body = "Scan now looks through your add-ons and plugins for anything that breaks with more than 4 survivors. " +
@@ -75,7 +75,15 @@ namespace L4D2EightPlayer.UI
                 },
                 new TourStep
                 {
-                    Before = () => Tab(2),
+                    Before = () => Tab(TabSkins),
+                    Targets = () => new[] { skins.TargetList },
+                    Title = "Your skins",
+                    Body = "Skin add-ons you have, sorted by what they change: each survivor, weapon, item and infected. Click one, then click the skin you want; " +
+                           "a pack that changes several things asks first. Your picks are put back every time you launch, and only you see them.",
+                },
+                new TourStep
+                {
+                    Before = () => Tab(TabPlay),
                     Targets = () => new[] { CardOf(chkFill), CardOf(numPlayers), CardOf(cmbItemsMode), CardOf(cmbInfectedMode) },
                     Title = "Set it up for your group",
                     Body = "Click a survivor card on the left to play as them; friends pick from the rest in game. " +
@@ -84,7 +92,7 @@ namespace L4D2EightPlayer.UI
                 },
                 new TourStep
                 {
-                    Before = () => Tab(2),
+                    Before = () => Tab(TabPlay),
                     Targets = () => new Control[] { btnStart.Parent.Parent.Parent },
                     Title = "Start and invite",
                     Body = "Start server brings it up, and the survivor cards go live as people join. " +
@@ -92,7 +100,7 @@ namespace L4D2EightPlayer.UI
                 },
                 new TourStep
                 {
-                    Before = () => Tab(3),
+                    Before = () => Tab(TabInternet),
                     Targets = () => new[] { routeRow },
                     Title = "Let friends in",
                     Body = "Friends outside your home need a way through your router. This tab checks each step of the way; Open port automatically does the router part for you, and Test from outside proves it works.",

@@ -116,11 +116,11 @@ namespace L4D2EightPlayer.UI
             Pump(9000);
             var tabs = All(form).OfType<PageHost>().First();
             // every tab once, so later switches only redraw (--first-visit leaves the Internet tab for the test)
-            for (int i = 0; i < tabs.Count; i++) { if (first && i == 3) continue; tabs.SelectedIndex = i; Pump(i == 3 ? 4000 : 700); }
+            for (int i = 0; i < tabs.Count; i++) { if (first && i == MainForm.TabInternet) continue; tabs.SelectedIndex = i; Pump(i == MainForm.TabInternet ? 4000 : 700); }
             log.AppendLine($"window: {window.Size}{(form.TopLevel ? ", host side on its own" : ", host side inside the app window")}{(max ? " (maximized)" : "")}{(first ? ", the Internet tab opened for the first time in the test" : "")}");
 
             // 1. a dropdown repainting 400 times: any captured frame unlike its settled look is a blink
-            tabs.SelectedIndex = 2;
+            tabs.SelectedIndex = MainForm.TabPlay;
             Pump(1000);
             var combo = (ComboBox)typeof(MainForm).GetField("cmbCampaign", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(form);
             var cr = combo.RectangleToScreen(combo.ClientRectangle);
@@ -149,7 +149,7 @@ namespace L4D2EightPlayer.UI
             // 2. tab switches: frames that are neither the old page nor the new one
             var client = window.RectangleToScreen(window.ClientRectangle);
             int totalMixed = 0;
-            foreach (var to in new[] { 3, 2, 1, 2, 0, 2 })   // from the Play tab
+            foreach (var to in new[] { MainForm.TabInternet, MainForm.TabPlay, MainForm.TabMods, MainForm.TabPlay, MainForm.TabSetup, MainForm.TabPlay })   // from the Play tab
             {
                 var from = tabs.SelectedIndex;
                 rec = new Recorder();

@@ -123,6 +123,47 @@ The **Mods & compatibility** tab reads your addons and plugins directly and flag
 
 **Disable / enable highlighted** moves a plugin to `plugins/disabled` or turns an addon off in `addonlist.txt`, and the same button reverses it.
 
+## Skins (Skins tab, or Skins… on the Join side)
+
+The picker sorts the skin add-ons you have (in `left4dead2\addons` and Workshop subscriptions) by what they change:
+
+- **Survivors:** each of the eight, always shown.
+- **Weapons:** each gun and melee weapon, and the chainsaw.
+- **Items:** first aid kit, pills, adrenaline, defibrillator, throwables, ammo packs, gas can, propane, oxygen, fireworks, gnome and cola.
+- **Infected:** *Special* (Hunter, Smoker, Boomer, Charger, Jockey, Spitter, Tank, Witch) and *Common* (commons, plus each uncommon type).
+
+Everything but the survivors appears only once you have a skin for it.
+
+**Picking a skin:** click a survivor, weapon, item or infected, then click the skin you want, or **Game default**. That skin is turned on, and every other skin for the same thing is turned off in the game's add-on list.
+
+**Conflicts:** when two skins for one thing are on, the game uses one of them and which one isn't predictable. The card shows "2 skins on · pick one" in amber.
+
+**What counts as a skin:**
+- A mod is recognised when it replaces the thing's model, or one of the materials and textures that model uses. Texture-only skins count.
+- The material list comes from the game's own models (`Resources/skin_targets.json`, built with `--skin-catalog`).
+- Materials that many things share, like eye textures, don't count, so they don't make a mod look like a pack.
+
+**Packs:** an add-on is all or nothing. If the one you click also skins other things, the app asks first and lists:
+- everything it will skin;
+- the add-ons it turns off;
+- anything that goes back to the game's look because a turned-off add-on skinned it.
+
+You can tick **Don't ask again for this add-on**.
+
+**Remembered:** your picks are saved in `skins.json` and put back each time the app starts the game (Start server, Launch L4D2 & join, Join game). The game's Add-ons menu or a new Workshop subscription can't quietly undo them. The Radio log lists anything that had to be put back. A newly installed skin for something you've picked is asked about: use it, or keep your pick.
+
+**Never touched:**
+- The 8-Player HUD add-on, the 8 Slots Lobby Mod and the other add-ons the app needs.
+- Campaigns, mutations and script mods: they stay on, and the picker says so.
+- Add-ons that aren't skins (maps, sounds, scripts): left alone.
+
+A skin that also ships weapon scripts is marked: those can change how the weapon handles. The compatibility check's verdict on each add-on (the Mods tab) shows on its card.
+
+**Things to know:**
+- Skins show only on your own screen.
+- Servers that enforce pure files (`sv_pure`, `sv_consistency 1`) can block them. Servers made with this app set `sv_consistency 0`.
+- The game reads its add-on list when it starts, so changes need it closed. The picker is read-only while it runs.
+- Cosmetic add-ons aren't copied to the dedicated server.
 ## Bot fill
 
 **Play tab > Bot fill: fill every open slot with a bot.**
@@ -229,7 +270,7 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
 
 ## Where things are
 
-- Tool settings and download cache: `%LOCALAPPDATA%\L4D2-8P-Manager` (the Join side keeps its recent list in `join.json` there, and `mode.txt` remembers the side the app opens on)
+- Tool settings and download cache: `%LOCALAPPDATA%\L4D2-8P-Manager` (the Join side keeps its recent list in `join.json` there, `mode.txt` remembers the side the app opens on, and `skins.json` your skin picks)
 - Install records and backups: `<left4dead2>\addons\l4d2_8p_manager`
 - Dedicated server (default): `<drive of your game>\L4D2-8P-Server\server`
 

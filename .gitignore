@@ -12,3 +12,4 @@ HudAddon/build/
 scratchtest/
 screenshots/
 *.log
+__pycache__/

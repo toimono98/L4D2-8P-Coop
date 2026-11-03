@@ -71,7 +71,7 @@ namespace L4D2EightPlayer.Join
         TextBox txtTarget, txtPassword;
         ListView lvRecent;
         GameButton btnCheck, btnJoin;
-        LinkLabel lnkMap, lnkLan, lnkGame, lnkHud;
+        LinkLabel lnkMap, lnkLan, lnkGame, lnkHud, lnkSkins;
         Card serverCard, emptyCard;
         Label lblFound, lblName, lblMap, lblCount, lblPing, lblVersion, lblMapState, lblNotes, lblEmptyTitle, lblEmptyBody;
         PipBar pips;
@@ -247,7 +247,11 @@ namespace L4D2EightPlayer.Join
             lnkHud.LinkClicked += (s, e) => ToggleHudAddon();
             new ToolTip().SetToolTip(lnkHud, "The host's 8-Player HUD can show survivors 6-8 with health bars and the game's item icons.\nThat look needs this small add-on in your game; without it you'd see stray boxes.");
             var foot = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true, Padding = P(24, 0, 24, 10), BackColor = Theme.Ground };
+            lnkSkins = new LinkLabel { Text = "Skins…", AutoSize = true, Font = Theme.Body(9f), Margin = P(0, 0, 24, 0) };
+            lnkSkins.LinkClicked += (s, e) => OpenSkins();
+            new ToolTip().SetToolTip(lnkSkins, "Pick which skin add-on to use for each survivor, weapon, item and infected (only you see them).");
             foot.Controls.Add(lnkGame);
+            foot.Controls.Add(lnkSkins);
             foot.Controls.Add(lnkHud);
 
             // On a screen too short for the whole window, the body scrolls instead of squashing the lists.
@@ -424,8 +428,11 @@ namespace L4D2EightPlayer.Join
                 if (Launcher.GameRunning())
                     Process.Start(t.SteamUrl); // the running game connects straight away
                 else
+                {
+                    ReapplySkins();   // the remembered skin picks, before the game reads its add-on list
                     Process.Start(new ProcessStartInfo(Path.Combine(steam, "steam.exe"),
                         $"-applaunch {GameLocator.GameAppId} +connect {t.Address}" + (string.IsNullOrEmpty(t.Password) ? "" : $" +password \"{t.Password}\"")) { UseShellExecute = true });
+                }
                 Remember(t, null, joined: true);
                 btnJoin.Text = "Starting L4D2…";
                 lblNotes.Text = "Connecting. You'll spawn as a survivor automatically. If you end up spectating, type !join in chat.";

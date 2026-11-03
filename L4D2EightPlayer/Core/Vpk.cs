@@ -7,7 +7,8 @@ namespace L4D2EightPlayer.Core
 {
     /// <summary>
     /// Reads the directory tree of a Valve VPK (v1/v2) and can pull small files out of it.
-    /// L4D2 addon VPKs are single-file archives, so entry data lives in the same file.
+    /// L4D2 addon VPKs are single-file archives, so entry data lives in the same file; the game's own
+    /// pak01_dir.vpk points into its pak01_NNN.vpk archives, which Read follows too.
     /// </summary>
     public sealed class Vpk
     {
@@ -89,16 +90,26 @@ namespace L4D2EightPlayer.Core
             if (!Entries.TryGetValue(path, out var e)) return null;
             int total = (e.Preload?.Length ?? 0) + (int)e.Length;
             if (total > maxBytes) return null;
-            if (e.Length > 0 && e.ArchiveIndex != InlineArchive) return e.Preload; // data lives in a _NNN.vpk we do not read
+            // The game's own pak01_dir.vpk keeps the data in pak01_000.vpk, pak01_001.vpk...: offsets count from
+            // the start of that file. Add-ons keep everything inline, after the directory tree.
+            string file = FilePath;
+            long start = dataStart;
+            if (e.Length > 0 && e.ArchiveIndex != InlineArchive)
+            {
+                if (!FilePath.EndsWith("_dir.vpk", StringComparison.OrdinalIgnoreCase)) return e.Preload;
+                file = FilePath.Substring(0, FilePath.Length - "dir.vpk".Length) + e.ArchiveIndex.ToString("000") + ".vpk";
+                if (!File.Exists(file)) return e.Preload;
+                start = 0;
+            }
 
             var buf = new byte[total];
             int at = 0;
             if (e.Preload != null) { Buffer.BlockCopy(e.Preload, 0, buf, 0, e.Preload.Length); at = e.Preload.Length; }
             if (e.Length > 0)
             {
-                using (var fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 {
-                    fs.Seek(dataStart + e.Offset, SeekOrigin.Begin);
+                    fs.Seek(start + e.Offset, SeekOrigin.Begin);
                     int read, left = (int)e.Length;
                     while (left > 0 && (read = fs.Read(buf, at, left)) > 0) { at += read; left -= read; }
                 }

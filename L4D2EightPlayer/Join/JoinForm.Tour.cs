@@ -58,9 +58,9 @@ namespace L4D2EightPlayer.Join
             new TourStep
             {
                 Targets = () => new Control[] { lnkHud.Parent },
-                Title = "The HUD add-on",
+                Title = "The HUD add-on and skins",
                 Body = "If your host turns on the 8-Player HUD, this small add-on shows everyone's health bars and items. " +
-                       "Change game folder helps if Left 4 Dead 2 wasn't found.",
+                       "Skins… picks which skin add-on you see for each survivor, weapon, item and infected. Change game folder helps if Left 4 Dead 2 wasn't found.",
             },
             new TourStep
             {
