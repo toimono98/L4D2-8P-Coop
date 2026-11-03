@@ -109,7 +109,9 @@ Copy-Item "$tmp\join.png" "$out\shots\join.png"
 $docs = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'L4D2 8 Player'
 if (-not $NoDeploy -and (Test-Path $docs)) {
     Step "copying to $docs"
-    Copy-Item $mgr, $join, 'L4D2EightPlayer\README.md', $zip $docs -Force
+    # a Manager running from there locks its exe; that shouldn't stop the release
+    try { Copy-Item $mgr, $join, 'L4D2EightPlayer\README.md', $zip $docs -Force -ErrorAction Stop }
+    catch { Write-Host "   not copied ($($_.Exception.Message)); close the app there and copy release\ by hand" -ForegroundColor Yellow }
 }
 
 # ---- publish
