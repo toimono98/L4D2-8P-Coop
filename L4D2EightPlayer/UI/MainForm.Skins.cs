@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using L4D2EightPlayer.Core;
 
@@ -38,6 +39,26 @@ namespace L4D2EightPlayer.UI
                 if (lines.Count > 0 && skinsLoaded) _ = skins.Reload();
             }
             catch (Exception ex) { Warn("Skins: couldn't put your picks back (" + ex.Message + ")."); }
+        }
+
+        /// <summary>
+        /// Before the game starts: overlapping skins with nothing picked are asked about. False when the user went to
+        /// choose on the Skins tab (or cancelled), so the launch stops there.
+        /// </summary>
+        async Task<bool> SkinsSettled()
+        {
+            if (Preview || settings.ClientGameDir == null) return true;
+            var choose = OverlapDialog.Check(this, settings.ClientGameDir, manifest);
+            if (choose == null) return true;
+            if (choose != "")
+            {
+                skins.SelectTarget(choose);   // kept while the list is read
+                bool first = !skinsLoaded;
+                tabs.SelectedIndex = TabSkins;
+                if (!first) await skins.Reload();
+                Info("Skins: pick one skin for each highlighted target, then launch again.");
+            }
+            return false;
         }
     }
 }

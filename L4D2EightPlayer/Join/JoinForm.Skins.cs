@@ -28,5 +28,25 @@ namespace L4D2EightPlayer.Join
             }
             catch { /* the game starts with the add-ons as they are */ }
         }
+
+        /// <summary>
+        /// Before Join game starts the game: overlapping skins with nothing picked are asked about, and the Skins
+        /// window opens on the first one. False when the user cancelled.
+        /// </summary>
+        bool SkinsSettled()
+        {
+            if (Preview || ClientGameDir == null) return true;
+            string choose;
+            while ((choose = OverlapDialog.Check(this, ClientGameDir, Manifest.BuiltIn())) != null)
+            {
+                if (choose == "") return false;
+                using (var f = new SkinsForm(() => ClientGameDir))
+                {
+                    f.Panel.SelectTarget(choose);
+                    f.ShowDialog(TopLevelControl as Form ?? this);
+                }
+            }
+            return true;
+        }
     }
 }

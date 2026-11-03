@@ -153,6 +153,8 @@ You can tick **Don't ask again for this add-on**.
 
 **Remembered:** your picks are saved in `skins.json` and put back each time the app starts the game (Start server, Launch L4D2 & join, Join game). The game's Add-ons menu or a new Workshop subscription can't quietly undo them. The Radio log lists anything that had to be put back. A newly installed skin for something you've picked is asked about: use it, or keep your pick.
 
+**Checked before each launch:** the game turns on every new Workshop subscription, so two skins for the same thing can end up on with nothing picked. Then only one of them shows, and which one isn't predictable, while every extra add-on still loads. Before **Launch L4D2 & join** or **Join game** starts the game, the app lists these and offers **Choose skins** (opens the picker on the first one), **Launch anyway** (keeps them, and doesn't ask again until another skin for the same thing turns up) or **Cancel**.
+
 **Never touched:**
 - The 8-Player HUD add-on, the 8 Slots Lobby Mod and the other add-ons the app needs.
 - Campaigns, mutations and script mods: they stay on, and the picker says so.

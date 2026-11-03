@@ -975,6 +975,7 @@ namespace L4D2EightPlayer.UI
             }
             if (!EnsureInstalled()) return;
             ReapplySkins();
+            if (!await SkinsSettled()) return;
 
             if (settings.Mode == "listen")
             {

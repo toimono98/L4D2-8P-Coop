@@ -434,6 +434,7 @@ namespace L4D2EightPlayer.Join
                 else
                 {
                     ReapplySkins();   // the remembered skin picks, before the game reads its add-on list
+                    if (!SkinsSettled()) return;
                     Process.Start(new ProcessStartInfo(Path.Combine(steam, "steam.exe"),
                         $"-applaunch {GameLocator.GameAppId} +connect {t.Address}" + (string.IsNullOrEmpty(t.Password) ? "" : $" +password \"{t.Password}\"")) { UseShellExecute = true });
                 }

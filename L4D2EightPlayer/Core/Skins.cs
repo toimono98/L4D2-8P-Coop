@@ -441,6 +441,30 @@ namespace L4D2EightPlayer.Core
             prefs.Save();
             return log;
         }
+
+        /// <summary>
+        /// Before a launch: targets with more than one skin on and no pick to settle them, which the picker can fix (at
+        /// most one of those skins is a campaign or script mod it never turns off). Overlaps the user already chose to
+        /// keep (the same skins on as then) aren't listed again.
+        /// </summary>
+        public static List<TargetState> Overlaps(string gameDir, Manifest manifest, SkinPrefs prefs)
+        {
+            if (gameDir == null || !Directory.Exists(gameDir)) return new List<TargetState>();
+            var inv = Scan(gameDir, manifest);
+            return Targets.Select(t => inv.ByTarget[t.Id])
+                .Where(s => s.Conflict && !prefs.Picks.ContainsKey(s.Target.Id) && s.On.Count(m => m.Locked) <= 1
+                         && !(prefs.KeepOverlap.TryGetValue(s.Target.Id, out var kept) && kept == OverlapStamp(s)))
+                .ToList();
+        }
+
+        /// <summary>"Launch anyway": these overlaps stay as they are until another skin for the same thing turns up.</summary>
+        public static void KeepOverlaps(IEnumerable<TargetState> overlaps, SkinPrefs prefs)
+        {
+            foreach (var s in overlaps) prefs.KeepOverlap[s.Target.Id] = OverlapStamp(s);
+            prefs.Save();
+        }
+
+        static string OverlapStamp(TargetState s) => string.Join("|", s.On.Select(m => m.Key.ToLowerInvariant()).OrderBy(k => k));
     }
 
     /// <summary>The skin picks, remembered in %LOCALAPPDATA%\L4D2-8P-Manager\skins.json (one file for both sides of the app).</summary>
@@ -452,6 +476,8 @@ namespace L4D2EightPlayer.Core
         public List<string> NoAsk { get; set; } = new List<string>();
         /// <summary>Mods already seen (key -> size and date), so new ones can be told apart.</summary>
         public Dictionary<string, string> Seen { get; set; } = new Dictionary<string, string>();
+        /// <summary>Target id -> the skins left on together when the user chose "Launch anyway".</summary>
+        public Dictionary<string, string> KeepOverlap { get; set; } = new Dictionary<string, string>();
 
         /// <summary>Set by tests and audits: never write the file.</summary>
         public static bool ReadOnly;

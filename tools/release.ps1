@@ -87,7 +87,7 @@ if ($LASTEXITCODE -ne 0) { Fail "couldn't build the skin test add-ons (tools\mak
 $p = Start-Process $app -ArgumentList "--skins-test `"$fx`" `"$tmp\skins.txt`"" -PassThru -Wait
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\skins.txt" | Write-Host; Fail "the skin picker test failed" }
 $p = Start-Process $app -ArgumentList "--skins-shot `"$fx`" `"$tmp\shots`"" -PassThru -Wait
-if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\skins-pack-question.png")) { Fail "skin picker screenshots missing" }
+if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\skins-pack-question.png") -or -not (Test-Path "$tmp\shots\skins-overlap-question.png")) { Fail "skin picker screenshots missing" }
 $p = Start-Process $app -ArgumentList "--shell-test `"$tmp\shell.txt`"" -PassThru -Wait
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\shell.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "the HOST | JOIN switch check failed" }
 $p = Start-Process $setup -ArgumentList "--shot `"$tmp\shots`"" -PassThru -Wait

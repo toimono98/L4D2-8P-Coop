@@ -62,15 +62,26 @@ namespace L4D2EightPlayer.UI
             var hunter = Skins.Plan(inv, Skins.Get("hunter"), M("Hunter Skin"));
             Check("Hunter -> its skin (already the only one): nothing to do, nothing wider", hunter.Nothing && !hunter.Wider);
 
-            // 3. applying and remembering
+            // 3. overlaps asked about before a launch
+            var ov = Skins.Overlaps(game, manifest, SkinPrefs.Load());
+            Check("before launch: Nick and the AK-47 have more than one skin on and nothing picked: " + Ids(ov.Select(s => s.Target)), Ids(ov.Select(s => s.Target)) == "ak47,nick");
+            Skins.KeepOverlaps(ov, SkinPrefs.Load());
+            Check("'Launch anyway' isn't asked again while the same skins are on", Skins.Overlaps(game, manifest, SkinPrefs.Load()).Count == 0);
+            Compat.SetAddonEnabled(game, "nick_texture.vpk", true);
+            Check("... but is when another skin for it is turned on", Ids(Skins.Overlaps(game, manifest, SkinPrefs.Load()).Select(s => s.Target)) == "nick");
+            Compat.SetAddonEnabled(game, "nick_texture.vpk", false);
+            File.Delete(SkinPrefs.FilePath);
+
+            // 4. applying and remembering
             var prefs = SkinPrefs.Load();
             Skins.Apply(inv, cs, prefs);
             var list = Compat.ReadAddonList(game);
             Check("applied: texture skin on, model skin and pack off in addonlist.txt", list["nick_texture.vpk"] && !list["nick_model.vpk"] && !list["workshop\\1000000001.vpk"]);
             prefs = SkinPrefs.Load();
             Check("remembered: Nick = texture skin, Rochelle/Coach/Ellis = default", prefs.Picks["nick"] == "nick_texture.vpk" && prefs.Picks["rochelle"] == "" && prefs.Picks["coach"] == "" && prefs.Picks["ellis"] == "");
+            Check("a picked target isn't an overlap: only the AK-47 (rifle pack and campaign) is left", Ids(Skins.Overlaps(game, manifest, prefs).Select(s => s.Target)) == "ak47");
 
-            // 4. re-applying at launch
+            // 5. re-applying at launch
             var first = Skins.Reapply(game, manifest, prefs);
             Check("first launch: nothing to restore, every add-on noted as seen (" + prefs.Seen.Count + ")", first.Count == 0 && prefs.Seen.Count == 7);
             Compat.SetAddonEnabled(game, "workshop\\1000000001.vpk", true);   // the player turns the pack back on in the game's menu
@@ -85,7 +96,7 @@ namespace L4D2EightPlayer.UI
             var gone = Skins.Reapply(game, manifest, prefs);
             Check("a picked skin that's gone is reported: " + string.Join(" | ", gone), gone.Any(l => l.StartsWith("Nick:") && l.Contains("gone")));
 
-            // 5. nothing outside the copy changed
+            // 6. nothing outside the copy changed
             Check("your real addonlist.txt and skins.json are untouched", Hash(realList) == before && Hash(realSkins) == beforeSkins);
             Check("the game's original add-on list was backed up inside the copy", Directory.GetFiles(game, "addonlist.txt.original", SearchOption.AllDirectories).Length == 1);
 
@@ -137,6 +148,11 @@ namespace L4D2EightPlayer.UI
             {
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); Pump(400); Save(q, "skins-pack-question"); q.Close();
+            }
+            using (var q = new OverlapDialog(Skins.Overlaps(Path.Combine(work, "left4dead2"), Manifest.BuiltIn(), new SkinPrefs())))
+            {
+                q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
+                q.Show(); Pump(400); Save(q, "skins-overlap-question"); q.Close();
             }
             SkinsPanel.PretendGameOpen = true;
             var again = f.Panel.Reload();
