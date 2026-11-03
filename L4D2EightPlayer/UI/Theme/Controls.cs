@@ -447,6 +447,53 @@ namespace L4D2EightPlayer.UI.Themes
         }
     }
 
+    /// <summary>
+    /// Row tooltips for a ListView (each item's ToolTipText) that show after a short pause and go away the
+    /// moment the mouse leaves the row or the list. The ListView's own item tooltips linger for seconds.
+    /// </summary>
+    public static class HoverTips
+    {
+        public static void Attach(ListView lv)
+        {
+            lv.ShowItemToolTips = false;
+            var tip = new ToolTip { UseAnimation = false, UseFading = false };
+            var timer = new Timer { Interval = 450 };
+            ListViewItem pending = null, shown = null;
+
+            void HideAll()
+            {
+                timer.Stop();
+                pending = null;
+                if (shown != null) { tip.Hide(lv); shown = null; }
+            }
+
+            lv.MouseMove += (s, e) =>
+            {
+                var item = lv.GetItemAt(e.X, e.Y);
+                if (item == shown || item == pending) return;
+                HideAll();
+                if (item == null || string.IsNullOrEmpty(item.ToolTipText)) return;
+                pending = item;
+                timer.Start();
+            };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                if (pending == null || !lv.IsHandleCreated) return;
+                var p = lv.PointToClient(Cursor.Position);
+                if (lv.GetItemAt(p.X, p.Y) != pending) { pending = null; return; }
+                shown = pending;
+                pending = null;
+                tip.Show(shown.ToolTipText, lv, p.X + S(14), p.Y + S(20), 20000);
+            };
+            lv.MouseLeave += (s, e) => HideAll();
+            lv.MouseDown += (s, e) => HideAll();
+            lv.MouseWheel += (s, e) => HideAll();
+            lv.Leave += (s, e) => HideAll();
+            lv.Disposed += (s, e) => { timer.Dispose(); tip.Dispose(); };
+        }
+    }
+
     /// <summary>Segmented choice ("EASY | NORMAL | ADVANCED | EXPERT"). Mirrors ComboBox's SelectedItem/SelectedIndex.</summary>
     public class Pills : FlowLayoutPanel, Themed
     {

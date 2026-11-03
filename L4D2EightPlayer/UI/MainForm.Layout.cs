@@ -285,7 +285,7 @@ namespace L4D2EightPlayer.UI
             };
             lvComponents.ItemChecked += (s, e) => { if (!loading) SaveSelection(); };
             lvComponents.SelectedIndexChanged += (s, e) => ShowComponentInfo();
-            lvComponents.ShowItemToolTips = true;
+            HoverTips.Attach(lvComponents);
             var listBorder = new Card { Dock = DockStyle.Fill, Padding = P(1), Margin = P(0, 0, 0, 8) };
             listBorder.Controls.Add(DarkList.WithHeader(lvComponents));
             g.Controls.Add(listBorder, 0, 6);
@@ -353,7 +353,7 @@ namespace L4D2EightPlayer.UI
             lvFindings.Columns.Add("Type", S(128));
             lvFindings.Columns.Add("Name", S(300));
             lvFindings.Columns.Add("Summary", S(260));
-            lvFindings.ShowItemToolTips = true;
+            HoverTips.Attach(lvFindings);
             DarkList.Apply(lvFindings);
             lvFindings.SelectedIndexChanged += (s, e) => ShowFindingDetail(SelectedFinding());
             var listBorder = new Card { Dock = DockStyle.Fill, Padding = P(1), Margin = P(0, 0, 20, 0) };
