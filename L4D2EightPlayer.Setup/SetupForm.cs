@@ -82,7 +82,26 @@ namespace L4D2EightPlayer.Setup
             next.Click += (s, e) => ShowOptions();
             buttons.Controls.Add(next);
             buttons.Controls.Add(Btn("Cancel", ButtonKind.Ghost, () => Close()));
+            if (existing != null) buttons.Controls.Add(Btn("Uninstall", ButtonKind.Ghost, async () => await DoUninstall()));
             AcceptButton = next;
+        }
+
+        async Task DoUninstall()
+        {
+            if (MessageBox.Show(this, "Remove " + SetupEngine.Product + " (the Manager and the Join app) from this PC?\n\nYour settings, the dedicated server and your game stay as they are.",
+                    Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            var g = Page(out var buttons, fillRow: 5);
+            g.Controls.Add(Heading("Removing…"), 0, 0);
+            string error = null;
+            await Task.Run(() => { try { SetupEngine.Uninstall(_ => { }); } catch (Exception ex) { error = ex.Message; } });
+            if (error != null) { ShowError(error); return; }
+            g = Page(out buttons, fillRow: 5);
+            g.Controls.Add(Heading("Removed"), 0, 0);
+            g.Controls.Add(Note(SetupEngine.Product + " is gone from this PC: the apps, their shortcuts and the Installed apps entry. Your settings, the dedicated server and your game are as they were."), 0, 1);
+            var close = new GameButton("Close", ButtonKind.Primary, 12f);
+            close.Click += (s, e) => Close();
+            buttons.Controls.Add(close);
+            AcceptButton = close;
         }
 
         // ------------------------------------------------------------------ step 2

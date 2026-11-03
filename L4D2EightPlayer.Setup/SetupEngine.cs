@@ -20,6 +20,7 @@ namespace L4D2EightPlayer.Setup
         public const string Product = "L4D2 8-Player Co-op";
         const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\L4D2-8P-Coop";
         public const string SetupExe = "L4D2-8P-Setup.exe";
+        const string UninstallShortcut = "Uninstall " + Product;
 
         public sealed class App
         {
@@ -85,12 +86,15 @@ namespace L4D2EightPlayer.Setup
             var self = Assembly.GetExecutingAssembly().Location;
             var kept = Path.Combine(folder, SetupExe);
             if (!string.Equals(Path.GetFullPath(self), kept, StringComparison.OrdinalIgnoreCase)) File.Copy(self, kept, true);
+            // a visible way out, beside the apps (the same as Windows' Installed apps)
+            Shortcut(Path.Combine(folder, UninstallShortcut + ".lnk"), kept, folder, "--uninstall");
 
             if (o.StartMenu)
             {
-                say("Adding the Start menu shortcut");
+                say("Adding the Start menu shortcuts");
                 Directory.CreateDirectory(StartMenuFolder);
                 Shortcut(Path.Combine(StartMenuFolder, o.App.Shortcut + ".lnk"), Path.Combine(folder, o.App.Exe), folder);
+                Shortcut(Path.Combine(StartMenuFolder, UninstallShortcut + ".lnk"), kept, folder, "--uninstall");
             }
             if (o.Desktop)
             {
@@ -154,6 +158,8 @@ namespace L4D2EightPlayer.Setup
                     if (File.Exists(p)) { File.Delete(p); say("Removed " + p); }
                 }
             }
+            foreach (var lnk in new[] { Path.Combine(folder, UninstallShortcut + ".lnk"), Path.Combine(StartMenuFolder, UninstallShortcut + ".lnk") })
+                if (File.Exists(lnk)) { File.Delete(lnk); say("Removed " + lnk); }
             var lic = Path.Combine(folder, "licenses");
             if (Directory.Exists(lic)) Directory.Delete(lic, true);
             if (Directory.Exists(StartMenuFolder) && !Directory.EnumerateFileSystemEntries(StartMenuFolder).Any()) Directory.Delete(StartMenuFolder);
@@ -187,7 +193,7 @@ namespace L4D2EightPlayer.Setup
         }
 
         /// <summary>A .lnk through Windows' own shell object (no extra libraries).</summary>
-        static void Shortcut(string lnk, string target, string workDir)
+        static void Shortcut(string lnk, string target, string workDir, string arguments = null)
         {
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
             dynamic shell = Activator.CreateInstance(shellType);
@@ -195,6 +201,7 @@ namespace L4D2EightPlayer.Setup
             {
                 dynamic sc = shell.CreateShortcut(lnk);
                 sc.TargetPath = target;
+                if (arguments != null) sc.Arguments = arguments;
                 sc.WorkingDirectory = workDir;
                 sc.IconLocation = target + ",0";
                 sc.Save();

@@ -2,7 +2,7 @@
 
 Two small Windows programs, plus a setup that installs the right one. None of them needs any extra runtime.
 
-**Easiest:** run `L4D2-8P-Setup.exe` and pick **Host a game** (installs the Manager) or **Join a friend** (installs the Join app, and optionally the HUD add-on). It installs just for you, with no admin prompt, into `%LOCALAPPDATA%\Programs\L4D2 8-Player Co-op` (you can change the folder), and adds Start menu and Desktop shortcuts. Run it again to update or to add the other app. To remove it, go to Windows Settings › Apps › Installed apps › L4D2 8-Player Co-op; your settings, the server and your game stay. Send friends the same Setup file. The two exes also run on their own without installing:
+**Easiest:** run `L4D2-8P-Setup.exe` and pick **Host a game** (installs the Manager) or **Join a friend** (installs the Join app, and optionally the HUD add-on). It installs just for you, with no admin prompt, into `%LOCALAPPDATA%\Programs\L4D2 8-Player Co-op` (you can change the folder), and adds Start menu and Desktop shortcuts. Run it again to update or to add the other app. To remove it, open **Uninstall L4D2 8-Player Co-op** in the install folder or the Start menu (or Windows Settings › Apps › Installed apps › L4D2 8-Player Co-op, or run the Setup again and click Uninstall); your settings, the server and your game stay. Send friends the same Setup file. The two exes also run on their own without installing:
 
 - **`L4D2-8P-Manager.exe`** is for the **host**. It sets up, checks and launches 8-player co-op for Left 4 Dead 2, and opens your router port so friends can get in.
 - **`L4D2-8P-Join.exe`** is for **friends who only join**. They paste your invite, check the server and click Join. It needs no mods and changes nothing in their game.
