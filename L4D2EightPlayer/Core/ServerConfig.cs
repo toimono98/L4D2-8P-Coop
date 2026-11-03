@@ -113,6 +113,14 @@ namespace L4D2EightPlayer.Core
             WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_hud.cfg"),
                 new[] { "l4d2_8p_hud_style " + (s.HudAddonLook ? 1 : 0) });
 
+            // Unique Survivors: the host's survivor (Play tab), kept for them; the host is told apart by Steam account.
+            // Everyone else picks from the rest in game (!char).
+            WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_characters.cfg"), new[]
+            {
+                "l4d2_8p_characters_host_id " + Q(SteamAccount.Steam2() ?? ""),
+                "l4d2_8p_characters_host_pick " + Q(s.HostCharacter ?? ""),
+            });
+
             // Scaling for 5+ survivors (Play tab). The per-category on/off and the caps stay the user's.
             WriteBlock(Path.Combine(gameDir, "cfg", "sourcemod", "l4d2_8p_items.cfg"), new[]
             {

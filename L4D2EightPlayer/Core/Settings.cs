@@ -16,6 +16,7 @@ namespace L4D2EightPlayer.Core
         public int MaxPlayers { get; set; } = 8;
         public bool FillWithBots { get; set; } = false;
         public bool HudAddonLook { get; set; } = false;           // 8-Player HUD: health bars + icons (everyone needs the add-on)
+        public string HostCharacter { get; set; } = "";           // the host's survivor (Unique Survivors): "" = any, else "nick", "zoey"...
         public bool ScaleItems { get; set; } = true;              // before 1.2: the items on/off switch (read once into ItemsMode)
 
         // Scaling for 5+ survivors: "off" | "auto" (x survivors / 4) | "half" | "custom" (the % rules below,

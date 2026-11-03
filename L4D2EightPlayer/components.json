@@ -680,7 +680,7 @@
         "sourcemod",
         "left4dhooks"
       ],
-      "description": "Gives each of up to 8 survivors their own character, the L4D1 cast included (Nick, Rochelle, Coach, Ellis, Bill, Zoey, Francis, Louis), instead of bot fill's copies. Players keep their character across chapters. Also keeps the L4D1 cast out of their calm animations, which hold several weapons straight up through the body. Settings in cfg/sourcemod/l4d2_8p_characters.cfg.",
+      "description": "Gives each of up to 8 survivors their own character, the L4D1 cast included (Nick, Rochelle, Coach, Ellis, Bill, Zoey, Francis, Louis), instead of bot fill's copies. Players pick theirs with !char (a menu that also opens when they join), the host's pick from the Play tab is kept for them, and everyone keeps their character across chapters. Also keeps the L4D1 cast out of their calm animations, which hold several weapons straight up through the body. Settings in cfg/sourcemod/l4d2_8p_characters.cfg.",
       "files": [
         [
           "embedded:l4d2_8p_characters.txt",

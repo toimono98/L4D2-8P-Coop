@@ -50,6 +50,7 @@ namespace L4D2EightPlayer.UI
             ("play-campaign-dropdown-open", async () => { AuditMode("dedicated"); tabs.SelectedIndex = 2; cmbCampaign.Focus(); cmbCampaign.DroppedDown = true; await Task.CompletedTask; }),
             ("play-chapter-dropdown-open", async () => { cmbCampaign.DroppedDown = false; cmbCampaign.SelectedIndex = 10; cmbChapter.Focus(); cmbChapter.DroppedDown = true; await Task.CompletedTask; }),
             ("play-mode-dropdown-open", async () => { cmbChapter.DroppedDown = false; cmbMode.Focus(); cmbMode.DroppedDown = true; await Task.CompletedTask; }),
+            ("play-host-survivor-zoey", async () => { cmbMode.DroppedDown = false; cmbHostCharacter.SelectedIndex = 6; await Task.CompletedTask; }),
             ("internet-checked", async () => { cmbMode.DroppedDown = false; tabs.SelectedIndex = 3; await CheckNetwork(verbose: false); }),
             ("internet-lan-mode", async () => { cmbNetwork.SelectedItem = "lan"; await CheckNetwork(verbose: false); }),
             ("internet-just-me", async () => { cmbNetwork.SelectedItem = "local"; await CheckNetwork(verbose: false); }),

@@ -150,6 +150,7 @@ namespace L4D2EightPlayer.UI
             numPlayers.Value = Math.Max(numPlayers.Minimum, Math.Min(numPlayers.Maximum, settings.MaxPlayers));
             chkFill.Checked = settings.FillWithBots;
             chkHudLook.Checked = settings.HudAddonLook;
+            cmbHostCharacter.SelectedIndex = Math.Max(0, Array.IndexOf(Characters, (settings.HostCharacter ?? "").ToUpperInvariant()) + 1);
             cmbItemsMode.SelectedItem = settings.ItemsModeOrDefault;
             if (cmbItemsMode.SelectedIndex < 0) cmbItemsMode.SelectedIndex = 1;
             cmbInfectedMode.SelectedItem = settings.InfectedMode;
@@ -183,6 +184,7 @@ namespace L4D2EightPlayer.UI
             settings.MaxPlayers = (int)numPlayers.Value;
             settings.FillWithBots = chkFill.Checked;
             settings.HudAddonLook = chkHudLook.Checked;
+            settings.HostCharacter = cmbHostCharacter.SelectedIndex > 0 ? Characters[cmbHostCharacter.SelectedIndex - 1].ToLowerInvariant() : "";
             settings.ItemsMode = cmbItemsMode.SelectedItem as string ?? "auto";
             settings.InfectedMode = cmbInfectedMode.SelectedItem as string ?? "auto";
             settings.RotationMode = cmbRotation.SelectedItem as string ?? "next";
