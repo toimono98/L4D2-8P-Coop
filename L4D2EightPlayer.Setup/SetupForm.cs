@@ -10,14 +10,14 @@ using static L4D2EightPlayer.UI.Themes.Ui;
 
 namespace L4D2EightPlayer.Setup
 {
-    /// <summary>Three steps: how will you play (host or join), where it goes, then installing and done.</summary>
+    /// <summary>Three steps: how will you play (host or join: the side the app opens on), where it goes, then installing and done.</summary>
     sealed class SetupForm : Form
     {
         const string Title = "L4D2 8-Player Co-op Setup";
         readonly Panel body = new Panel { Dock = DockStyle.Fill };
         NavBar header;
         PathCard cardHost, cardJoin;
-        SetupEngine.App chosen;
+        SetupEngine.Choice chosen;
         TextBox txtFolder;
         CheckBox chkStart, chkDesktop, chkHud, chkOpen, chkTour;
         readonly string game = GameLocator.FindGame();
@@ -38,7 +38,8 @@ namespace L4D2EightPlayer.Setup
             header = new NavBar() { Title = "8-PLAYER CO-OP", Subtitle = "LEFT 4 DEAD 2 · SETUP" };
             Controls.Add(body);
             Controls.Add(header);
-            chosen = SetupEngine.ById(preselect);
+            // an update starts on the side the app opens on now
+            chosen = SetupEngine.ById(preselect ?? (SetupEngine.Existing() != null ? StartMode.Load() : null));
             ShowChoose();
         }
 
@@ -55,19 +56,19 @@ namespace L4D2EightPlayer.Setup
             var g = Page(out var buttons);
             g.Controls.Add(Heading("How will you play?"), 0, 0);
             var existing = SetupEngine.Existing();
-            g.Controls.Add(Note(existing == null
-                ? "Pick one. Only one person in your group hosts; everyone else joins. You can add the other one later by running this setup again."
-                : "Already installed here: " + string.Join(" and ", existing.Value.apps.ConvertAll(a => SetupEngine.ById(a)?.Shortcut ?? a)) +
-                  ". Pick one to update it, or add the other."), 0, 1);
+            g.Controls.Add(Note((existing == null
+                ? "Only one person in your group hosts; everyone else joins. "
+                : "Already installed in " + existing + ". Pick one to update it. ") +
+                "It's the same app either way, and this only sets the side it opens on: HOST | JOIN at the top of the app switches any time."), 0, 1);
 
             var cards = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0, 6, 0, 0) };
             cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             cards.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             cardHost = new PathCard("Host a game", "FOR ONE PERSON IN YOUR GROUP",
-                "Run the server everyone plays on. Installs the 8-Player Manager, which downloads and sets up the server mods, starts the server and gives you an invite for your friends.") { Dock = DockStyle.Fill, Margin = P(0, 0, 8, 0) };
+                "Run the server everyone plays on. The app opens on hosting: it downloads and sets up the server mods, starts the server and gives you an invite for your friends.") { Dock = DockStyle.Fill, Margin = P(0, 0, 8, 0) };
             cardJoin = new PathCard("Join a friend", "FOR EVERYONE ELSE",
-                "Play on your host's server. Installs the small Join app: paste the host's invite, check the server, join. No mods, and your game stays as it is.") { Dock = DockStyle.Fill, Margin = P(8, 0, 0, 0) };
+                "Play on your host's server. The app opens on joining: paste the host's invite, check the server, join. No mods, and your game stays as it is.") { Dock = DockStyle.Fill, Margin = P(8, 0, 0, 0) };
             cards.Controls.Add(cardHost, 0, 0);
             cards.Controls.Add(cardJoin, 1, 0);
             g.Controls.Add(cards, 0, 2);
@@ -88,7 +89,7 @@ namespace L4D2EightPlayer.Setup
 
         async Task DoUninstall()
         {
-            if (MessageBox.Show(this, "Remove " + SetupEngine.Product + " (the Manager and the Join app) from this PC?\n\nYour settings, the dedicated server and your game stay as they are.",
+            if (MessageBox.Show(this, "Remove " + SetupEngine.Product + " from this PC?\n\nYour settings, the dedicated server and your game stay as they are.",
                     Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             var g = Page(out var buttons, fillRow: 5);
             g.Controls.Add(Heading("Removing…"), 0, 0);
@@ -97,7 +98,7 @@ namespace L4D2EightPlayer.Setup
             if (error != null) { ShowError(error); return; }
             g = Page(out buttons, fillRow: 5);
             g.Controls.Add(Heading("Removed"), 0, 0);
-            g.Controls.Add(Note(SetupEngine.Product + " is gone from this PC: the apps, their shortcuts and the Installed apps entry. Your settings, the dedicated server and your game are as they were."), 0, 1);
+            g.Controls.Add(Note(SetupEngine.Product + " is gone from this PC: the app, its shortcuts and the Installed apps entry. Your settings, the dedicated server and your game are as they were."), 0, 1);
             var close = new GameButton("Close", ButtonKind.Primary, 12f);
             close.Click += (s, e) => Close();
             buttons.Controls.Add(close);
@@ -110,7 +111,7 @@ namespace L4D2EightPlayer.Setup
         {
             if (chosen == null) return;
             var g = Page(out var buttons, fillRow: 5);
-            g.Controls.Add(Heading(chosen == SetupEngine.Host ? "Install the 8-Player Manager" : "Install the Join app"), 0, 0);
+            g.Controls.Add(Heading("Install " + SetupEngine.Product), 0, 0);
             g.Controls.Add(Note(game != null
                 ? "Left 4 Dead 2 found in " + game + "."
                 : "Left 4 Dead 2 wasn't found. Install it from Steam first, or point the app at it later."), 0, 1);
@@ -123,7 +124,7 @@ namespace L4D2EightPlayer.Setup
             opts.Controls.Add(txtFolder, 0, 1);
             var browse = Btn("Browse", ButtonKind.Ghost, () =>
             {
-                using (var d = new FolderBrowserDialog { Description = "Where should " + chosen.Shortcut + " go?", SelectedPath = txtFolder.Text })
+                using (var d = new FolderBrowserDialog { Description = "Where should " + SetupEngine.Product + " go?", SelectedPath = txtFolder.Text })
                     if (d.ShowDialog(this) == DialogResult.OK) txtFolder.Text = Path.Combine(d.SelectedPath, Path.GetFileName(d.SelectedPath).Equals(SetupEngine.Product, StringComparison.OrdinalIgnoreCase) ? "" : SetupEngine.Product);
             });
             browse.Margin = P(0, 0, 0, 10);
@@ -146,8 +147,8 @@ namespace L4D2EightPlayer.Setup
             checks.Controls.Add(chkHud);
             g.Controls.Add(checks, 0, 3);
             g.Controls.Add(Note(chosen == SetupEngine.Host
-                ? "Next, the Manager walks you through setting up the server: its Setup tab downloads everything it needs."
-                : "Next, paste the invite your host sends you into the Join app."), 0, 4);
+                ? "It opens on hosting. Its Setup tab walks you through the server: it downloads everything it needs."
+                : "It opens on joining: paste the invite your host sends you."), 0, 4);
 
             var install = new GameButton("Install", ButtonKind.Primary, 12f);
             install.Click += async (s, e) => await DoInstall();
@@ -162,7 +163,7 @@ namespace L4D2EightPlayer.Setup
         {
             var o = new SetupEngine.Options
             {
-                App = chosen,
+                Choice = chosen,
                 Folder = txtFolder.Text.Trim(),
                 StartMenu = chkStart.Checked,
                 Desktop = chkDesktop.Checked,
@@ -170,12 +171,12 @@ namespace L4D2EightPlayer.Setup
             };
             if (o.HudAddon && Launcher.GameRunning())
             {
-                MessageBox.Show(this, "Close Left 4 Dead 2 first: the HUD add-on can't be installed while it runs. Or untick it; the Join app can install it later.", Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "Close Left 4 Dead 2 first: the HUD add-on can't be installed while it runs. Or untick it; the app can install it later (the link at the bottom of the JOIN side).", Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             // a first install gets the tour ticked; an update or reinstall doesn't
-            bool firstTime = SetupEngine.Existing()?.apps.Contains(o.App.Id) != true;
+            bool firstTime = SetupEngine.Existing() == null;
             var g = Page(out var buttons, fillRow: 5);
             g.Controls.Add(Heading("Installing…"), 0, 0);
             var meter = new Meter { Dock = DockStyle.Top, Height = S(10), Marquee = true, Margin = P(0, 14, 0, 14) };
@@ -205,17 +206,17 @@ namespace L4D2EightPlayer.Setup
         {
             var g = Page(out var buttons, fillRow: 5);
             g.Controls.Add(Heading("Ready"), 0, 0);
-            g.Controls.Add(Note(o.App == SetupEngine.Host
-                ? "The 8-Player Manager is installed in " + o.Folder + ". Open it and follow its Setup tab: it finds your game, downloads the server and the mods, and checks everything before your first game."
-                : "The Join app is installed in " + o.Folder + ". Open it, paste the invite your host sends you, click Check server, then Join game." +
+            g.Controls.Add(Note(o.Choice == SetupEngine.Host
+                ? SetupEngine.Product + " is installed in " + o.Folder + " and opens on hosting. Follow its Setup tab: it finds your game, downloads the server and the mods, and checks everything before your first game."
+                : SetupEngine.Product + " is installed in " + o.Folder + " and opens on joining. Paste the invite your host sends you, click Check server, then Join game." +
                   (o.HudAddon ? " The HUD add-on is in your game too." : "")), 0, 1);
             g.Controls.Add(Note("To remove it later, open Uninstall " + SetupEngine.Product + " in the install folder" + (o.StartMenu ? " or the Start menu" : "") +
-                ", or use Windows' Installed apps." + (o.App == SetupEngine.Host ? " Your settings stay, and so does the server." : " Your settings stay.")), 0, 2);
+                ", or use Windows' Installed apps." + (o.Choice == SetupEngine.Host ? " Your settings stay, and so does the server." : " Your settings stay.")), 0, 2);
             var opens = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 16, 0, 0) };
-            chkOpen = new GameCheck { Text = "Open " + o.App.Shortcut + " now", Checked = true, AutoSize = true, Font = Theme.Body(10.5f), Margin = P(0, 0, 0, 6) };
+            chkOpen = new GameCheck { Text = "Open " + SetupEngine.Product + " now", Checked = true, AutoSize = true, Font = Theme.Body(10.5f), Margin = P(0, 0, 0, 6) };
             chkTour = new GameCheck
             {
-                Text = o.App == SetupEngine.Host
+                Text = o.Choice == SetupEngine.Host
                     ? "Show me around: a one-minute tour of setting up the server, checking mods and inviting friends"
                     : "Show me around: a quick tour of pasting the invite, checking the server and joining",
                 Checked = firstTime, AutoSize = true, MaximumSize = Sz(700, 0), Font = Theme.Body(10.5f), Margin = P(28, 0, 0, 0),
@@ -228,7 +229,7 @@ namespace L4D2EightPlayer.Setup
             finish.Click += (s, e) =>
             {
                 if (chkOpen.Checked)
-                    Process.Start(new ProcessStartInfo(Path.Combine(o.Folder, o.App.Exe), chkTour.Checked ? "--tour" : "--no-tour") { WorkingDirectory = o.Folder });
+                    Process.Start(new ProcessStartInfo(Path.Combine(o.Folder, SetupEngine.Exe), "--" + o.Choice.Id + (chkTour.Checked ? " --tour" : " --no-tour")) { WorkingDirectory = o.Folder });
                 Close();
             };
             buttons.Controls.Add(finish);

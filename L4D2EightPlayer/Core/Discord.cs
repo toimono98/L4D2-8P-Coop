@@ -38,7 +38,7 @@ namespace L4D2EightPlayer.Core
                 var fields = new List<object>
                 {
                     Field("Join", $"`{a.SteamUrl}`\nor in the L4D2 console: `{a.ConsoleCommand}`"),
-                    Field("No Join app yet?", $"[Download it for Windows]({UpdateCheck.ReleasePage}) and paste the link above."),
+                    Field("Don't have the app yet?", $"[Download it for Windows]({UpdateCheck.ReleasePage}), pick Join a friend, and paste the link above."),
                 };
                 if (a.NeedsTitle != null)
                     fields.Add(Field("Custom campaign", a.NeedsUrl != null ? $"Subscribe first: [{a.NeedsTitle}]({a.NeedsUrl})" : $"Install {a.NeedsTitle} first."));

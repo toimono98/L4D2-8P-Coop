@@ -642,7 +642,7 @@ namespace L4D2EightPlayer.UI.Themes
         readonly List<Rectangle> hits = new List<Rectangle>();
         int selected, hover = -1;
         public string Title { get; set; } = "8-PLAYER CO-OP";
-        public string Subtitle { get; set; } = "LEFT 4 DEAD 2 · MANAGER";
+        public string Subtitle { get; set; } = "LEFT 4 DEAD 2 · HOST";
         public string Status { get => status; set { status = value; Invalidate(); } }
         public Color StatusColor { get => statusColor; set { statusColor = value; Invalidate(); } }
         string status = "";
@@ -661,6 +661,16 @@ namespace L4D2EightPlayer.UI.Themes
         string help;
         Rectangle helpHit;
         bool helpHover;
+
+        /// <summary>A two-way switch left of Help (HOST | JOIN): Modes are its labels, Mode the lit one; null hides it.</summary>
+        public string[] Modes { get => modes; set { modes = value; Invalidate(); } }
+        public int Mode { get => mode; set { mode = value; Invalidate(); } }
+        /// <summary>Raised with the index of the side clicked (never the lit one).</summary>
+        public event EventHandler<int> ModeClicked;
+        string[] modes;
+        int mode, modeHover = -1;
+        readonly List<Rectangle> modeHits = new List<Rectangle>();
+        static Font ModeFont => Theme.Stencil(9.5f);
 
         static Font TitleFont => Theme.Display(17f);
         static Font SubFont => Theme.BodyBold(7.5f);
@@ -723,8 +733,31 @@ namespace L4D2EightPlayer.UI.Themes
                 }
             }
 
+            modeHits.Clear();
+            int modeRoom = 0;
+            if (modes != null && modes.Length > 1)
+            {
+                int seg = modes.Max(m => Draw.Measure(m, ModeFont).Width) + S(26), h = S(30);
+                int right = helpHit.IsEmpty ? Width - S(26) : helpHit.Left - S(8);
+                int mx = right - seg * modes.Length, my = (Height - h) / 2;
+                if (mx >= x + S(10))
+                {
+                    for (int i = 0; i < modes.Length; i++)
+                    {
+                        var r = new Rectangle(mx + i * seg, my, seg, h);
+                        modeHits.Add(r);
+                        bool lit = i == mode;
+                        if (lit || i == modeHover) using (var b = new SolidBrush(lit ? Theme.Bone : Theme.Panel)) g.FillRectangle(b, r);
+                        Draw.Text(g, modes[i], ModeFont, lit ? Theme.Ground : i == modeHover ? Theme.Bone : Theme.Muted, r,
+                            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+                    }
+                    Draw.Border(g, new Rectangle(mx, my, seg * modes.Length, h), Theme.Line);
+                    modeRoom = seg * modes.Length + S(18);
+                }
+            }
+
             // The status repeats what the page shows, so on a narrow window it gives way instead of clipping.
-            int roomAll = Width - x - S(46) - helpRoom;
+            int roomAll = Width - x - S(46) - helpRoom - modeRoom;
             bool hasNotice = !string.IsNullOrEmpty(notice);
             int shift = hasNotice ? S(9) : 0;
             if (!string.IsNullOrEmpty(status))
@@ -752,12 +785,14 @@ namespace L4D2EightPlayer.UI.Themes
         {
             int h = hits.FindIndex(r => r.Contains(e.Location));
             bool onHelp = helpHit.Contains(e.Location);
-            Cursor = h >= 0 || onHelp || noticeHit.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
-            if (h != hover || onHelp != helpHover) { hover = h; helpHover = onHelp; Invalidate(); }
+            int m = modeHits.FindIndex(r => r.Contains(e.Location));
+            if (m == mode) m = -1;
+            Cursor = h >= 0 || onHelp || m >= 0 || noticeHit.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+            if (h != hover || onHelp != helpHover || m != modeHover) { hover = h; helpHover = onHelp; modeHover = m; Invalidate(); }
             base.OnMouseMove(e);
         }
 
-        protected override void OnMouseLeave(EventArgs e) { hover = -1; helpHover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = -1; helpHover = false; modeHover = -1; Invalidate(); base.OnMouseLeave(e); }
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
@@ -765,6 +800,11 @@ namespace L4D2EightPlayer.UI.Themes
             if (h >= 0) { Focus(); Selected = h; }
             else if (noticeHit.Contains(e.Location)) NoticeClicked?.Invoke(this, EventArgs.Empty);
             else if (helpHit.Contains(e.Location)) HelpClicked?.Invoke(this, EventArgs.Empty);
+            else
+            {
+                int m = modeHits.FindIndex(r => r.Contains(e.Location));
+                if (m >= 0 && m != mode) ModeClicked?.Invoke(this, m);
+            }
             base.OnMouseClick(e);
         }
 

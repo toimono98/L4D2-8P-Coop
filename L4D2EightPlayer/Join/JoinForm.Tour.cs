@@ -58,7 +58,14 @@ namespace L4D2EightPlayer.Join
                 Targets = () => new Control[] { lnkHud.Parent },
                 Title = "The HUD add-on",
                 Body = "If your host turns on the 8-Player HUD, this small add-on shows everyone's health bars and items. " +
-                       "Change game folder helps if Left 4 Dead 2 wasn't found. Take this tour again any time from TOUR at the top right.",
+                       "Change game folder helps if Left 4 Dead 2 wasn't found.",
+            },
+            new TourStep
+            {
+                Targets = () => new Control[] { header },
+                Title = "Host or join",
+                Body = "Hosting a game yourself? Click HOST at the top: the same app sets up and runs the server, and JOIN brings you back here. " +
+                       "It opens on whichever you used last. TOUR shows this tour again.",
             },
         });
     }

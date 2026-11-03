@@ -10,8 +10,9 @@ using Microsoft.Win32;
 namespace L4D2EightPlayer.Setup
 {
     /// <summary>
-    /// Installs for the current user only (no admin): the chosen app into a folder, Start menu and Desktop
+    /// Installs for the current user only (no admin): the app into a folder, Start menu and Desktop
     /// shortcuts, and an entry in Windows' Installed apps that runs "L4D2-8P-Setup.exe --uninstall".
+    /// Hosting or joining only picks which side the app opens on (StartMode); it's the same app.
     /// Settings (%LOCALAPPDATA%\L4D2-8P-Manager), the dedicated server and the game are never touched,
     /// apart from the optional HUD add-on in the game's addons folder.
     /// </summary>
@@ -22,48 +23,56 @@ namespace L4D2EightPlayer.Setup
         public const string SetupExe = "L4D2-8P-Setup.exe";
         const string UninstallShortcut = "Uninstall " + Product;
 
-        public sealed class App
-        {
-            public string Id, Exe, Shortcut, Process;
-            public string[] Extras;   // other files beside it
-        }
+        public const string Exe = "L4D2-8P-Coop.exe";
+        const string Process = "L4D2-8P-Coop";
+        static readonly string[] Extras = { "README.md" };
 
-        public static readonly App Host = new App { Id = "host", Exe = "L4D2-8P-Manager.exe", Shortcut = "L4D2 8-Player Manager", Process = "L4D2-8P-Manager", Extras = new[] { "README.md" } };
-        public static readonly App Join = new App { Id = "join", Exe = "L4D2-8P-Join.exe", Shortcut = "L4D2 8-Player Join", Process = "L4D2-8P-Join", Extras = new[] { "READ ME FIRST.txt" } };
-        public static App ById(string id) => id == "join" ? Join : id == "host" ? Host : null;
+        /// <summary>Before 2.0 the host and join sides were two apps; an update removes them and their shortcuts.</summary>
+        static readonly string[] LegacyFiles = { "L4D2-8P-Manager.exe", "L4D2-8P-Join.exe", "READ ME FIRST.txt" };
+        static readonly string[] LegacyShortcuts = { "L4D2 8-Player Manager", "L4D2 8-Player Join" };
+        static readonly string[] LegacyProcesses = { "L4D2-8P-Manager", "L4D2-8P-Join" };
+
+        /// <summary>The two ways in. Both install the same app; the path is the side it opens on.</summary>
+        public sealed class Choice
+        {
+            public string Id, Name;
+        }
+        public static readonly Choice Host = new Choice { Id = StartMode.Host, Name = "hosting" };
+        public static readonly Choice Join = new Choice { Id = StartMode.Join, Name = "joining" };
+        public static Choice ById(string id) => id == StartMode.Join ? Join : id == StartMode.Host ? Host : null;
 
         public sealed class Options
         {
-            public App App;
+            public Choice Choice;
             public string Folder;
-            public bool StartMenu = true, Desktop = true, HudAddon, Register = true;
+            public bool StartMenu = true, Desktop = true, HudAddon;
+            /// <summary>False for test installs: no Installed apps entry, and the start mode is left alone.</summary>
+            public bool Register = true;
         }
 
         public static string DefaultFolder =>
-            Existing()?.folder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", Product);
+            Existing() ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", Product);
 
         static string StartMenuFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), Product);
         static string Desktop => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
-        /// <summary>The current install, if any: its folder and which apps it has.</summary>
-        public static (string folder, List<string> apps)? Existing()
+        /// <summary>The current install's folder, if any (this version's or the older two-app one).</summary>
+        public static string Existing()
         {
             using (var k = Registry.CurrentUser.OpenSubKey(UninstallKey))
             {
                 var folder = k?.GetValue("InstallLocation") as string;
-                if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return null;
-                var apps = ((k.GetValue("Apps") as string) ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                return (folder, apps);
+                return string.IsNullOrEmpty(folder) || !Directory.Exists(folder) ? null : folder;
             }
         }
 
-        /// <summary>An app of this install that is running and would lock its exe.</summary>
-        public static App RunningFrom(string folder)
+        /// <summary>The app (or an older one) running from this folder, which would lock its exe.</summary>
+        public static string RunningFrom(string folder)
         {
-            foreach (var a in new[] { Host, Join })
-                foreach (var p in System.Diagnostics.Process.GetProcessesByName(a.Process))
+            foreach (var name in new[] { Process }.Concat(LegacyProcesses))
+                foreach (var p in System.Diagnostics.Process.GetProcessesByName(name))
                 {
-                    try { if (string.Equals(Path.GetDirectoryName(p.MainModule.FileName), Path.GetFullPath(folder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return a; }
+                    try { if (string.Equals(Path.GetDirectoryName(p.MainModule.FileName), Path.GetFullPath(folder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return name == Process ? Product : name.Replace("L4D2-8P-", "The 8-Player "); }
                     catch { }
                 }
             return null;
@@ -74,32 +83,33 @@ namespace L4D2EightPlayer.Setup
             var folder = Path.GetFullPath(o.Folder);
             Directory.CreateDirectory(folder);
             var running = RunningFrom(folder);
-            if (running != null) throw new InvalidOperationException($"{running.Shortcut} is open. Close it, then try again.");
+            if (running != null) throw new InvalidOperationException($"{running} is open. Close it, then try again.");
 
-            say("Copying " + o.App.Exe);
-            Extract("app/" + o.App.Exe, Path.Combine(folder, o.App.Exe));
-            foreach (var x in o.App.Extras) Extract("app/" + x, Path.Combine(folder, x));
+            say("Copying " + Exe);
+            Extract("app/" + Exe, Path.Combine(folder, Exe));
+            foreach (var x in Extras) Extract("app/" + x, Path.Combine(folder, x));
             foreach (var lic in Resources().Where(r => r.StartsWith("app/licenses/")))
                 Extract(lic, Path.Combine(folder, "licenses", lic.Substring("app/licenses/".Length)));
+            RemoveLegacy(folder, say);
 
-            // a copy of this setup stays, for uninstalling or adding the other app later
+            // a copy of this setup stays, for uninstalling (or switching the start side) later
             var self = Assembly.GetExecutingAssembly().Location;
             var kept = Path.Combine(folder, SetupExe);
             if (!string.Equals(Path.GetFullPath(self), kept, StringComparison.OrdinalIgnoreCase)) File.Copy(self, kept, true);
-            // a visible way out, beside the apps (the same as Windows' Installed apps)
+            // a visible way out, beside the app (the same as Windows' Installed apps)
             Shortcut(Path.Combine(folder, UninstallShortcut + ".lnk"), kept, folder, "--uninstall");
 
             if (o.StartMenu)
             {
                 say("Adding the Start menu shortcuts");
                 Directory.CreateDirectory(StartMenuFolder);
-                Shortcut(Path.Combine(StartMenuFolder, o.App.Shortcut + ".lnk"), Path.Combine(folder, o.App.Exe), folder);
+                Shortcut(Path.Combine(StartMenuFolder, Product + ".lnk"), Path.Combine(folder, Exe), folder);
                 Shortcut(Path.Combine(StartMenuFolder, UninstallShortcut + ".lnk"), kept, folder, "--uninstall");
             }
             if (o.Desktop)
             {
                 say("Adding the Desktop shortcut");
-                Shortcut(Path.Combine(Desktop, o.App.Shortcut + ".lnk"), Path.Combine(folder, o.App.Exe), folder);
+                Shortcut(Path.Combine(Desktop, Product + ".lnk"), Path.Combine(folder, Exe), folder);
             }
             if (o.HudAddon)
             {
@@ -112,25 +122,48 @@ namespace L4D2EightPlayer.Setup
             }
             if (o.Register)
             {
+                say("Opening on " + o.Choice.Name + " from now on");
+                StartMode.Save(o.Choice.Id);
                 say("Adding it to Windows' Installed apps");
-                var apps = Existing()?.apps ?? new List<string>();
-                if (!apps.Contains(o.App.Id)) apps.Add(o.App.Id);
-                Register(folder, apps);
+                Register(folder);
             }
             say("Done");
         }
 
-        static void Register(string folder, List<string> apps)
+        /// <summary>The two older apps, their notes, and their shortcuts that point into this folder (this app replaces both).</summary>
+        static void RemoveLegacy(string folder, Action<string> say)
+        {
+            foreach (var f in LegacyFiles.Select(n => Path.Combine(folder, n)))
+                if (File.Exists(f)) { File.Delete(f); say("Removed the older " + Path.GetFileName(f)); }
+            foreach (var name in LegacyShortcuts)
+                foreach (var lnk in new[] { Path.Combine(StartMenuFolder, name + ".lnk"), Path.Combine(Desktop, name + ".lnk") })
+                    if (File.Exists(lnk) && PointsInto(lnk, folder)) { File.Delete(lnk); say("Removed the older shortcut " + lnk); }
+        }
+
+        /// <summary>Whether a .lnk's target is in the folder (so it belongs to this install, not another copy).</summary>
+        static bool PointsInto(string lnk, string folder)
+        {
+            dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+            try
+            {
+                string target = shell.CreateShortcut(lnk).TargetPath;
+                if (string.IsNullOrEmpty(target)) return false;
+                return Path.GetDirectoryName(Path.GetFullPath(target)).TrimEnd('\\').Equals(Path.GetFullPath(folder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+            finally { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell); }
+        }
+
+        static void Register(string folder)
         {
             using (var k = Registry.CurrentUser.CreateSubKey(UninstallKey))
             {
-                var names = apps.Select(ById).Where(a => a != null).Select(a => a.Shortcut.Replace("L4D2 8-Player ", "")).ToList();
-                k.SetValue("DisplayName", Product + " (" + string.Join(" + ", names) + ")");
+                k.SetValue("DisplayName", Product);
                 k.SetValue("DisplayVersion", AppInfo.Version);
                 k.SetValue("Publisher", "L4D2 8-Player Co-op");
                 k.SetValue("InstallLocation", folder);
-                k.SetValue("Apps", string.Join(",", apps));
-                k.SetValue("DisplayIcon", Path.Combine(folder, apps.Contains("host") ? Host.Exe : Join.Exe));
+                k.DeleteValue("Apps", false);   // 1.9-1.10: which of the two apps were installed
+                k.SetValue("DisplayIcon", Path.Combine(folder, Exe));
                 k.SetValue("UninstallString", $"\"{Path.Combine(folder, SetupExe)}\" --uninstall");
                 k.SetValue("ModifyPath", $"\"{Path.Combine(folder, SetupExe)}\"");
                 k.SetValue("URLInfoAbout", "https://github.com/" + UpdateCheck.Repo);
@@ -140,26 +173,19 @@ namespace L4D2EightPlayer.Setup
             }
         }
 
-        /// <summary>Removes both apps, the shortcuts and the Installed apps entry. Settings and the server stay.</summary>
+        /// <summary>Removes the app, the shortcuts and the Installed apps entry. Settings and the server stay.</summary>
         public static void Uninstall(Action<string> say)
         {
-            var existing = Existing();
-            var folder = existing?.folder ?? Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var folder = Existing() ?? Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             var running = RunningFrom(folder);
-            if (running != null) throw new InvalidOperationException($"{running.Shortcut} is open. Close it, then try again.");
+            if (running != null) throw new InvalidOperationException($"{running} is open. Close it, then try again.");
 
-            foreach (var a in new[] { Host, Join })
-            {
-                foreach (var lnk in new[] { Path.Combine(StartMenuFolder, a.Shortcut + ".lnk"), Path.Combine(Desktop, a.Shortcut + ".lnk") })
-                    if (File.Exists(lnk)) { File.Delete(lnk); say("Removed " + lnk); }
-                foreach (var f in new[] { a.Exe }.Concat(a.Extras))
-                {
-                    var p = Path.Combine(folder, f);
-                    if (File.Exists(p)) { File.Delete(p); say("Removed " + p); }
-                }
-            }
-            foreach (var lnk in new[] { Path.Combine(folder, UninstallShortcut + ".lnk"), Path.Combine(StartMenuFolder, UninstallShortcut + ".lnk") })
+            foreach (var lnk in new[] { Product, UninstallShortcut }.SelectMany(n => new[] { Path.Combine(StartMenuFolder, n + ".lnk"), Path.Combine(Desktop, n + ".lnk") })
+                                .Append(Path.Combine(folder, UninstallShortcut + ".lnk")))
                 if (File.Exists(lnk)) { File.Delete(lnk); say("Removed " + lnk); }
+            foreach (var f in new[] { Exe }.Concat(Extras).Select(n => Path.Combine(folder, n)))
+                if (File.Exists(f)) { File.Delete(f); say("Removed " + f); }
+            RemoveLegacy(folder, say);
             var lic = Path.Combine(folder, "licenses");
             if (Directory.Exists(lic)) Directory.Delete(lic, true);
             if (Directory.Exists(StartMenuFolder) && !Directory.EnumerateFileSystemEntries(StartMenuFolder).Any()) Directory.Delete(StartMenuFolder);
@@ -170,7 +196,7 @@ namespace L4D2EightPlayer.Setup
             var kept = Path.Combine(folder, SetupExe);
             if (File.Exists(kept))
             {
-                Process.Start(new ProcessStartInfo("cmd.exe",
+                System.Diagnostics.Process.Start(new ProcessStartInfo("cmd.exe",
                     $"/c ping -n 3 127.0.0.1 >nul & del /f /q \"{kept}\" & rmdir \"{folder}\"")
                     { CreateNoWindow = true, UseShellExecute = false, WindowStyle = ProcessWindowStyle.Hidden });
             }

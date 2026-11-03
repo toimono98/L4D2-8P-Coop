@@ -87,15 +87,21 @@ namespace L4D2EightPlayer.UI
                     Targets = () => new Control[] { btnStart.Parent.Parent.Parent },
                     Title = "Start and invite",
                     Body = "Start server brings it up, and the survivor cards go live as people join. " +
-                           "Copy the line under Friends join with and send it: friends paste it into the Join app or open it in Steam.",
+                           "Copy the line under Friends join with and send it: friends paste it into this app's JOIN side or open it in Steam.",
                 },
                 new TourStep
                 {
                     Before = () => Tab(3),
                     Targets = () => new[] { routeRow },
                     Title = "Let friends in",
-                    Body = "Friends outside your home need a way through your router. This tab checks each step of the way; Open port automatically does the router part for you, and Test from outside proves it works. " +
-                           "Take this tour again any time from TOUR at the top right.",
+                    Body = "Friends outside your home need a way through your router. This tab checks each step of the way; Open port automatically does the router part for you, and Test from outside proves it works.",
+                },
+                new TourStep
+                {
+                    Targets = () => new Control[] { nav },
+                    Title = "Host or join",
+                    Body = "Joining a friend's game instead? Click JOIN at the top: the same app pastes their invite and joins, and HOST brings you back " +
+                           "(a running server keeps going). It opens on whichever you used last. TOUR shows this tour again.",
                 },
             });
         }

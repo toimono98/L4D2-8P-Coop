@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- One download for everyone: asks Host or Join, installs that app, shortcuts and an uninstall entry. -->
+  <!-- One download for everyone: installs the app, opening on hosting or joining as picked, with shortcuts and an uninstall entry. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
@@ -12,7 +12,7 @@
     <ApplicationManifest>..\L4D2EightPlayer\app.manifest</ApplicationManifest>
     <ApplicationIcon>..\L4D2EightPlayer\Assets\app.ico</ApplicationIcon>
     <Product>L4D2 8-Player Co-op Setup</Product>
-    <Description>Installs the 8-Player Manager (hosts) or the Join app (friends).</Description>
+    <Description>Installs L4D2 8-Player Co-op, set to open on hosting or joining.</Description>
     <Copyright>MIT License</Copyright>
     <DebugType>none</DebugType>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -28,10 +28,9 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
-  <!-- the two apps are built first and carried inside the setup -->
+  <!-- the app is built first and carried inside the setup -->
   <ItemGroup>
     <ProjectReference Include="..\L4D2EightPlayer\L4D2EightPlayer.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\L4D2EightPlayer.Join\L4D2EightPlayer.Join.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,10 +41,8 @@
     <EmbeddedResource Include="..\L4D2EightPlayer\Assets\app.ico" LogicalName="app.ico" />
     <EmbeddedResource Include="..\L4D2EightPlayer\Fonts\*.ttf" LinkBase="Fonts" />
     <EmbeddedResource Include="..\L4D2EightPlayer\Addon\l4d2_8p_hud.vpk" LogicalName="addon/l4d2_8p_hud.vpk" />
-    <EmbeddedResource Include="..\L4D2EightPlayer\bin\$(Configuration)\L4D2-8P-Manager.exe" LogicalName="app/L4D2-8P-Manager.exe" />
-    <EmbeddedResource Include="..\L4D2EightPlayer.Join\bin\$(Configuration)\L4D2-8P-Join.exe" LogicalName="app/L4D2-8P-Join.exe" />
+    <EmbeddedResource Include="..\L4D2EightPlayer\bin\$(Configuration)\L4D2-8P-Coop.exe" LogicalName="app/L4D2-8P-Coop.exe" />
     <EmbeddedResource Include="..\L4D2EightPlayer\README.md" LogicalName="app/README.md" />
-    <EmbeddedResource Include="..\L4D2EightPlayer.Join\READ ME FIRST.txt" LogicalName="app/READ ME FIRST.txt" />
     <EmbeddedResource Include="..\L4D2EightPlayer\Fonts\OFL-*.txt" LogicalName="app/licenses/%(Filename)%(Extension)" />
   </ItemGroup>
 

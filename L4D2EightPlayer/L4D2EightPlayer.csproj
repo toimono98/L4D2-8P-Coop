@@ -7,13 +7,13 @@
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <AssemblyName>L4D2-8P-Manager</AssemblyName>
+    <AssemblyName>L4D2-8P-Coop</AssemblyName>
     <RootNamespace>L4D2EightPlayer</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- drawn by tools\make_icon.ps1 -->
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <Product>L4D2 8-Player Co-op Manager</Product>
-    <Description>Installs, checks and launches an 8-player co-op setup for Left 4 Dead 2.</Description>
+    <Product>L4D2 8-Player Co-op</Product>
+    <Description>Hosts or joins 8-player co-op in Left 4 Dead 2: sets up, checks and runs the server, or joins a friend's.</Description>
     <Copyright>MIT License</Copyright>
     <DebugType>none</DebugType>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

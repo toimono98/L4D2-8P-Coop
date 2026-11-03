@@ -86,6 +86,10 @@ namespace L4D2EightPlayer.UI
             nav.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
             nav.Help = "? TOUR";
             nav.HelpClicked += (s, e) => StartTour();
+            // the same app joins friends: HOST | JOIN swaps to the join window (this one stays alive)
+            nav.Modes = new[] { "HOST", "JOIN" };
+            nav.Mode = 0;
+            nav.ModeClicked += (s, i) => AppShell.Instance?.Switch(StartMode.Join);
 
             var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, FixedPanel = FixedPanel.Panel2, SplitterWidth = 1 };
 
@@ -575,7 +579,7 @@ namespace L4D2EightPlayer.UI
             right.Controls.Add(SettingRow("HUD bars + icons", "Every player needs the HUD add-on",
                 chkHudLook = new ToggleSwitch { AccessibleName = "HUD bars and icons" }, lnkHudAddon), 0, 7);
             new ToolTip().SetToolTip(chkHudLook, "On: the 8-Player HUD shows survivors without a stock panel as dark boxes with a health bar coloured by state and the game's own kit/pills icons.\n" +
-                "Everyone needs the HUD add-on (the Join app installs it); without it they see stray boxes.\nOff: plain text that works for everyone.");
+                "Everyone needs the HUD add-on (the app's JOIN side installs it); without it they see stray boxes.\nOff: plain text that works for everyone.");
 
             grpServer = new Card("Dedicated server") { Dock = DockStyle.Fill, AutoSize = true };
             var sg = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, AutoSize = true, Margin = P(0) };

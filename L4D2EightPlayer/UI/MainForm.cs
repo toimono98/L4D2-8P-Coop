@@ -14,7 +14,7 @@ namespace L4D2EightPlayer.UI
 {
     public sealed partial class MainForm : Form, ILog
     {
-        const string Title = "L4D2 8-Player Co-op Manager";
+        const string Title = "L4D2 8-Player Co-op · Host";
 
         Settings settings = Settings.Load();
         Manifest manifest = Manifest.BuiltIn();
@@ -74,7 +74,7 @@ namespace L4D2EightPlayer.UI
             var v = await UpdateCheck.Newer();
             if (v == null || IsDisposed) return;
             nav.Notice = $"VERSION {v} IS OUT · DOWNLOAD";
-            Info($"Version {v} of the Manager is out (you have {AppInfo.Version}): {UpdateCheck.ReleasePage}");
+            Info($"Version {v} of L4D2 8-Player Co-op is out (you have {AppInfo.Version}): {UpdateCheck.ReleasePage}");
         }
 
         List<Campaigns.Campaign> customCampaigns = new List<Campaigns.Campaign>();
@@ -779,7 +779,7 @@ namespace L4D2EightPlayer.UI
                        (settings.Mode == "listen" ? "1. Click 'Launch L4D2 to host'." : "1. Click 'Start server', then 'Launch L4D2 & join'.") + nl +
                        "2. Friends on the same network open the console (~) and type:" + nl + nl +
                        $"      connect {Launcher.LanAddress()}:{(settings.Mode == "listen" ? 27015 : settings.Port)}" + nl + nl +
-                       "   Or they open L4D2-8P-Join.exe and click 'Find games on my network'." + nl + nl +
+                       "   Or they open L4D2 8-Player Co-op, switch to JOIN and click 'Find games on my network'." + nl + nl +
                        "The server stays off the internet: nothing is forwarded on your router.";
             if (settings.Mode == "listen")
                 return "HOSTING FROM YOUR GAME" + nl +

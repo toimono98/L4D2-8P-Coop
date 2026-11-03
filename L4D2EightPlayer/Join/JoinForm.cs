@@ -116,6 +116,10 @@ namespace L4D2EightPlayer.Join
             header.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
             header.Help = "? TOUR";
             header.HelpClicked += (s, e) => StartTour();
+            // the same app hosts: HOST | JOIN swaps to the host window
+            header.Modes = new[] { "HOST", "JOIN" };
+            header.Mode = 1;
+            header.ModeClicked += (s, i) => UI.AppShell.Instance?.Switch(StartMode.Host);
 
             var g = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = P(24, 18, 24, 18) };
             g.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

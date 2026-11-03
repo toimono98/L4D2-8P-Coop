@@ -14,6 +14,8 @@ namespace L4D2EightPlayer.Setup
         ///   (no arguments)            the setup window
         ///   --uninstall [--silent]    what Windows' Installed apps runs
         ///   --silent --path host|join [--dir folder] [--no-start-menu] [--no-desktop] [--hud] [--no-register] [--out log]
+        ///                             (the path is the side the app opens on; --no-register: a test install, no
+        ///                             Installed apps entry and the start side left alone)
         ///   --shot folder             renders every page to PNGs (layout check)
         /// </summary>
         [STAThread]
@@ -26,7 +28,7 @@ namespace L4D2EightPlayer.Setup
 
             if (args.Contains("--uninstall"))
             {
-                if (!silent && MessageBox.Show("Remove " + SetupEngine.Product + " (the Manager and the Join app) from this PC?\n\nYour settings, the dedicated server and your game stay as they are.",
+                if (!silent && MessageBox.Show("Remove " + SetupEngine.Product + " from this PC?\n\nYour settings, the dedicated server and your game stay as they are.",
                         "Uninstall " + SetupEngine.Product, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return 1;
                 var log = new StringBuilder();
                 try
@@ -48,13 +50,13 @@ namespace L4D2EightPlayer.Setup
             if (silent)
             {
                 var log = new StringBuilder();
-                var app = SetupEngine.ById(Arg("--path"));
-                if (app == null) { log.AppendLine("ERROR --path host or --path join"); WriteLog(Arg("--out"), log); return 1; }
+                var choice = SetupEngine.ById(Arg("--path"));
+                if (choice == null) { log.AppendLine("ERROR --path host or --path join"); WriteLog(Arg("--out"), log); return 1; }
                 try
                 {
                     SetupEngine.Install(new SetupEngine.Options
                     {
-                        App = app,
+                        Choice = choice,
                         Folder = Arg("--dir") ?? SetupEngine.DefaultFolder,
                         StartMenu = !args.Contains("--no-start-menu"),
                         Desktop = !args.Contains("--no-desktop"),
@@ -103,7 +105,7 @@ namespace L4D2EightPlayer.Setup
                 Save(f, "choose-" + path);
                 f.ShowOptions();
                 Save(f, "options-" + path);
-                f.ShowDone(new SetupEngine.Options { App = SetupEngine.ById(path), Folder = SetupEngine.DefaultFolder, HudAddon = path == "join", StartMenu = true });
+                f.ShowDone(new SetupEngine.Options { Choice = SetupEngine.ById(path), Folder = SetupEngine.DefaultFolder, HudAddon = path == "join", StartMenu = true });
                 Save(f, "done-" + path);
                 f.Close();
             }

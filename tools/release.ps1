@@ -1,5 +1,5 @@
 <#
-Builds, checks and packages a release of the Manager and the Join app.
+Builds, checks and packages a release of L4D2 8-Player Co-op (one app: host and join) and its Setup.
 
   tools\release.ps1                     build + check + package into release\, copy to Documents\L4D2 8 Player
   tools\release.ps1 -Version 1.2.0      same, after raising the version in Directory.Build.props
@@ -8,8 +8,9 @@ Builds, checks and packages a release of the Manager and the Join app.
   tools\release.ps1 -Publish -NotesFile notes.md    use your own release notes instead of the commit list
   tools\release.ps1 -NoDeploy           skip the copy to Documents\L4D2 8 Player
 
-Checks: every built-in plugin compiles with the Manager's SourcePawn toolchain, both apps build, the Manager's
-self-test and both apps' screenshot modes run, and the Join zip extracts and starts.
+Checks: every built-in plugin compiles with the app's SourcePawn toolchain, the app and the Setup build, the
+host side's self-test and both sides' screenshot modes run (tours included), and both Setup paths install an
+app that starts.
 #>
 param(
     [string]$Version,
@@ -59,25 +60,28 @@ foreach ($sp in Get-ChildItem 'L4D2EightPlayer\Plugins\*.sp') {
 
 # ---- apps
 Step "building"
-# the setup last: it carries the two apps just built
-foreach ($p in 'L4D2EightPlayer', 'L4D2EightPlayer.Join', 'L4D2EightPlayer.Setup') {
+# the setup last: it carries the app just built
+foreach ($p in 'L4D2EightPlayer', 'L4D2EightPlayer.Setup') {
     $res = dotnet build $p -c Release 2>&1
     if ($LASTEXITCODE -ne 0) { $res | Select-String 'error' | Write-Host; Fail "$p doesn't build" }
 }
-$mgr = 'L4D2EightPlayer\bin\Release\L4D2-8P-Manager.exe'
-$join = 'L4D2EightPlayer.Join\bin\Release\L4D2-8P-Join.exe'
+$app = 'L4D2EightPlayer\bin\Release\L4D2-8P-Coop.exe'
 $setup = 'L4D2EightPlayer.Setup\bin\Release\L4D2-8P-Setup.exe'
-foreach ($exe in $mgr, $join, $setup) {
+foreach ($exe in $app, $setup) {
     $v = (Get-Item $exe).VersionInfo.ProductVersion
     if ($v -notlike "$Version*") { Fail "$exe reports version $v, expected $Version" }
 }
 
 # ---- checks
 Step "self-test and screenshots"
-$p = Start-Process $mgr -ArgumentList "--selftest --out `"$tmp\selftest.txt`" --detect --shot `"$tmp\shots`"" -PassThru -Wait
-if ($p.ExitCode -ne 0) { Get-Content "$tmp\selftest.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "Manager self-test exit code $($p.ExitCode)" }
-if (-not (Test-Path "$tmp\shots\tab3.png")) { Fail "Manager screenshots missing" }
-if (-not (Test-Path "$tmp\shots\tour7.png")) { Fail "Manager tour screenshots missing" }
+$p = Start-Process $app -ArgumentList "--selftest --out `"$tmp\selftest.txt`" --detect --shot `"$tmp\shots`"" -PassThru -Wait
+if ($p.ExitCode -ne 0) { Get-Content "$tmp\selftest.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "host self-test exit code $($p.ExitCode)" }
+if (-not (Test-Path "$tmp\shots\tab3.png")) { Fail "host screenshots missing" }
+if (-not (Test-Path "$tmp\shots\tour8.png")) { Fail "host tour screenshots missing" }
+$p = Start-Process $app -ArgumentList "--join-shot `"$tmp\shots\join.png`" --tour" -PassThru -Wait
+if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\join-tour5.png")) { Fail "join screenshots or tour missing" }
+$p = Start-Process $app -ArgumentList "--shell-test `"$tmp\shell.txt`"" -PassThru -Wait
+if ($p.ExitCode -ne 0) { Get-Content "$tmp\shell.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "the HOST | JOIN switch check failed" }
 $p = Start-Process $setup -ArgumentList "--shot `"$tmp\shots`"" -PassThru -Wait
 if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\choose-join.png")) { Fail "Setup screenshots failed" }
 
@@ -86,47 +90,27 @@ foreach ($path in 'join', 'host') {
     $p = Start-Process $setup -ArgumentList "--silent --path $path --dir `"$tmp\installed`" --no-start-menu --no-desktop --no-register --out `"$tmp\setup-$path.txt`"" -PassThru -Wait
     if ($p.ExitCode -ne 0) { Get-Content "$tmp\setup-$path.txt" | Write-Host; Fail "Setup's $path install failed" }
 }
-$p = Start-Process "$tmp\installed\L4D2-8P-Join.exe" -ArgumentList "--shot `"$tmp\installed.png`"" -PassThru -Wait
-if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\installed\L4D2-8P-Manager.exe")) { Fail "the apps the Setup installed didn't start" }
+$p = Start-Process "$tmp\installed\L4D2-8P-Coop.exe" -ArgumentList "--join-shot `"$tmp\installed.png`"" -PassThru -Wait
+if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\installed.png")) { Fail "the app the Setup installed didn't start" }
 
 # ---- package
 Step "packaging into release\"
 Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $out | Out-Null
-Copy-Item $mgr, $setup, 'L4D2EightPlayer\README.md' $out
+Copy-Item $app, $setup, 'L4D2EightPlayer\README.md' $out
 Copy-Item "$tmp\shots" "$out\shots" -Recurse
-
-$stage = "$tmp\zip\L4D2-8P-Join"
-New-Item -ItemType Directory -Force "$stage\licenses" | Out-Null
-Copy-Item $join, 'L4D2EightPlayer.Join\READ ME FIRST.txt' $stage
-Copy-Item 'L4D2EightPlayer\Fonts\OFL-*.txt' "$stage\licenses"
-Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
-$zip = Join-Path $out 'L4D2-8P-Join.zip'
-$fs = [IO.File]::Open($zip, 'CreateNew')
-$a = New-Object IO.Compression.ZipArchive($fs, [IO.Compression.ZipArchiveMode]::Create)
-foreach ($f in Get-ChildItem $stage -Recurse -File) {
-    # forward slashes so every unzip tool keeps the folders
-    $name = 'L4D2-8P-Join/' + $f.FullName.Substring($stage.Length + 1).Replace('\', '/')
-    [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($a, $f.FullName, $name, 'Optimal') | Out-Null
-}
-$a.Dispose(); $fs.Dispose()
-
-Step "checking the Join zip"
-Expand-Archive $zip "$tmp\unzipped"
-$p = Start-Process "$tmp\unzipped\L4D2-8P-Join\L4D2-8P-Join.exe" -ArgumentList "--shot `"$tmp\join.png`" --tour" -PassThru -Wait
-if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\join.png")) { Fail "the Join app from the zip didn't start" }
-Copy-Item "$tmp\join.png" "$out\shots\join.png"
-if (-not (Test-Path "$tmp\join-tour4.png")) { Fail "Join tour screenshots missing" }
-Copy-Item "$tmp\join-tour*.png" "$out\shots"
-'{0:N0} KB zip' -f ((Get-Item $zip).Length / 1KB) | Write-Host
 
 # ---- deploy
 $docs = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'L4D2 8 Player'
 if (-not $NoDeploy -and (Test-Path $docs)) {
     Step "copying to $docs"
-    # a Manager running from there locks its exe; that shouldn't stop the release
-    try { Copy-Item $mgr, $join, $setup, 'L4D2EightPlayer\README.md', $zip $docs -Force -ErrorAction Stop }
+    # the app running from there locks its exe; that shouldn't stop the release
+    try { Copy-Item $app, $setup, 'L4D2EightPlayer\README.md' $docs -Force -ErrorAction Stop }
     catch { Write-Host "   not copied ($($_.Exception.Message)); close the app there and copy release\ by hand" -ForegroundColor Yellow }
+    # what releases before 2.0 put there (the two apps and the Join zip): replaced by the one app
+    foreach ($old in 'L4D2-8P-Manager.exe', 'L4D2-8P-Join.exe', 'L4D2-8P-Join.zip') {
+        try { Remove-Item (Join-Path $docs $old) -ErrorAction Stop; Write-Host "   removed the older $old" } catch [System.Management.Automation.ItemNotFoundException] { } catch { Write-Host "   couldn't remove $old ($($_.Exception.Message))" -ForegroundColor Yellow }
+    }
 }
 
 # ---- publish
@@ -135,10 +119,10 @@ if ($Publish) {
     git tag -a "v$Version" -m "v$Version"
     git push origin HEAD "v$Version"
     if ($LASTEXITCODE -ne 0) { Fail "git push failed" }
-    if ($NotesFile) { gh release create "v$Version" "$out\L4D2-8P-Setup.exe" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --notes-file $NotesFile }
-    else { gh release create "v$Version" "$out\L4D2-8P-Setup.exe" "$out\L4D2-8P-Manager.exe" $zip --title "v$Version" --generate-notes }
+    if ($NotesFile) { gh release create "v$Version" "$out\L4D2-8P-Setup.exe" "$out\L4D2-8P-Coop.exe" --title "v$Version" --notes-file $NotesFile }
+    else { gh release create "v$Version" "$out\L4D2-8P-Setup.exe" "$out\L4D2-8P-Coop.exe" --title "v$Version" --generate-notes }
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
 }
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-Step "done: release\ holds L4D2-8P-Setup.exe, L4D2-8P-Manager.exe, L4D2-8P-Join.zip, README.md and screenshots"
+Step "done: release\ holds L4D2-8P-Setup.exe, L4D2-8P-Coop.exe, README.md and screenshots"

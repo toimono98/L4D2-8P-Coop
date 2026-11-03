@@ -118,7 +118,7 @@ namespace L4D2EightPlayer.UI
             ic.Controls.Add(new Label { Text = "Send this to friends", AutoSize = true, Font = Theme.Display(15f), ForeColor = Theme.Ground, Margin = P(0, 0, 0, 8) }, 0, 1);
             txtInvite = new TextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = Theme.Mono(10.5f), Margin = P(0, 0, 0, 8) };
             ic.Controls.Add(txtInvite, 0, 2);
-            ic.Controls.Add(new Label { Text = "They paste it into L4D2-8P-Join.exe, or open it in a browser to launch the game.", AutoSize = true, MaximumSize = Sz(390, 0), Font = Theme.Body(10f), ForeColor = Theme.Ground, Margin = P(0, 0, 0, 10) }, 0, 3);
+            ic.Controls.Add(new Label { Text = "They paste it into L4D2 8-Player Co-op (JOIN at the top), or open it in a browser to launch the game.", AutoSize = true, MaximumSize = Sz(390, 0), Font = Theme.Body(10f), ForeColor = Theme.Ground, Margin = P(0, 0, 0, 10) }, 0, 3);
             var copy = Btn("Copy invite", ButtonKind.Dark, (s, e) => CopyInvite(), 11f);
             copy.Dock = DockStyle.Top;
             copy.AutoSizeLocked = true;
@@ -425,7 +425,7 @@ namespace L4D2EightPlayer.UI
             if (local == null) Warn("The server isn't answering even locally yet. Wait for the map to load and try again.");
             else if (outside != null) Info($"✔ Reachable from the internet: \"{outside.Name}\" on {outside.Map}, {outside.Players}/{outside.MaxPlayers} players.");
             else Warn("No answer through your public address. Many routers can't loop back to themselves, so this can fail even when forwarding works. " +
-                      "To be sure, ask a friend to paste your invite into L4D2-8P-Join.exe and press Check server.");
+                      "To be sure, ask a friend to paste your invite into L4D2 8-Player Co-op (JOIN) and press Check server.");
         }
 
         string InviteText()
