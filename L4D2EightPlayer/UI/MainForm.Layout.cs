@@ -87,7 +87,7 @@ namespace L4D2EightPlayer.UI
         {
             nav = new NavBar("Setup", "Mods", "Skins", "Play");
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
-            nav.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
+            UpdateUi.Attach(nav, Info);   // "Version X is out / ready": the update window
             nav.Help = "? TOUR";
             nav.HelpClicked += (s, e) => StartTour();
             // the same app joins friends: HOST | JOIN swaps to the join window (this one stays alive)

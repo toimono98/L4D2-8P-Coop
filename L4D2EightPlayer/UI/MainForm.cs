@@ -70,14 +70,11 @@ namespace L4D2EightPlayer.UI
             await CheckForNewVersion();
         }
 
-        /// <summary>Shows "Version X is out" in the header when GitHub has a newer release (checked once a day).</summary>
+        /// <summary>A newer release on GitHub (checked once a day): downloaded for automatic updates, else offered in the header.</summary>
         async Task CheckForNewVersion()
         {
             if (Preview) return;
-            var v = await UpdateCheck.Newer();
-            if (v == null || IsDisposed) return;
-            nav.Notice = $"VERSION {v} IS OUT · DOWNLOAD";
-            Info($"Version {v} of L4D2 8-Player Co-op is out (you have {AppInfo.Version}): {UpdateCheck.ReleasePage}");
+            await UpdateUi.Begin();
         }
 
         List<Campaigns.Campaign> customCampaigns = new List<Campaigns.Campaign>();

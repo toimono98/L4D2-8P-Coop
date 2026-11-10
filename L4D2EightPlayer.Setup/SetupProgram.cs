@@ -13,9 +13,13 @@ namespace L4D2EightPlayer.Setup
         /// <summary>
         ///   (no arguments)            the setup window
         ///   --uninstall [--silent]    what Windows' Installed apps runs
-        ///   --silent --path host|join [--dir folder] [--no-start-menu] [--no-desktop] [--hud] [--no-register] [--out log]
+        ///   --silent --path host|join [--dir folder] [--no-start-menu] [--no-desktop] [--hud] [--no-register]
+        ///            [--updates auto|manual] [--out log]
         ///                             (the path is the side the app opens on; --no-register: a test install, no
-        ///                             Installed apps entry and the start side left alone)
+        ///                             Installed apps entry and the start side left alone; --updates: how updates install)
+        ///   --silent --update --path host|join [--wait pid] [--restart] [--out log]
+        ///                             what the app runs to update itself: waits for it (pid) to exit, updates the
+        ///                             install in place with the shortcuts it has, then with --restart opens it again
         ///   --shot folder             renders every page to PNGs (layout check)
         /// </summary>
         [STAThread]
@@ -52,6 +56,7 @@ namespace L4D2EightPlayer.Setup
                 var log = new StringBuilder();
                 var choice = SetupEngine.ById(Arg("--path"));
                 if (choice == null) { log.AppendLine("ERROR --path host or --path join"); WriteLog(Arg("--out"), log); return 1; }
+                if (args.Contains("--update")) return Update(choice, Arg("--wait"), args.Contains("--restart"), Arg("--out"));
                 try
                 {
                     SetupEngine.Install(new SetupEngine.Options
@@ -62,6 +67,7 @@ namespace L4D2EightPlayer.Setup
                         Desktop = !args.Contains("--no-desktop"),
                         HudAddon = args.Contains("--hud"),
                         Register = !args.Contains("--no-register"),
+                        AutoUpdate = Arg("--updates") == "auto" ? true : Arg("--updates") == "manual" ? (bool?)false : null,
                     }, m => log.AppendLine(m));
                     WriteLog(Arg("--out"), log);
                     return 0;
@@ -79,9 +85,40 @@ namespace L4D2EightPlayer.Setup
             return 0;
         }
 
+        /// <summary>
+        /// The app updating itself: wait for it to close (it locks its exe), install over it with its folder, shortcuts
+        /// and side, and with restart open it again: the new version, or the old one if the update failed.
+        /// </summary>
+        static int Update(SetupEngine.Choice choice, string waitPid, bool restart, string logFile)
+        {
+            var log = new StringBuilder();
+            log.AppendLine($"{DateTime.Now:s} updating to {AppInfo.Version}");
+            var o = SetupEngine.ForUpdate(choice);
+            int code = 0;
+            try
+            {
+                if (int.TryParse(waitPid, out var pid))
+                    try { using (var p = System.Diagnostics.Process.GetProcessById(pid)) p.WaitForExit(120000); } catch (ArgumentException) { /* already gone */ }
+                // a moment for Windows to let go of the exe, then the same check the install makes
+                for (int i = 0; i < 30 && SetupEngine.RunningFrom(o.Folder) != null; i++) Thread.Sleep(1000);
+                SetupEngine.Install(o, m => log.AppendLine(m));
+            }
+            catch (Exception ex) { log.AppendLine("ERROR " + ex.Message); code = 2; }
+            WriteLog(logFile, log);
+            if (restart)
+            {
+                var exe = Path.Combine(o.Folder, SetupEngine.Exe);
+                try { if (File.Exists(exe)) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, "--" + choice.Id + " --no-tour") { WorkingDirectory = o.Folder }); }
+                catch { }
+            }
+            return code;
+        }
+
         static void WriteLog(string file, StringBuilder log)
         {
-            if (file != null) File.WriteAllText(file, log.ToString());
+            if (file == null) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file)));
+            File.WriteAllText(file, log.ToString());
         }
 
         /// <summary>The choose page, both option pages: off-screen, saved as PNGs.</summary>
@@ -105,7 +142,7 @@ namespace L4D2EightPlayer.Setup
                 Save(f, "choose-" + path);
                 f.ShowOptions();
                 Save(f, "options-" + path);
-                f.ShowDone(new SetupEngine.Options { Choice = SetupEngine.ById(path), Folder = SetupEngine.DefaultFolder, HudAddon = path == "join", StartMenu = true });
+                f.ShowDone(new SetupEngine.Options { Choice = SetupEngine.ById(path), Folder = SetupEngine.DefaultFolder, HudAddon = path == "join", StartMenu = true, AutoUpdate = true });
                 Save(f, "done-" + path);
                 f.Close();
             }

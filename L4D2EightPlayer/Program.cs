@@ -25,6 +25,7 @@ namespace L4D2EightPlayer
         ///   --flicker-test &lt;report&gt; [--legacy] [--composited]   glitches seen on screen while a dropdown repaints and tabs switch
         ///   --skins-test &lt;fixtures&gt; &lt;report&gt;                the skin picker's logic on tools\make_skin_fixtures.py's fake game
         ///   --mods-test &lt;report&gt;                          the server mod list: parts, Steam details, downloads (needs the internet)
+        ///   --update-shot &lt;dir&gt;                           the update window (out, and downloaded), off-screen, to PNGs
         ///   --skin-catalog &lt;game folder&gt; &lt;out.json&gt;         maps the skin targets to the game's materials (writes &lt;out.json&gt;.log)
         /// </summary>
         [STAThread]
@@ -53,6 +54,7 @@ namespace L4D2EightPlayer
             if (args.Length >= 3 && args[0] == "--skins-shot") { Environment.Exit(SkinsTest.Shots(args[1], args[2])); return; }
             if (args.Length >= 3 && args[0] == "--skins-test") { Environment.Exit(SkinsTest.Run(args[1], args[2])); return; }
             if (args.Length >= 2 && args[0] == "--mods-test") { Environment.Exit(ModsTest.Run(args[1])); return; }
+            if (args.Length >= 2 && args[0] == "--update-shot") { UpdateShot(args[1]); return; }
             if (args.Length >= 3 && args[0] == "--skin-catalog") { File.WriteAllText(args[2] + ".log", Skins.BuildCatalog(args[1], args[2])); return; }
             if (args.Length >= 2 && args[0] == "--flicker-test") { Environment.Exit(FlickerTest.Run(args[1], args.Contains("--legacy"), args.Contains("--composited"))); return; }
             if (args.Length >= 2 && args[0] == "--paint-test") { PaintTest.OffScreen = args.Contains("--off-screen"); Environment.Exit(PaintTest.Run(args[1])); return; }
@@ -79,6 +81,28 @@ namespace L4D2EightPlayer
                 Application.ThreadException += (s, e) => UnexpectedError(e.Exception);
                 Application.Run(AppWindow.Instance = new AppWindow(mode, invite));
             }
+            // a downloaded update installs now that the window has closed (or, after Restart now, opens it again)
+            UpdateUi.OnExit();
+        }
+
+        /// <summary>--update-shot: the update window as it looks for a version that's out, and one that's downloaded.</summary>
+        static void UpdateShot(string dir)
+        {
+            Directory.CreateDirectory(dir);
+            Application.EnableVisualStyles();
+            L4D2EightPlayer.UI.Themes.Theme.LoadFonts();
+            foreach (var ready in new[] { false, true })
+                using (var f = UpdateUi.DialogFor("9.9.9", ready))
+                {
+                    f.StartPosition = FormStartPosition.Manual; f.Location = new System.Drawing.Point(-30000, -30000); f.ShowInTaskbar = false;
+                    f.Show();
+                    for (var until = DateTime.Now.AddMilliseconds(500); DateTime.Now < until;) { Application.DoEvents(); Thread.Sleep(15); }
+                    using (var bmp = new System.Drawing.Bitmap(f.Width, f.Height))
+                    {
+                        f.DrawToBitmap(bmp, new System.Drawing.Rectangle(0, 0, f.Width, f.Height));
+                        bmp.Save(Path.Combine(dir, ready ? "update-ready.png" : "update-out.png"));
+                    }
+                }
         }
 
         /// <summary>

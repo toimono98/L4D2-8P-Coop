@@ -20,6 +20,7 @@ namespace L4D2EightPlayer.Setup
         SetupEngine.Choice chosen;
         TextBox txtFolder;
         CheckBox chkStart, chkDesktop, chkHud, chkOpen, chkTour;
+        ChoiceCard cardAutoUpdate, cardManualUpdate;
         readonly string game = GameLocator.FindGame();
 
         public SetupForm(string preselect = null)
@@ -33,7 +34,7 @@ namespace L4D2EightPlayer.Setup
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
-            ClientSize = Sz(780, 600);
+            ClientSize = Sz(780, 700);
             Icon = Theme.AppIcon();
             header = new NavBar() { Title = "8-PLAYER CO-OP", Subtitle = "LEFT 4 DEAD 2 · SETUP" };
             Controls.Add(body);
@@ -145,6 +146,18 @@ namespace L4D2EightPlayer.Setup
                 Visible = chosen == SetupEngine.Join,
             };
             checks.Controls.Add(chkHud);
+
+            // how new versions arrive: the app installs them itself, or says they're out and waits for you
+            checks.Controls.Add(new Label { Text = "UPDATES", AutoSize = true, Font = Theme.BodyBold(8.5f), ForeColor = Theme.Muted, Margin = P(0, 12, 0, 6) });
+            var updates = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 0, 0, 12) };
+            cardAutoUpdate = new ChoiceCard("Install updates automatically", "New versions download in the background and install when you close the app") { Width = S(716), Margin = P(0, 0, 0, 6) };
+            cardManualUpdate = new ChoiceCard("Let me install updates myself", "The app says when a new version is out; you choose when to install it") { Width = S(716), Margin = P(0) };
+            // an update keeps the earlier choice; a first install starts on automatic
+            var pref = Updater.Load().Auto;
+            if (pref == false) cardManualUpdate.Checked = true; else cardAutoUpdate.Checked = true;
+            updates.Controls.Add(cardAutoUpdate);
+            updates.Controls.Add(cardManualUpdate);
+            checks.Controls.Add(updates);
             g.Controls.Add(checks, 0, 3);
             g.Controls.Add(Note(chosen == SetupEngine.Host
                 ? "It opens on hosting. Its Setup tab walks you through the server: it downloads everything it needs."
@@ -168,6 +181,7 @@ namespace L4D2EightPlayer.Setup
                 StartMenu = chkStart.Checked,
                 Desktop = chkDesktop.Checked,
                 HudAddon = chkHud.Visible && chkHud.Enabled && chkHud.Checked,
+                AutoUpdate = cardAutoUpdate.Checked,
             };
             if (o.HudAddon && Launcher.GameRunning())
             {
@@ -211,7 +225,8 @@ namespace L4D2EightPlayer.Setup
                 : SetupEngine.Product + " is installed in " + o.Folder + " and opens on joining. Paste the invite your host sends you, click Check server, then Join game." +
                   (o.HudAddon ? " The HUD add-on is in your game too." : "")), 0, 1);
             g.Controls.Add(Note("To remove it later, open Uninstall " + SetupEngine.Product + " in the install folder" + (o.StartMenu ? " or the Start menu" : "") +
-                ", or use Windows' Installed apps." + (o.Choice == SetupEngine.Host ? " Your settings stay, and so does the server." : " Your settings stay.")), 0, 2);
+                ", or use Windows' Installed apps." + (o.Choice == SetupEngine.Host ? " Your settings stay, and so does the server." : " Your settings stay.") +
+                (o.AutoUpdate == true ? " New versions install by themselves when you close the app." : o.AutoUpdate == false ? " When a new version is out, the app says so at the top: click it to install." : "")), 0, 2);
             var opens = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = P(0, 16, 0, 0) };
             chkOpen = new GameCheck { Text = "Open " + SetupEngine.Product + " now", Checked = true, AutoSize = true, Font = Theme.Body(10.5f), Margin = P(0, 0, 0, 6) };
             chkTour = new GameCheck

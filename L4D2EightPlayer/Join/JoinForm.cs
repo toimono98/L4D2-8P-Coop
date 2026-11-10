@@ -108,9 +108,8 @@ namespace L4D2EightPlayer.Join
                 ActiveControl = txtTarget;
                 _ = CheckConflicts();
                 if (txtTarget.Text.Length > 0) await Check();
-                // "Version X is out" in the header (GitHub, checked once a day; silent offline)
-                var v = await UpdateCheck.Newer();
-                if (v != null && !IsDisposed) header.Notice = $"VERSION {v} IS OUT · DOWNLOAD";
+                // a newer version (GitHub, checked once a day; silent offline): downloaded or offered in the header
+                if (!Preview && !Audit.On) await UI.UpdateUi.Begin();
             };
         }
 
@@ -119,7 +118,7 @@ namespace L4D2EightPlayer.Join
         void BuildUi()
         {
             header = new NavBar() { Title = "JOIN YOUR GROUP", Subtitle = "L4D2 8-PLAYER CO-OP" };
-            header.NoticeClicked += (s, e) => Process.Start(UpdateCheck.ReleasePage);
+            UI.UpdateUi.Attach(header);
             header.Help = "? TOUR";
             header.HelpClicked += (s, e) => StartTour();
             // the same app hosts: HOST | JOIN swaps to the host window

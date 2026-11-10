@@ -90,6 +90,8 @@ $p = Start-Process $app -ArgumentList "--skins-shot `"$fx`" `"$tmp\shots`"" -Pas
 if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\skins-pack-question.png") -or -not (Test-Path "$tmp\shots\skins-overlap-question.png") -or -not (Test-Path "$tmp\shots\skins-clash-question.png") -or -not (Test-Path "$tmp\shots\skins-packs.png") -or -not (Test-Path "$tmp\shots\skins-collection.png")) { Fail "skin picker screenshots missing" }
 $p = Start-Process $app -ArgumentList "--shell-test `"$tmp\shell.txt`"" -PassThru -Wait
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\shell.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "the HOST | JOIN switch check failed" }
+$p = Start-Process $app -ArgumentList "--update-shot `"$tmp\shots`"" -PassThru -Wait
+if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\update-out.png") -or -not (Test-Path "$tmp\shots\update-ready.png")) { Fail "update window screenshots missing" }
 $p = Start-Process $setup -ArgumentList "--shot `"$tmp\shots`"" -PassThru -Wait
 if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\choose-join.png")) { Fail "Setup screenshots failed" }
 

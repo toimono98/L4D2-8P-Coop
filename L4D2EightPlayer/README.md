@@ -303,7 +303,12 @@ A host with many mods makes the list long: the whole Join page scrolls, so every
 
 ## Keeping it current
 
-- **New versions** are announced in the window's header ("Version X is out · Download", which opens the release page). The app asks GitHub at most once a day and stay quiet when offline.
+- **New versions** are found by asking GitHub at most once a day (quietly, and not at all when offline). How they install is chosen in the Setup, under **Updates**:
+  - **Install updates automatically** (the first install's default): the new version's Setup downloads in the background ("Downloading version X" in the header), then installs when you close the app. The header says "Version X ready · Restart to update": click it to restart into the new version now.
+  - **Let me install updates myself:** the header says "Version X is out · Install". Click it for **Install now**, which downloads it, closes the app, installs it and opens the app again, or **Later**.
+  - Either way the update keeps the install folder, the shortcuts you have and the side the app opens on; settings, skins and the server aren't touched. The Setup waits for the app to close before replacing it, and if an update fails, the app says so the next time it starts.
+  - The update window (click the notice) has **What's new** and an **Install updates automatically** box to switch between the two. Running the Setup again (Windows' Installed apps, Modify) changes it too.
+  - A copy of the app that isn't the installed one (run straight from Downloads) only points at the release page.
 - **Built-in plugins update themselves.** When a new version of the app brings changed built-in plugins, they are rebuilt on the server the next time it starts (the log lists each one).
 - **Updates are looked for by themselves** the first time you open Setup in a session: SourceMod, Metamod, L4DToolZ and Source Scramble against their latest releases, and the dedicated server against your game version. The line above **Install / update** says what's out of date (**Advanced › Check for updates** looks again).
 - **Install / update** always pulls the latest plugin builds and gamedata from GitHub. Run it after every L4D2 update, because outdated gamedata is the usual cause of crashes.

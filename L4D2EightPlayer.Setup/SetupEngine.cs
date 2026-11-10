@@ -48,7 +48,18 @@ namespace L4D2EightPlayer.Setup
             public bool StartMenu = true, Desktop = true, HudAddon;
             /// <summary>False for test installs: no Installed apps entry, and the start mode is left alone.</summary>
             public bool Register = true;
+            /// <summary>Install updates automatically (true) or by hand (false); null leaves the choice as it is.</summary>
+            public bool? AutoUpdate;
         }
+
+        /// <summary>An update of the current install: the same folder, and the shortcuts it has now (none added back).</summary>
+        public static Options ForUpdate(Choice choice) => new Options
+        {
+            Choice = choice,
+            Folder = DefaultFolder,
+            StartMenu = File.Exists(Path.Combine(StartMenuFolder, Product + ".lnk")),
+            Desktop = File.Exists(Path.Combine(Desktop, Product + ".lnk")),
+        };
 
         public static string DefaultFolder =>
             Existing() ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", Product);
@@ -124,6 +135,11 @@ namespace L4D2EightPlayer.Setup
             {
                 say("Opening on " + o.Choice.Name + " from now on");
                 StartMode.Save(o.Choice.Id);
+                if (o.AutoUpdate.HasValue)
+                {
+                    say(o.AutoUpdate.Value ? "Updates install automatically" : "Updates are yours to install");
+                    Updater.SetAuto(o.AutoUpdate.Value);
+                }
                 say("Adding it to Windows' Installed apps");
                 Register(folder);
             }
