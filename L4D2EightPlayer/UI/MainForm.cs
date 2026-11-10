@@ -318,7 +318,9 @@ namespace L4D2EightPlayer.UI
 
         void SaveSelection()
         {
-            settings.Selected = lvComponents.Items.Cast<ListViewItem>().Where(i => i.Checked && i.Tag is Component).Select(i => ((Component)i.Tag).id).ToList();
+            var items = lvComponents.Items.Cast<ListViewItem>().ToList();
+            if (items.Any(i => i == null)) return;   // the list is still being made: not the user's choice yet
+            settings.Selected = items.Where(i => i.Checked && i.Tag is Component).Select(i => ((Component)i.Tag).id).ToList();
             settings.Save();
         }
 

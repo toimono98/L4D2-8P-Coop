@@ -33,6 +33,8 @@ namespace L4D2EightPlayer.UI
         internal List<(string name, Func<Task> act)> AuditSteps() => new List<(string, Func<Task>)>
         {
             ("setup-dedicated", async () => { tabs.SelectedIndex = TabSetup; AuditMode("dedicated"); await Task.CompletedTask; }),
+            // Advanced opened by its button, as a click does: the component list appears (its window is made) for the first time
+            ("setup-advanced-open", async () => { btnAdvanced.PerformClick(); await Task.Delay(500); }),
             ("setup-component-highlighted", async () => { AuditSelect(lvComponents, i => i.Tag is Component); ShowComponentInfo(); await Task.CompletedTask; }),
             ("setup-listen", async () => { AuditMode("listen"); await Task.CompletedTask; }),
             ("mods-nothing-selected", async () => { AuditMode("dedicated"); tabs.SelectedIndex = TabMods; AuditSelect(lvFindings, i => false); ShowFindingDetail(null); await Task.CompletedTask; }),

@@ -38,7 +38,8 @@ namespace L4D2EightPlayer.UI
         Tag findingTag;
         Label newModTitle, newModBody;
         Tile tileProblems, tileWarnings, tileClear;
-        GameButton btnConflicts;
+        GameButton btnConflicts, btnAdvanced;
+        bool componentSaveQueued;
         readonly SurvivorCard[] roster = new SurvivorCard[8];
         readonly System.Windows.Forms.Timer rosterTimer = new System.Windows.Forms.Timer { Interval = 5000 };
         List<string> livePlayers;
@@ -312,7 +313,7 @@ namespace L4D2EightPlayer.UI
             lblSetupSummary = new Label { AutoSize = true, MaximumSize = Sz(900, 0), Font = Theme.BodySemi(11f), ForeColor = Theme.Bone, Margin = P(0, 0, 0, 10) };
             g.Controls.Add(lblSetupSummary, 0, 5);
             btnInstall = Btn("Install / update", ButtonKind.Primary, async (s, e) => await InstallSelected(), 13f);
-            var advancedToggle = Btn("Advanced ▸", ButtonKind.Ghost, null, 10f);
+            var advancedToggle = btnAdvanced = Btn("Advanced ▸", ButtonKind.Ghost, null, 10f);
             advancedToggle.Margin = P(6, 0, 0, 0);
             g.Controls.Add(Row(btnInstall, advancedToggle), 0, 6);
 
@@ -323,23 +324,51 @@ namespace L4D2EightPlayer.UI
             advanced.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            advancedToggle.Click += (s, e) => { advanced.Visible = !advanced.Visible; advancedToggle.Text = advanced.Visible ? "Advanced ▾" : "Advanced ▸"; };
+            Card listBorder = null;
+            // open, the page is at least tall enough for the whole list (S(260)) and the rows around it: it scrolls
+            // on a short window instead of squeezing the list past the bottom
+            void FitAdvanced()
+            {
+                int need = S(640);
+                if (advanced.Visible)
+                {
+                    int rest = advanced.Controls.Cast<Control>().Where(c => c != listBorder).Sum(c => c.Height + c.Margin.Vertical);
+                    need = Math.Max(need, advanced.Top + advanced.Margin.Vertical + rest + S(260) + listBorder.Margin.Vertical + g.Padding.Bottom);
+                }
+                page.AutoScrollMinSize = new Size(S(980), need);
+            }
+            advancedToggle.Click += (s, e) =>
+            {
+                advanced.Visible = !advanced.Visible;
+                advancedToggle.Text = advanced.Visible ? "Advanced ▾" : "Advanced ▸";
+                BeginInvoke((Action)FitAdvanced);   // once the opened section is laid out
+            };
             advanced.Controls.Add(SmallCaps("Components (ticked ones are installed and kept up to date)"), 0, 0);
             lvComponents = new ListView { View = View.Details, CheckBoxes = true, FullRowSelect = true, Dock = DockStyle.Fill, HideSelection = false, HeaderStyle = ColumnHeaderStyle.Nonclickable };
             lvComponents.Columns.Add("Item", S(470));
             lvComponents.Columns.Add("Status", S(230));
             lvComponents.Columns.Add("Version", S(260));
             DarkList.Apply(lvComponents);
+            // The list is hidden under Advanced, so its window is made the first time Advanced opens. Windows then
+            // reports each tick as it's put back, while the list is only part built (some items aren't there yet):
+            // those reports aren't changes, and nothing is saved until the list is whole (after this message).
             lvComponents.ItemCheck += (s, e) =>
             {
-                if (loading) return;
-                if (!(lvComponents.Items[e.Index].Tag is Component c)) { e.NewValue = e.CurrentValue; return; }
+                if (loading || e.Index < 0 || e.Index >= lvComponents.Items.Count) return;
+                var item = lvComponents.Items[e.Index];
+                if (item == null) return;
+                if (!(item.Tag is Component c)) { e.NewValue = e.CurrentValue; return; }
                 if (c.required && e.NewValue != CheckState.Checked) e.NewValue = CheckState.Checked;
             };
-            lvComponents.ItemChecked += (s, e) => { if (!loading) SaveSelection(); };
+            lvComponents.ItemChecked += (s, e) =>
+            {
+                if (loading || componentSaveQueued) return;
+                componentSaveQueued = true;
+                BeginInvoke((Action)(() => { componentSaveQueued = false; if (!loading) SaveSelection(); }));
+            };
             lvComponents.SelectedIndexChanged += (s, e) => ShowComponentInfo();
             HoverTips.Attach(lvComponents);
-            var listBorder = new Card { Dock = DockStyle.Fill, Padding = P(1), Margin = P(0, 0, 0, 8) };
+            listBorder = new Card { Dock = DockStyle.Fill, Padding = P(1), Margin = P(0, 0, 0, 8) };
             listBorder.Controls.Add(DarkList.WithHeader(lvComponents));
             listBorder.MinimumSize = new Size(0, S(260));
             advanced.Controls.Add(listBorder, 0, 1);
