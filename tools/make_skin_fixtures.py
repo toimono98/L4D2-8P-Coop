@@ -8,6 +8,8 @@ weapon script (Workshop), Hunter and common-infected skins, a script mod and a s
 campaign that also replaces the AK-47, and copies of the HUD add-on and the 8 Slots Lobby Mod (never touched).
 A survivor-icons mod shares HUD portraits with the pack, and a HUD mod shares the HUD add-on's layout file.
 The addonlist.txt mixes "1", "0", a doubled backslash and missing entries (which the game treats as on).
+Each add-on's copy of a file is its own (different bytes), like real mods, except a campaign's second part,
+which shares one texture with the first, byte for byte: a harmless overlap.
 """
 import os
 import sys
@@ -21,6 +23,8 @@ def info(title):
 
 
 JPEG = b"\xff\xd8\xff\xe0placeholder\xff\xd9"
+# the same bytes in every add-on that has this file (parts of one campaign); everything else differs per add-on
+SHARED_WALL = ("same", b"VTF wall texture shared by both parts")
 ADDONS = {
     "nick_model.vpk": {"addoninfo.txt": info("Nick Model Skin"), "addonimage.jpg": JPEG,
                        "models/survivors/survivor_gambler.mdl": b"mdl", "models/survivors/survivor_gambler.vvd": b"vvd"},
@@ -42,7 +46,11 @@ ADDONS = {
     "other_script_mod.vpk": {"addoninfo.txt": info("Other Script Mod"), "scripts/vscripts/director_base_addon.nut": b"// also nothing"},
     "sound_mod.vpk": {"addoninfo.txt": info("Sound Mod"), "sound/player/survivor/voice/gambler/hey01.wav": b"RIFF"},
     "campaign_with_ak.vpk": {"addoninfo.txt": info("Campaign With AK"), "missions/zzcamp.txt": b'"mission" {}',
-                             "maps/zz_m1.bsp": b"VBSP", "models/v_models/v_rifle_ak47.mdl": b"mdl"},
+                             "maps/zz_m1.bsp": b"VBSP", "models/v_models/v_rifle_ak47.mdl": b"mdl",
+                             "materials/zz/wall.vtf": SHARED_WALL, "sound/sound.cache": b"cache"},
+    # the campaign's second part: the same wall texture, byte for byte (the game's Add-ons menu calls it a conflict)
+    "campaign_with_ak_part2.vpk": {"addoninfo.txt": info("Campaign With AK Part 2"), "maps/zz_m2.bsp": b"VBSP",
+                                   "materials/zz/wall.vtf": SHARED_WALL, "sound/sound.cache": b"cache"},
     "l4d2_8p_hud.vpk": {"addoninfo.txt": info("8-Player HUD"), "models/v_models/v_rifle.mdl": b"mdl", "scripts/hudlayout.res": b"res"},
     # not skins, but they replace files other add-ons have: the survivor pack's HUD portraits, the 8-player HUD's layout
     "survivor_icons.vpk": {"addoninfo.txt": info("Survivor Icons"), "materials/vgui/s_panel_gambler.vtf": b"vtf",
@@ -63,12 +71,21 @@ ADDONLIST = """"AddonList"
 """
 
 
+def own(rel, name, data):
+    """Each add-on's own copy of a file (different bytes per add-on), except the shared ones and the text files."""
+    if isinstance(data, tuple):
+        return data[1]
+    if name.endswith(".txt") or name.endswith(".jpg"):
+        return data
+    return data + b" from " + rel.encode()
+
+
 def main():
     out = os.path.join(sys.argv[1], "left4dead2")
     for rel, files in ADDONS.items():
         path = os.path.join(out, "addons", *rel.split("/"))
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        vpk(files, path)
+        vpk({name: own(rel, name, data) for name, data in files.items()}, path)
     # a Workshop thumbnail next to the pack, the way Steam stores them
     with open(os.path.join(out, "addons", "workshop", "1000000001.jpg"), "wb") as f:
         f.write(JPEG)

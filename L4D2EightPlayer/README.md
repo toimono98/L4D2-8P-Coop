@@ -121,12 +121,27 @@ Three fixes are only on the AlliedModders forum, which blocks automated download
 
 The **Mods & compatibility** tab reads your addons and plugins directly and flags what can break 8-player games:
 
-- **Addon conflicts.** Two VPKs that override the same files, where only one wins. This is escalated when it hits the 8-slot lobby UI.
+- **Addon conflicts.** Two VPKs that override the same files with different copies, where only one wins. This is escalated when it hits the 8-slot lobby UI.
+- **Harmless overlaps.** When both add-ons hold the same copy of a file (same size and CRC32, or the same bytes when a VPK has no CRCs), nothing changes whichever wins. That's typical of parts of one campaign, or the same mod installed twice. The game's Add-ons menu still marks these as conflicting; the app notes them as harmless and doesn't count them. `sound/sound.cache`, which the game rebuilds and many campaigns ship, never counts either.
 - **Script risks.** VScripts that change `survivor_limit` or player-limit cvars, or that loop over exactly 4 players. Mutations that cap their lobby below 8.
 - **Plugin conflicts.** Rival slot managers (SuperVersus, Bebop, l4d2_rmc, old MultiSlots), plugins the guide marks as broken or harmful (Left4Fix, Character Manager, ...), obsolete extensions (Left4Downtown2, old L4DToolZ), and duplicate copies.
 - **Missing dependencies.** Read from each `.smx`: required plugin libraries, extensions, and Left 4 DHooks natives.
 - **Stability.** Plugin load failures and runtime errors from the last 7 days of SourceMod error logs, plus recent server crash dumps.
 - **Setup.** The lobby mod is subscribed and enabled, and the dedicated server is the same version as your game.
+
+**The rating key.** Every add-on in your game gets a color in the Rating column (and on the skin picker's cards), from its conflicts (other add-ons that are on and replace the same files with different copies) and its requirements (what it changes beyond looks: a campaign, a game mode, gameplay scripts, weapon stats, dialogue, animations):
+
+| Rating | Color | Means |
+|---|---|---|
+| Safe | blue | no conflicts, no requirements |
+| Stable | green | no conflicts, at least one requirement |
+| Moderate | yellow | at least one conflict |
+| Unstable | orange | more than 2 conflicts, or more than 2 requirements |
+| Unsafe | red | can't be used right now (unreadable, or the check found a problem with it), whatever else |
+
+A campaign's own scripts and dialogue count as part of the campaign. An add-on that's off is rated as it would be if you turned it on ("would conflict with ..."). Hover the key for the details, or click an add-on to see why it got its color.
+
+**Disable conflicting** (next to Scan now, shown with the number of conflicting pairs) lists every pair of add-ons that are on and really clash, skins included. Each pair has **Keep** one / **Keep** the other / **Keep both**, with a suggestion already picked: never the HUD add-on or the lobby mod, then the skin you picked, a campaign or game mode, the subscribed Workshop copy over a loose file, and the add-on with more in it. Change any of them, then **Turn off**. Harmless overlaps are listed below for reference and left alone. Turned-off add-ons stay installed.
 
 **Future mods are checked as they arrive.** While the tool is open it watches your `addons` and `plugins` folders. Anything new is scanned right away, marked **NEW**, and announced with a notification. A full check also runs before every launch, and you can continue or cancel if it finds problems.
 
@@ -142,6 +157,8 @@ The picker sorts the skin add-ons you have (in `left4dead2\addons` and Workshop 
 - **Infected:** *Special* (Hunter, Smoker, Boomer, Charger, Jockey, Spitter, Tank, Witch) and *Common* (commons, plus each uncommon type).
 
 Everything but the survivors appears only once you have a skin for it.
+
+**Disable all** (top right) turns off every skin that's on, so everything uses the game's own look, and remembers that, so a launch keeps it (a skin installed later is asked about). Campaign and script mods that include skins stay on, and the HUD add-on and lobby mod aren't touched.
 
 **Picking a skin:** click a survivor, weapon, item or infected, then click the skin you want, or **Game default**. That skin is turned on, and every other skin for the same thing is turned off in the game's add-on list.
 
@@ -174,7 +191,7 @@ You can tick **Don't ask again for this add-on**.
 - Campaigns, mutations and script mods: they stay on, and the picker says so.
 - Add-ons that aren't skins (maps, sounds, scripts): left alone.
 
-A skin that also ships weapon scripts is marked: those can change how the weapon handles. The compatibility check's verdict on each add-on (the Mods tab) shows on its card.
+A skin that also ships weapon scripts is marked: those can change how the weapon handles. The compatibility check's verdict on each add-on (the Mods tab) shows on its card, with its rating (the same key as the Mods tab) as a colored badge and the reason underneath. Each survivor, weapon, item and infected card has a dot in the color of the skin in use.
 
 **Things to know:**
 - Skins show only on your own screen.
@@ -274,6 +291,8 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
 5. **Go to lobby** (next to Join game) does the same preparation, downloading the server's mods and putting your skin picks back, but leaves the game on its main menu instead of connecting. From there, join your host's lobby: accept their invite, or right-click them in Steam's friends list and choose **Join Game**.
 
 A host with many mods makes the list long: the whole Join page scrolls, so every mod and the Join buttons stay reachable.
+
+**Conflicts on the Join side too:** the app checks your add-ons when it opens, after the Skins window, after the server's mods download, and whenever an add-on is installed or removed while it's open. Add-ons that are on and clash show as a link at the bottom ("2 add-on conflicts · Disable conflicting"), which opens the same Disable conflicting window as the Host side. Harmless overlaps don't count.
 
 **Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the host's required mods, which the app can download for them.
 

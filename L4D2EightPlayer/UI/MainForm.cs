@@ -27,6 +27,9 @@ namespace L4D2EightPlayer.UI
         bool gameSeen;
         DateTime gameLaunchAt;
         List<Finding> findings = new List<Finding>();
+        /// <summary>The color key for each add-on in your game (by path), and the clashes Disable conflicting settles.</summary>
+        Dictionary<string, Rated> ratings = new Dictionary<string, Rated>(StringComparer.OrdinalIgnoreCase);
+        List<Clashes.Clash> conflicts = new List<Clashes.Clash>();
         HashSet<string> seen;
         readonly Dictionary<string, string> latestVersions = new Dictionary<string, string>();
 
@@ -663,8 +666,18 @@ namespace L4D2EightPlayer.UI
             var ctx = Context();
             lblSummary.Text = "Scanning...";
             List<Finding> result;
-            try { result = await Task.Run(() => Compat.Scan(ctx)); }
+            Clashes.Survey survey;
+            try
+            {
+                (result, survey) = await Task.Run(() => (Compat.Scan(ctx), Clashes.Look(ctx.ClientGameDir, ctx.Manifest)));
+            }
             catch (Exception ex) { Error("Scan failed: " + ex.Message); lblSummary.Text = ""; return; }
+            // the color key: conflicts and requirements, and red for what the scan found a problem with
+            ratings = Ratings.Rate(survey, path => Unusable(result, path));
+            try { conflicts = Clashes.Conflicts(survey, SkinPrefs.Load()); } catch { conflicts = new List<Clashes.Clash>(); }
+            btnConflicts.Text = $"Disable conflicting ({conflicts.Count})";
+            btnConflicts.Size = btnConflicts.GetPreferredSize(System.Drawing.Size.Empty);
+            btnConflicts.Visible = conflicts.Count > 0;
 
             bool firstRun = seen.Count == 0;
             var fresh = new List<Finding>();
@@ -687,11 +700,43 @@ namespace L4D2EightPlayer.UI
 
             if (fresh.Count > 0)
             {
-                foreach (var f in fresh) Info($"New {f.Kind.ToLower()} detected: {f.Name} → {Verdict(f)}");
+                foreach (var f in fresh)
+                {
+                    var r = RatingFor(f);
+                    Info($"New {f.Kind.ToLower()} detected: {f.Name} → {Verdict(f)}" + (r == null ? "" : $" · rated {r.Name} ({r.Why})"));
+                }
+                // a new add-on that clashes with one that's on: say so, Disable conflicting settles it
+                var clashing = fresh.Where(f => conflicts.Any(c => Same(c.A.Path, f.Location) || Same(c.B.Path, f.Location))).ToList();
                 var head = fresh.Count == 1 ? $"New mod checked: {fresh[0].Name}" : $"{fresh.Count} new mods checked";
-                var body = fresh.Count == 1 ? Verdict(fresh[0]) : $"{fresh.Count(f => f.Severity >= Severity.Warning)} need attention";
-                tray.ShowBalloonTip(6000, head, body + " (click for details)", fresh.Any(f => f.Severity >= Severity.Warning) ? ToolTipIcon.Warning : ToolTipIcon.Info);
+                var body = clashing.Count > 0 ? (fresh.Count == 1 ? "It conflicts" : $"{clashing.Count} of them conflict") + " with another add-on: Disable conflicting on the Mods tab"
+                         : fresh.Count == 1 ? Verdict(fresh[0]) : $"{fresh.Count(f => f.Severity >= Severity.Warning)} need attention";
+                tray.ShowBalloonTip(6000, head, body + " (click for details)", fresh.Any(f => f.Severity >= Severity.Warning) || clashing.Count > 0 ? ToolTipIcon.Warning : ToolTipIcon.Info);
             }
+            // the skin picker shows the same colors: it reads the add-ons again after a change
+            if (auto && skinsLoaded && !skinsReloading) { skinsReloading = true; try { await skins.Reload(); } finally { skinsReloading = false; } }
+        }
+
+        bool skinsReloading;
+        static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Why the scan says an add-on can't be used (a problem it found), or null.</summary>
+        static string Unusable(List<Finding> found, string path)
+        {
+            var f = found.FirstOrDefault(x => x.Kind == "Addon" && Same(x.Location, path) && x.Severity == Severity.Problem);
+            if (f == null) return null;
+            var d = f.Details.FirstOrDefault(x => x.StartsWith("[Problem] "));
+            return "the compatibility check found a problem: " + (d != null ? d.Substring("[Problem] ".Length).TrimEnd('.') : f.Summary);
+        }
+
+        Rated RatingFor(Finding f) => f != null && f.Kind == "Addon" && f.Location != null && ratings.TryGetValue(f.Location, out var r) ? r : null;
+
+        /// <summary>Disable conflicting: each clashing pair with a suggestion, then the choices applied and a fresh scan.</summary>
+        async Task DisableConflicting()
+        {
+            int n = ConflictsForm.Run(this, settings.ClientGameDir, manifest);
+            if (n < 0) return;
+            Info(n == 0 ? "Disable conflicting: every pair kept as it is." : $"Disable conflicting: turned off {n} add-on{(n == 1 ? "" : "s")}. They stay installed; turn them back on in the game's Add-ons menu or on the Skins tab.");
+            await RunScan(auto: true, quiet: true);
         }
 
         static string Verdict(Finding f) =>
@@ -706,12 +751,18 @@ namespace L4D2EightPlayer.UI
             foreach (var f in findings)
             {
                 string status = f.Severity == Severity.Problem ? "PROBLEM" : f.Severity == Severity.Warning ? "WARNING" : f.Severity == Severity.Info ? "NOTE" : "CLEAR";
-                var item = new ListViewItem(new[] { status, f.Kind.ToUpperInvariant(), (f.IsNew ? "NEW · " : "") + f.Name, f.Summary ?? "" }) { Tag = f, UseItemStyleForSubItems = false, ToolTipText = f.Name + (string.IsNullOrEmpty(f.Summary) ? "" : Environment.NewLine + f.Summary) };
+                var rated = RatingFor(f);
+                var item = new ListViewItem(new[] { rated == null ? "" : RatingStyle.Dot(rated.Rating), status, f.Kind.ToUpperInvariant(), (f.IsNew ? "NEW · " : "") + f.Name, f.Summary ?? "" })
+                {
+                    Tag = f, UseItemStyleForSubItems = false,
+                    ToolTipText = f.Name + (string.IsNullOrEmpty(f.Summary) ? "" : Environment.NewLine + f.Summary) + (rated == null ? "" : Environment.NewLine + rated.Name + ": " + rated.Why),
+                };
                 var statusColor = f.Severity == Severity.Problem ? Theme.Hex("#ff8a7a") : f.Severity == Severity.Warning ? Theme.Amber : Theme.Muted;
-                item.ForeColor = statusColor;
-                item.SubItems[1].ForeColor = Theme.Muted;
-                item.SubItems[2].ForeColor = Theme.Bone;
-                item.SubItems[3].ForeColor = Theme.Muted;
+                item.ForeColor = rated == null ? Theme.Muted : RatingStyle.Color(rated.Rating);
+                item.SubItems[1].ForeColor = statusColor;
+                item.SubItems[2].ForeColor = Theme.Muted;
+                item.SubItems[3].ForeColor = Theme.Bone;
+                item.SubItems[4].ForeColor = Theme.Muted;
                 if (f.Severity == Severity.Problem) item.BackColor = Theme.ProblemBg;
                 else if (f.Severity == Severity.Warning) item.BackColor = Theme.WarningBg;
                 if (f.IsNew) item.Font = Theme.BodyBold(10f);

@@ -45,7 +45,7 @@ namespace L4D2EightPlayer.UI
             var others = m.Targets.Count(t => inv.ByTarget[t.Id].On.Any(o => o != m));
             string status = !m.Enabled ? "Off" : others > 0 ? $"On · {others} of {m.Targets.Count} also have another skin on" : "On";
             var card = new PackCard(m.Title, $"Skins {m.Targets.Count}: {Names(m.Targets, 3)} · {status}", m.Enabled ? (others > 0 ? Theme.Amber : Theme.Bone) : Theme.Muted, Thumb(m), m.Title.Substring(0, 1))
-            { Selected = packSel == "pack:" + m.Key, Tag = "pack:" + m.Key, On = m.Enabled };
+            { Selected = packSel == "pack:" + m.Key, Tag = "pack:" + m.Key, On = m.Enabled, Rating = RatingOf(m)?.Rating };
             card.Click += (s, e) => SelectPackItem("pack:" + m.Key);
             return card;
         }
@@ -256,6 +256,8 @@ namespace L4D2EightPlayer.UI
         /// <summary>The badge's text when it isn't simply ON ("IN USE", "PARTLY ON"), and whether it's the amber kind.</summary>
         public string Badge { get; set; }
         public bool BadgeAmber { get; set; }
+        /// <summary>A pack's place in the color key (none for a collection).</summary>
+        public Rating? Rating { get; set; }
 
         static readonly System.Drawing.Imaging.ImageAttributes Dim = DimAttributes();
         static System.Drawing.Imaging.ImageAttributes DimAttributes()
@@ -309,6 +311,15 @@ namespace L4D2EightPlayer.UI
                 right -= sz.Width;
                 if (BadgeAmber) Draw.TagBox(g, new Rectangle(right, S(10), sz.Width, sz.Height), badge, bf, Color.Empty, Theme.Amber, Theme.Amber);
                 else Draw.TagBox(g, new Rectangle(right, S(10), sz.Width, sz.Height), badge, bf, Theme.Red, Color.Empty, Theme.BoneText);
+                right -= S(10);
+            }
+            if (Rating.HasValue)
+            {
+                var rf = Theme.BodyBold(7.5f);
+                var text = Ratings.Name(Rating.Value).ToUpperInvariant();
+                var sz = Draw.TagSize(text, rf);
+                right -= sz.Width;
+                Draw.TagBox(g, new Rectangle(right, S(10), sz.Width, sz.Height), text, rf, RatingStyle.Color(Rating.Value), Color.Empty, RatingStyle.Text(Rating.Value));
                 right -= S(10);
             }
             int w = r.Width - x - pad;

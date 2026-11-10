@@ -143,6 +143,7 @@ namespace L4D2EightPlayer.Join
             }
             finally { btnJoin.Enabled = true; btnJoin.Text = "Join game"; }
             ShowMods();
+            _ = CheckConflicts();   // the downloaded mods may clash with ones you have
             if (failed.Count == 0) return true;
             bool requiredFailed = todo.Any(m => m.Required && !m.Have);
             var msg = "Some mods didn't download:\n\n" + string.Join("\n", failed.Select(f => "• " + f)) +

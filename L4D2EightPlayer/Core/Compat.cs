@@ -67,6 +67,8 @@ namespace L4D2EightPlayer.Core
             public bool Models;
             public bool Sounds, Scripts;
             public List<string> Files = new List<string>();
+            /// <summary>Each file's CRC32 and size, to tell two add-ons with the same copy of a file from a real clash.</summary>
+            public Dictionary<string, (uint crc, long size)> Sums = new Dictionary<string, (uint, long)>(StringComparer.OrdinalIgnoreCase);
             public List<(Severity sev, string text)> ScriptNotes = new List<(Severity, string)>();
             public List<string> Missions = new List<string>();
             /// <summary>
@@ -99,6 +101,49 @@ namespace L4D2EightPlayer.Core
         public static bool PerAddonScript(string file) =>
             file.StartsWith("scripts/vscripts/", StringComparison.OrdinalIgnoreCase) && file.EndsWith("_addon.nut", StringComparison.OrdinalIgnoreCase) && file.IndexOf('/', "scripts/vscripts/".Length) < 0;
 
+        /// <summary>
+        /// Files that two add-ons can both have without clashing: the add-on's own info and picture, the scripts the
+        /// game runs from every add-on (PerAddonScript), and sound/sound.cache, which the game rebuilds from the sounds
+        /// it finds (campaigns with their own sounds all ship one).
+        /// </summary>
+        public static bool NeverClashes(string file) =>
+            file.StartsWith("addoninfo.", StringComparison.OrdinalIgnoreCase) || file.StartsWith("addonimage", StringComparison.OrdinalIgnoreCase) || PerAddonScript(file)
+            || (file.StartsWith("sound/", StringComparison.OrdinalIgnoreCase) && file.EndsWith(".cache", StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// Whether two add-ons hold the same copy of a file: the same size and CRC32 or, when the tool that made a VPK
+        /// left the CRCs out, the same bytes. The game uses one copy either way, so an overlap of identical files
+        /// changes nothing (parts of one campaign, or the same mod installed twice).
+        /// </summary>
+        public static bool SameFile(string vpkA, AddonInfo a, string vpkB, AddonInfo b, string file)
+        {
+            if (a == null || b == null || !a.Sums.TryGetValue(file, out var x) || !b.Sums.TryGetValue(file, out var y) || x.size != y.size) return false;
+            if (x.crc != 0 && y.crc != 0) return x.crc == y.crc;
+            const int Max = 4 * 1024 * 1024;
+            if (x.size > Max) return false;
+            try
+            {
+                var da = OpenCached(vpkA).Read(file, Max);
+                var db = OpenCached(vpkB).Read(file, Max);
+                return da != null && db != null && da.SequenceEqual(db);
+            }
+            catch { return false; }
+        }
+
+        static readonly Dictionary<string, (long size, DateTime mtime, Vpk vpk)> OpenVpks = new Dictionary<string, (long, DateTime, Vpk)>(StringComparer.OrdinalIgnoreCase);
+        static Vpk OpenCached(string path)
+        {
+            var fi = new FileInfo(path);
+            lock (OpenVpks)
+            {
+                if (OpenVpks.TryGetValue(path, out var c) && c.size == fi.Length && c.mtime == fi.LastWriteTimeUtc) return c.vpk;
+                if (OpenVpks.Count > 64) OpenVpks.Clear();
+                var v = Vpk.Open(path);
+                OpenVpks[path] = (fi.Length, fi.LastWriteTimeUtc, v);
+                return v;
+            }
+        }
+
         public static AddonInfo ReadAddon(string path)
         {
             var fi = new FileInfo(path);
@@ -110,6 +155,7 @@ namespace L4D2EightPlayer.Core
             {
                 var vpk = Vpk.Open(path);
                 info.Files = vpk.Entries.Keys.ToList();
+                foreach (var e in vpk.Entries.Values) info.Sums[e.Path] = (e.Crc, e.Length + (e.Preload?.Length ?? 0));
 
                 var addoninfo = vpk.ReadText("addoninfo.txt", 64 * 1024);
                 if (addoninfo != null)
@@ -265,6 +311,7 @@ namespace L4D2EightPlayer.Core
         {
             var addonsByFile = new Dictionary<string, List<Finding>>(StringComparer.OrdinalIgnoreCase);
             var infoByFinding = new Dictionary<Finding, AddonInfo>();
+            var pathByFinding = new Dictionary<Finding, string>();
             var lobbyFinding = (Finding)null;
 
             void Visit(string vpk, bool clientSide, bool enabled)
@@ -317,12 +364,13 @@ namespace L4D2EightPlayer.Core
 
                     foreach (var file in info.Files)
                     {
-                        if (file.StartsWith("addoninfo.") || file.StartsWith("addonimage") || PerAddonScript(file)) continue;
+                        if (NeverClashes(file)) continue;
                         if (!addonsByFile.TryGetValue(file, out var l)) addonsByFile[file] = l = new List<Finding>();
                         if (!l.Contains(f)) l.Add(f);
                     }
                 }
                 infoByFinding[f] = info;
+                pathByFinding[f] = vpk;
                 findings.Add(f);
             }
 
@@ -367,7 +415,14 @@ namespace L4D2EightPlayer.Core
             foreach (var kv in pairs)
             {
                 var (a, b) = kv.Key;
-                var files = kv.Value;
+                // the same copy in both changes nothing, whichever the game uses
+                var files = kv.Value.Where(p => !SameFile(pathByFinding[a], infoByFinding[a], pathByFinding[b], infoByFinding[b], p)).ToList();
+                int same = kv.Value.Count - files.Count;
+                if (files.Count == 0)
+                {
+                    a.Details.Add($"Shares {same} file{(same == 1 ? "" : "s")} with {b.Name}, the same in both, so it's harmless (often parts of one campaign, or the same mod installed twice). The game's Add-ons menu may still mark them as conflicting.");
+                    continue;
+                }
                 bool scripts = files.Any(p => p.StartsWith("scripts/vscripts/") || p.StartsWith("modes/") || p.StartsWith("missions/"));
                 bool lobby = a == lobbyFinding || b == lobbyFinding;
                 var sev = lobby && files.Any(p => p.StartsWith("resource/")) ? Severity.Problem : scripts ? Severity.Warning : Severity.Info;

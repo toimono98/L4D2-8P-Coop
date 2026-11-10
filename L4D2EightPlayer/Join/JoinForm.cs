@@ -106,6 +106,7 @@ namespace L4D2EightPlayer.Join
             Shown += async (s, e) =>
             {
                 ActiveControl = txtTarget;
+                _ = CheckConflicts();
                 if (txtTarget.Text.Length > 0) await Check();
                 // "Version X is out" in the header (GitHub, checked once a day; silent offline)
                 var v = await UpdateCheck.Newer();
@@ -274,6 +275,7 @@ namespace L4D2EightPlayer.Join
             foot.Controls.Add(lnkSkins);
             foot.Controls.Add(lnkWorkshop);
             foot.Controls.Add(lnkHud);
+            foot.Controls.Add(BuildConflictsLink());   // shown when add-ons that are on clash
 
             // On a screen too short for the whole window, the body scrolls instead of squashing the lists.
             // A long list of the server's mods makes the card, and so the page, taller: it scrolls (FitServerCard).
@@ -376,6 +378,7 @@ namespace L4D2EightPlayer.Join
                 settings.GamePath = d.SelectedPath;
                 settings.Save();
                 UpdateGameLabel();
+                _ = CheckConflicts();
             }
         }
 

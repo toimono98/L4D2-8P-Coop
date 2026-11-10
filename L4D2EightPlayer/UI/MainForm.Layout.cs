@@ -38,6 +38,7 @@ namespace L4D2EightPlayer.UI
         Tag findingTag;
         Label newModTitle, newModBody;
         Tile tileProblems, tileWarnings, tileClear;
+        GameButton btnConflicts;
         readonly SurvivorCard[] roster = new SurvivorCard[8];
         readonly System.Windows.Forms.Timer rosterTimer = new System.Windows.Forms.Timer { Interval = 5000 };
         List<string> livePlayers;
@@ -367,15 +368,16 @@ namespace L4D2EightPlayer.UI
             var g = Grid(1);
             g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            g.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             g.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             chkWatch = new GameCheck { Text = "Watch for new mods and check them automatically", AutoSize = true, Font = Theme.Body(10f), Margin = P(0, 0, 0, 10) };
             chkWatch.CheckedChanged += (s, e) => { if (loading) return; settings.WatchMods = chkWatch.Checked; settings.Save(); SetupWatchers(); };
             g.Controls.Add(HeadingRow("Scan", "INFECTION REPORT", chkWatch), 0, 0);
 
-            var tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6, AutoSize = true, Margin = P(0, 0, 0, 14) };
+            var tiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 7, AutoSize = true, Margin = P(0, 0, 0, 10) };
             for (int i = 0; i < 3; i++) tiles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
-            for (int i = 0; i < 3; i++) tiles.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            for (int i = 0; i < 4; i++) tiles.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             tileProblems = new Tile("Problems") { Dock = DockStyle.Fill, Fill = Theme.Red, Border = Color.Empty, NumberColor = Theme.BoneText, LabelColor = Theme.BoneText };
             tileWarnings = new Tile("Warnings") { Dock = DockStyle.Fill, Border = Theme.Amber, NumberColor = Theme.Amber, LabelColor = Theme.Bone };
             tileClear = new Tile("Clear for 8") { Dock = DockStyle.Fill };
@@ -398,7 +400,15 @@ namespace L4D2EightPlayer.UI
             tiles.Controls.Add(btnScan, 3, 0);
             tiles.Controls.Add(btnOpen, 4, 0);
             tiles.Controls.Add(btnWorkshop, 5, 0);
+            // add-ons that are on and replace the same files with different copies: turn one of each pair off
+            btnConflicts = Btn("Disable conflicting", ButtonKind.Primary, async (s, e) => await DisableConflicting());
+            btnConflicts.Margin = P(10, 9, 0, 0);
+            btnConflicts.Visible = false;
+            new ToolTip().SetToolTip(btnConflicts, "Add-ons that are on and replace the same files with different copies (the game uses only one).\n" +
+                "Lists each pair with a suggested one to turn off. Harmless overlaps (the same copy in both) are left alone.");
+            tiles.Controls.Add(btnConflicts, 6, 0);
             g.Controls.Add(tiles, 0, 1);
+            g.Controls.Add(RatingStyle.Key(P(0, 0, 0, 10)), 0, 2);
 
             var main = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };
             main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -406,9 +416,10 @@ namespace L4D2EightPlayer.UI
             main.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             lvFindings = new ListView { View = View.Details, FullRowSelect = true, Dock = DockStyle.Fill, HideSelection = false, HeaderStyle = ColumnHeaderStyle.Nonclickable };
-            lvFindings.Columns.Add("Status", S(100));
-            lvFindings.Columns.Add("Type", S(128));
-            lvFindings.Columns.Add("Name", S(300));
+            lvFindings.Columns.Add("Rating", S(132));
+            lvFindings.Columns.Add("Status", S(96));
+            lvFindings.Columns.Add("Type", S(118));
+            lvFindings.Columns.Add("Name", S(290));
             lvFindings.Columns.Add("Summary", S(260));
             HoverTips.Attach(lvFindings);
             DarkList.Apply(lvFindings);
@@ -454,7 +465,7 @@ namespace L4D2EightPlayer.UI
             newModNote.Controls.Add(nm);
             right.Controls.Add(newModNote, 0, 1);
             main.Controls.Add(right, 1, 0);
-            g.Controls.Add(main, 0, 2);
+            g.Controls.Add(main, 0, 3);
 
             lblSummary = new Label { Visible = false }; // kept for status text during scans
             page.Controls.Add(lblSummary);
@@ -484,7 +495,10 @@ namespace L4D2EightPlayer.UI
             findingCard.BorderWidth = f.Severity >= Severity.Warning ? 2 : 1;
             lblFindingTitle.Text = f.Name;
             var details = f.Details.Count > 0 ? f.Details.Select(d => d.Replace("[Problem] ", "✖ ").Replace("[Warning] ", "⚠ ").Replace("[Info] ", "• ")) : new[] { "No issues found for 8-player co-op." };
-            txtFindingDetails.Text = (f.Summary ?? "") + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, details);
+            var rated = RatingFor(f);
+            txtFindingDetails.Text = (f.Summary ?? "") + Environment.NewLine + Environment.NewLine
+                + (rated == null ? "" : $"Rating: {rated.Name} ({rated.Why})." + Environment.NewLine + Environment.NewLine)
+                + string.Join(Environment.NewLine + Environment.NewLine, details);
             lblFindingPath.Text = f.Location ?? "";
             btnFix.Enabled = f.Fix != FixAction.None;
             btnFix.Text = f.Fix == FixAction.EnablePlugin || f.Fix == FixAction.EnableAddon ? "Enable it again"

@@ -391,6 +391,25 @@ namespace L4D2EightPlayer.Core
             prefs.Save();
         }
 
+        /// <summary>The skins Disable all turns off: every one that's on, except campaign and script mods (they stay on).</summary>
+        public static List<Mod> AllOn(Inventory inv) => inv?.Mods.Where(m => m.Enabled && !m.Locked).ToList() ?? new List<Mod>();
+
+        /// <summary>
+        /// Disable all: every skin back to the game's own look. The skins go off and every target that has one is
+        /// remembered as Game default, so a launch keeps it that way (a skin installed later is asked about). The game
+        /// has to be closed. Returns the skins turned off.
+        /// </summary>
+        public static List<Mod> DisableAll(Inventory inv, SkinPrefs prefs)
+        {
+            if (Launcher.GameRunning()) throw new InvalidOperationException("Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.");
+            var off = AllOn(inv);
+            if (off.Count > 0) Compat.SetAddonsEnabled(inv.GameDir, off.ToDictionary(m => m.Key, m => false, StringComparer.OrdinalIgnoreCase));
+            foreach (var m in off) m.Enabled = false;
+            foreach (var s in inv.ByTarget.Values.Where(s => s.Mods.Count > 0)) prefs.Picks[s.Target.Id] = "";
+            prefs.Save();
+            return off;
+        }
+
         // ================================================================== re-applying the picks at launch
 
         /// <summary>

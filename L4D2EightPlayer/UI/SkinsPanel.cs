@@ -26,6 +26,9 @@ namespace L4D2EightPlayer.UI
         public event EventHandler Changed;
 
         Skins.Inventory inv;
+        /// <summary>The color key for each add-on, by path (Ratings).</summary>
+        Dictionary<string, Rated> rated = new Dictionary<string, Rated>(StringComparer.OrdinalIgnoreCase);
+        GameButton disableAll;
         SkinPrefs prefs = SkinPrefs.Load();
         Skins.Target selected;
         readonly Dictionary<string, Image> thumbs = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
@@ -60,6 +63,12 @@ namespace L4D2EightPlayer.UI
             head.Controls.Add(new TapeLabel("Wardrobe") { Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 14, 6) }, 0, 0);
             head.Controls.Add(new Label { Text = "PICK YOUR SKINS", AutoSize = true, Font = Theme.Display(26f), ForeColor = Theme.Bone, Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 16, 0) }, 1, 0);
             var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Anchor = AnchorStyles.Right | AnchorStyles.Bottom, Margin = P(0, 0, 0, 4) };
+            // every skin back to the game's own look, in one go
+            disableAll = new GameButton("Disable all", ButtonKind.Ghost, 10f) { Margin = P(0, 0, 10, 0), Enabled = false };
+            disableAll.Click += async (s, e) => await DisableAll();
+            new ToolTip().SetToolTip(disableAll, "Turns off every skin add-on, so everything uses the game's own look (and stays that way at launch until you pick a skin again).\n" +
+                "Campaign and script mods that include skins stay on; the 8-Player HUD add-on and the lobby mod aren't touched.");
+            buttons.Controls.Add(disableAll);
             var browse = new GameButton("Open Workshop", ButtonKind.Ghost, 10f) { Margin = P(0, 0, 10, 0) };
             browse.Click += (s, e) => Workshop.Open();
             new ToolTip().SetToolTip(browse, "Left 4 Dead 2's Steam Workshop. Subscribe to a skin, then click Look again.");
@@ -81,6 +90,7 @@ namespace L4D2EightPlayer.UI
             var subStack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, Margin = P(0) };
             subStack.Controls.Add(sub);
             subStack.Controls.Add(banner);
+            subStack.Controls.Add(RatingStyle.Key(P(0, 0, 0, 10)));
             // one target at a time, or whole packs and Workshop collections
             viewSwitch = new Pills(new[] { "skins", "packs" }, new[] { "By what they change", "Packs & collections" }, 440) { Margin = P(0, 0, 0, 8) };
             viewSwitch.SelectedIndex = 0;
@@ -129,14 +139,15 @@ namespace L4D2EightPlayer.UI
             {
                 var dir = gameDir();
                 var man = manifest();
-                var (scanned, images, cols) = await Task.Run(() =>
+                var (scanned, images, cols, survey) = await Task.Run(() =>
                 {
                     var i = Skins.Scan(dir, man);
+                    var sv = Clashes.Look(dir, man);   // for the color key: what clashes with what
                     var pics = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
                     foreach (var m in i.Mods) if (!thumbs.ContainsKey(m.Path)) pics[m.Path] = Thumbnail(m);
                     var c = SkinPrefs.Load().Collections.Select(x => Packs.State(dir, i, man, x)).ToList();
                     foreach (var x in c) { var pic = Workshop.CollectionPicture(x.Saved.Id); if (!thumbs.ContainsKey(pic)) pics[pic] = Thumbnail(pic); }
-                    return (i, pics, c);
+                    return (i, pics, c, sv);
                 });
                 // back on the window's thread before touching any control (a caller without a message loop's
                 // context would otherwise get the rest of this on a pool thread)
@@ -145,6 +156,7 @@ namespace L4D2EightPlayer.UI
                     foreach (var kv in images) thumbs[kv.Key] = kv.Value;
                     inv = scanned;
                     collections = cols;
+                    rated = Ratings.Rate(survey, path => findingFor?.Invoke(path)?.Severity >= Severity.Problem ? "the compatibility check found a problem with it" : null);
                     prefs = SkinPrefs.Load();
                     if (selected == null) selected = Skins.Targets[0];
                     SuspendLayout();
@@ -181,6 +193,7 @@ namespace L4D2EightPlayer.UI
             bool none = inv == null || inv.Mods.Count == 0;
             var dir = gameDir();
             banner.Visible = dir == null || GameOpen;
+            disableAll.Enabled = !GameOpen && Skins.AllOn(inv).Count > 0;
             banner.Text = dir == null ? "Left 4 Dead 2 wasn't found, so there are no skins to show. Set the game folder first."
                         : "Left 4 Dead 2 is running: close it to change skins (it rewrites its add-on list when it exits).";
             if (packsView) { FillPacks(); list.ResumeLayout(); SizeSectionBreaks(); return; }
@@ -232,7 +245,7 @@ namespace L4D2EightPlayer.UI
         TargetCard Card(Skins.Target t)
         {
             var state = inv?.ByTarget[t.Id];
-            var card = new TargetCard(t, state, state?.Active != null ? Thumb(state.Active) : null) { Selected = t == selected };
+            var card = new TargetCard(t, state, state?.Active != null ? Thumb(state.Active) : null, RatingOf(state?.Active)?.Rating) { Selected = t == selected };
             card.Click += (s, e) =>
             {
                 selected = t;
@@ -262,21 +275,23 @@ namespace L4D2EightPlayer.UI
             options.Controls.Add(new Label { Text = what, AutoSize = true, MaximumSize = Sz(360, 0), Font = Theme.Body(10f), ForeColor = state.Conflict ? Theme.Amber : Theme.Muted, Margin = P(0, 0, 0, 10) });
 
             bool none = state.On.Count == 0;
-            options.Controls.Add(Option(null, "Game default", "The look the game ships with.", none, null, Severity.Ok));
+            options.Controls.Add(Option(null, "Game default", "The look the game ships with.", none, null, Severity.Ok, null));
             foreach (var m in state.Mods)
             {
                 var detail = m.Pack ? "Also skins: " + string.Join(", ", m.Targets.Where(t => t != selected).Select(t => t.Name)) : "Only " + selected.Name;
+                var r = RatingOf(m);
+                if (r != null) detail += $"\n{r.Name}: {r.Why}.";
                 if (m.Notes.Count > 0) detail += "\n" + string.Join("\n", m.Notes.Select(n => n.text));
                 var f = findingFor?.Invoke(m.Path);
                 var sev = f?.Severity ?? (m.Notes.Count > 0 ? m.Notes.Max(n => n.sev) : Severity.Ok);
-                options.Controls.Add(Option(m, m.Title, detail, m.Enabled, Thumb(m), sev));
+                options.Controls.Add(Option(m, m.Title, detail, m.Enabled, Thumb(m), sev, r?.Rating));
             }
             options.ResumeLayout();
         }
 
-        OptionCard Option(Skins.Mod mod, string title, string detail, bool on, Image thumb, Severity sev)
+        OptionCard Option(Skins.Mod mod, string title, string detail, bool on, Image thumb, Severity sev, Rating? rating)
         {
-            var card = new OptionCard(title, detail, on, thumb, sev, mod?.Locked == true) { Dock = DockStyle.Top, Margin = P(0, 0, 0, 8), Enabled = !GameOpen };
+            var card = new OptionCard(title, detail, on, thumb, sev, mod?.Locked == true, rating) { Dock = DockStyle.Top, Margin = P(0, 0, 0, 8), Enabled = !GameOpen };
             card.Click += async (s, e) => await Pick(mod);
             return card;
         }
@@ -307,6 +322,29 @@ namespace L4D2EightPlayer.UI
         }
 
         Image Thumb(Skins.Mod m) => m != null && thumbs.TryGetValue(m.Path, out var i) ? i : null;
+        Rated RatingOf(Skins.Mod m) => m != null && rated.TryGetValue(m.Path, out var r) ? r : null;
+
+        /// <summary>Disable all: every skin off (campaign and script mods stay on), each target back to the game's own look.</summary>
+        async Task DisableAll()
+        {
+            if (inv == null) return;
+            if (GameOpen) { MessageBox.Show(FindForm(), "Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.", "Skins", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var off = Skins.AllOn(inv);
+            if (off.Count == 0) return;
+            int stays = inv.Mods.Count(m => m.Enabled && m.Locked);
+            var text = $"Turn off all {off.Count} skin add-on{(off.Count == 1 ? "" : "s")} that are on?\n\n" +
+                       "Every survivor, weapon, item and infected goes back to the game's own look, and stays that way at launch until you pick a skin again. The skins stay installed." +
+                       (stays > 0 ? $"\n\n{stays} campaign or script mod{(stays == 1 ? "" : "s")} with skins in {(stays == 1 ? "it stays" : "them stay")} on (turn {(stays == 1 ? "it" : "them")} off in the game's Add-ons menu)." : "") +
+                       "\n\nThe 8-Player HUD add-on and the lobby mod aren't touched.";
+            if (MessageBox.Show(FindForm(), text, "Disable all skins", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            try { Skins.DisableAll(inv, prefs); }
+            catch (Exception ex) { MessageBox.Show(FindForm(), ex.Message, "Skins", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            Changed?.Invoke(this, EventArgs.Empty);
+            await Reload();
+        }
+
+        /// <summary>For the screenshot check: what Disable all would turn off.</summary>
+        internal int DisableAllCount => Skins.AllOn(inv).Count;
 
         /// <summary>The add-on's picture: Steam's Workshop thumbnail next to it, else addonimage.jpg inside, else none.</summary>
         static Image Thumbnail(Skins.Mod m)
@@ -347,12 +385,13 @@ namespace L4D2EightPlayer.UI
         public readonly Skins.Target Target;
         readonly Skins.TargetState state;
         readonly Image thumb;
+        readonly Rating? rating;
         bool hover, selected;
         public bool Selected { get => selected; set { selected = value; Invalidate(); } }
 
-        public TargetCard(Skins.Target target, Skins.TargetState state, Image thumb)
+        public TargetCard(Skins.Target target, Skins.TargetState state, Image thumb, Rating? rating = null)
         {
-            Target = target; this.state = state; this.thumb = thumb;
+            Target = target; this.state = state; this.thumb = thumb; this.rating = rating;
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
             Size = Sz(206, 86);
             Margin = P(0, 0, 10, 10);
@@ -383,6 +422,19 @@ namespace L4D2EightPlayer.UI
             if (thumb == null) Draw.Text(g, Target.Name.Substring(0, 1), Theme.Display(16f), Theme.Bot, box, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             x += pic + S(10);
             int w = r.Width - x - pad;
+            // the skin in use, in the color key
+            if (rating.HasValue)
+            {
+                int d = S(9);
+                using (var b = new SolidBrush(RatingStyle.Color(rating.Value)))
+                {
+                    var mode = g.SmoothingMode;
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    g.FillEllipse(b, r.Width - pad - d, S(12), d, d);
+                    g.SmoothingMode = mode;
+                }
+                w -= d + S(6);
+            }
             var nf = Theme.Stencil(11.5f);
             int nh = Draw.Measure("X", nf).Height;
             Draw.Text(g, Target.Name.ToUpperInvariant(), nf, Theme.Bone, new Rectangle(x, S(10), w, nh), TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
@@ -399,11 +451,12 @@ namespace L4D2EightPlayer.UI
         readonly bool on, locked;
         readonly Image thumb;
         readonly Severity sev;
+        readonly Rating? rating;
         bool hover;
 
-        public OptionCard(string title, string detail, bool on, Image thumb, Severity sev, bool locked)
+        public OptionCard(string title, string detail, bool on, Image thumb, Severity sev, bool locked, Rating? rating = null)
         {
-            this.title = title; this.detail = detail; this.on = on; this.thumb = thumb; this.sev = sev; this.locked = locked;
+            this.title = title; this.detail = detail; this.on = on; this.thumb = thumb; this.sev = sev; this.locked = locked; this.rating = rating;
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
             Cursor = Cursors.Hand;
             AccessibleRole = AccessibleRole.PushButton;
@@ -446,6 +499,7 @@ namespace L4D2EightPlayer.UI
             int th = Draw.Measure("X", tf).Height;
             // the badges on the title line: ON, a scan warning, "stays on" for campaign mods
             var badges = new List<(string text, Color fill, Color border, Color fg)>();
+            if (rating.HasValue) badges.Add((Ratings.Name(rating.Value).ToUpperInvariant(), RatingStyle.Color(rating.Value), Color.Empty, RatingStyle.Text(rating.Value)));
             if (on) badges.Add(("ON", Theme.Red, Color.Empty, Theme.BoneText));
             if (sev >= Severity.Problem) badges.Add(("PROBLEM", Theme.Red, Color.Empty, Theme.BoneText));
             else if (sev == Severity.Warning) badges.Add(("WARNING", Theme.Amber, Color.Empty, Theme.Ground));

@@ -15,6 +15,8 @@ namespace L4D2EightPlayer.Core
         public sealed class Entry
         {
             public string Path;
+            /// <summary>The file's CRC32 as the VPK records it (0 when the tool that made it left it out).</summary>
+            public uint Crc;
             public ushort ArchiveIndex;
             public uint Offset;
             public uint Length;
@@ -60,10 +62,11 @@ namespace L4D2EightPlayer.Core
                             string name = ReadZ(br);
                             if (name.Length == 0) break;
 
-                            br.ReadUInt32(); // CRC
+                            uint crc = br.ReadUInt32();
                             ushort preload = br.ReadUInt16();
                             var e = new Entry
                             {
+                                Crc = crc,
                                 ArchiveIndex = br.ReadUInt16(),
                                 Offset = br.ReadUInt32(),
                                 Length = br.ReadUInt32(),

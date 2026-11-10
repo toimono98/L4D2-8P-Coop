@@ -41,7 +41,7 @@ namespace L4D2EightPlayer.UI
             string Ids(IEnumerable<Skins.Target> ts) => string.Join(",", ts.Select(t => t.Id).OrderBy(t => t));
             Check("skins found: " + Names(inv.Mods), Names(inv.Mods) == "Campaign With AK, Commons Skin, Hunter Skin, Nick Model Skin, Nick Texture Skin, Rifle Pack, Survivors and AK Pack");
             Check("protected add-ons left out (HUD, lobby mod)", inv.Mods.All(m => !m.Path.EndsWith("l4d2_8p_hud.vpk") && !m.Path.EndsWith("2754956355.vpk")));
-            Check($"script, sound, icon and HUD mods aren't skins (other add-ons on: {inv.Others})", inv.Others == 5);
+            Check($"script, sound, icon, HUD and campaign mods aren't skins (other add-ons on: {inv.Others})", inv.Others == 6);
             Check("Nick: model skin, texture skin, pack", Names(inv.ByTarget["nick"].Mods) == "Nick Model Skin, Nick Texture Skin, Survivors and AK Pack");
             Check("the pack covers Nick, Rochelle, Coach, Ellis and the AK-47: " + Ids(M("Survivors and AK Pack").Targets), Ids(M("Survivors and AK Pack").Targets) == "ak47,coach,ellis,nick,rochelle");
             Check("a texture-only skin is recognised (Hunter, commons)", Ids(M("Hunter Skin").Targets) == "hunter" && Ids(M("Commons Skin").Targets) == "common");
@@ -80,6 +80,41 @@ namespace L4D2EightPlayer.UI
             Check("... nor two script mods with their own director_base_addon.nut (the game runs both)", !clashes.Any(c => c.A.Title.Contains("Script Mod") || c.B.Title.Contains("Script Mod")));
             Check("described: " + clashes[0].What + " / " + clashes[1].What, clashes[0].What == "survivor portraits on the HUD (2)" && clashes[1].What == "the HUD layout (1)");
             Check("the HUD add-on is marked as one the app needs", clashes[1].A.Protected && !clashes[1].B.Protected);
+
+            // harmless overlaps, what Disable conflicting lists, and the color key
+            var sv = Clashes.Look(game, manifest);
+            var harmless = sv.Harmless.Where(c => c.BothOn).ToList();
+            Check("harmless: the campaign's two parts share a texture that's the same in both: " + string.Join("; ", harmless.Select(Pair)),
+                harmless.Count == 1 && Pair(harmless[0]) == "Campaign With AK + Campaign With AK Part 2" && harmless[0].Same == 1 && harmless[0].Files.Count == 0);
+            Check("... and their sound caches (different in each, rebuilt by the game) don't count", harmless[0].Files.Count == 0 && Compat.NeverClashes("sound/sound.cache"));
+            Check("... so it's no clash before a launch", !clashes.Any(c => c.A.Title.StartsWith("Campaign") && c.B.Title.StartsWith("Campaign")));
+            var withoutCrc = new Compat.AddonInfo(); withoutCrc.Sums["materials/zz/wall.vtf"] = (0, sv.Addons.First(a => a.Title == "Campaign With AK").Info.Sums["materials/zz/wall.vtf"].size);
+            var withoutCrc2 = new Compat.AddonInfo(); withoutCrc2.Sums["materials/zz/wall.vtf"] = withoutCrc.Sums["materials/zz/wall.vtf"];
+            Check("a VPK without CRCs: the bytes are compared instead",
+                Compat.SameFile(Path.Combine(game, "addons", "campaign_with_ak.vpk"), withoutCrc, Path.Combine(game, "addons", "campaign_with_ak_part2.vpk"), withoutCrc2, "materials/zz/wall.vtf"));
+            var all = Clashes.Conflicts(sv, SkinPrefs.Load());
+            var allNames = string.Join("; ", all.Select(Pair).OrderBy(p => p, StringComparer.Ordinal));
+            Check("Disable conflicting lists every clash between add-ons that are on, skins included: " + allNames,
+                allNames == "8 Slots Lobby Mod + Rifle Pack; 8-Player HUD + HUD Mod; 8-Player HUD + Rifle Pack; Campaign With AK + Rifle Pack; Campaign With AK + Survivors and AK Pack; Nick Model Skin + Survivors and AK Pack; Rifle Pack + Survivors and AK Pack; Survivor Icons + Survivors and AK Pack");
+            Clashes.Clash P(string pair) => all.First(c => Pair(c) == pair);
+            Check("suggested: never the add-on the app needs, the Workshop copy kept over a loose file, a campaign kept over a pack",
+                Clashes.Suggest(P("8-Player HUD + HUD Mod"), null).Title == "HUD Mod" && Clashes.Suggest(P("8 Slots Lobby Mod + Rifle Pack"), null).Title == "Rifle Pack"
+                && Clashes.Suggest(P("Nick Model Skin + Survivors and AK Pack"), null).Title == "Nick Model Skin" && Clashes.Suggest(P("Campaign With AK + Rifle Pack"), null).Title == "Rifle Pack");
+            var picked = new SkinPrefs(); picked.Picks["nick"] = "nick_model.vpk";
+            Check("... and the skin you picked is kept", Clashes.Suggest(P("Nick Model Skin + Survivors and AK Pack"), picked).Title == "Survivors and AK Pack");
+            var rated = Ratings.Rate(sv, path => path.EndsWith("commons_skin.vpk") ? "test problem" : null);
+            Rating R(string title) => rated[sv.Addons.First(a => a.Title == title).Path].Rating;
+            string Rs(params string[] titles) => string.Join(", ", titles.Select(t => t + " " + R(t)));
+            Check("rated: " + Rs("Hunter Skin", "Script Mod", "Campaign With AK Part 2", "HUD Mod", "Campaign With AK", "Rifle Pack", "Survivors and AK Pack", "Commons Skin", "Nick Texture Skin"),
+                R("Hunter Skin") == Rating.Safe && R("Script Mod") == Rating.Stable && R("Campaign With AK Part 2") == Rating.Stable && R("HUD Mod") == Rating.Moderate
+                && R("Campaign With AK") == Rating.Moderate && R("Rifle Pack") == Rating.Unstable && R("Survivors and AK Pack") == Rating.Unstable
+                && R("Commons Skin") == Rating.Unsafe && R("Nick Texture Skin") == Rating.Safe);
+            var rifle = rated[sv.Addons.First(a => a.Title == "Rifle Pack").Path];
+            Check("... with why: " + rifle.Why, rifle.Conflicts.Count == 4 && rifle.Requirements.SequenceEqual(new[] { "weapon stats" }) && rifle.Why.StartsWith("conflicts with "));
+            Check("the key's thresholds: 0/0 Safe, 0/1 Stable, 1/0 and 2/2 Moderate, 3/0 and 0/3 Unstable, unusable Unsafe",
+                Ratings.Classify(0, 0, false) == Rating.Safe && Ratings.Classify(0, 1, false) == Rating.Stable && Ratings.Classify(1, 0, false) == Rating.Moderate
+                && Ratings.Classify(2, 2, false) == Rating.Moderate && Ratings.Classify(3, 0, false) == Rating.Unstable && Ratings.Classify(0, 3, false) == Rating.Unstable
+                && Ratings.Classify(0, 0, true) == Rating.Unsafe && Ratings.Classify(5, 5, true) == Rating.Unsafe);
             var cp = SkinPrefs.Load();
             cp.Picks["nick"] = "workshop\\1000000001.vpk";
             // the pack turned off twice (as when it loses two pairs in one review) is turned off once
@@ -140,6 +175,15 @@ namespace L4D2EightPlayer.UI
             File.Delete(Path.Combine(game, "addons", "nick_texture.vpk"));
             var gone = Skins.Reapply(game, manifest, prefs);
             Check("a picked skin that's gone is reported: " + string.Join(" | ", gone), gone.Any(l => l.StartsWith("Nick:") && l.Contains("gone")));
+
+            // Disable all: every skin off, the campaign (it has an AK-47) stays on, every skinned target back to default
+            inv = Skins.Scan(game, manifest);
+            var turnedOff = Skins.DisableAll(inv, prefs);
+            var offList = Compat.ReadAddonList(game);
+            prefs = SkinPrefs.Load();
+            Check("Disable all: " + Names(turnedOff) + " off, the campaign stays on, the HUD add-on untouched",
+                turnedOff.Count > 0 && turnedOff.All(m => !offList[m.Key]) && Skins.AllOn(Skins.Scan(game, manifest)).Count == 0 && offList["campaign_with_ak.vpk"] && offList["l4d2_8p_hud.vpk"]);
+            Check("... and remembered as the game's own look for every skinned target", inv.ByTarget.Values.Where(s => s.Mods.Count > 0).All(s => prefs.Picks.TryGetValue(s.Target.Id, out var p) && p == ""));
 
             // 6. nothing outside the copy changed
             Check("your real addonlist.txt and skins.json are untouched", Hash(realList) == before && Hash(realSkins) == beforeSkins);
@@ -220,6 +264,14 @@ namespace L4D2EightPlayer.UI
             {
                 q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
                 q.Show(); q.Choose(0, 0); Pump(400); Save(q, "skins-clash-long"); q.Close();
+            }
+            // Disable conflicting: every clashing pair with the suggestion picked, and the harmless overlap below
+            var shotPrefs = new SkinPrefs();
+            var shotSurvey = Clashes.Look(shotGame, Manifest.BuiltIn());
+            using (var q = new ConflictsForm(Clashes.Conflicts(shotSurvey, shotPrefs), shotSurvey.Harmless.Where(c => c.BothOn).ToList(), shotPrefs))
+            {
+                q.StartPosition = System.Windows.Forms.FormStartPosition.Manual; q.Location = new System.Drawing.Point(-30000, -30000); q.ShowInTaskbar = false;
+                q.Show(); Pump(400); Save(q, "conflicts-question"); q.Close();
             }
             f.Panel.ShowPacks("pack:workshop\\1000000001.vpk"); Pump(400); Save(f, "skins-packs");
             using (var q = f.Panel.PlanQuestion("Survivors and AK Pack"))
