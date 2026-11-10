@@ -47,7 +47,7 @@ namespace L4D2EightPlayer.Join
                 Targets = () => new Control[] { serverCard.Parent },
                 Title = "Check, then join",
                 Body = "You'll see the server's name, map, players and ping before you go in. If the host plays a custom campaign you don't have, " +
-                       "a link opens its Workshop page. Join game starts Left 4 Dead 2 and connects you, and once you're in, a menu lets you pick your survivor from the ones still free (!char in chat opens it again).",
+                       "a link opens its Workshop page. Join game starts Left 4 Dead 2 and connects you (Go to lobby stops at the main menu instead, for joining your host's lobby), and once you're in, a menu lets you pick your survivor from the ones still free (!char in chat opens it again).",
             },
             new TourStep
             {

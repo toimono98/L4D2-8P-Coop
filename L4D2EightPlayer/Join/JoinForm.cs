@@ -72,7 +72,10 @@ namespace L4D2EightPlayer.Join
         NavBar header;
         TextBox txtTarget, txtPassword;
         ListView lvRecent;
-        GameButton btnCheck, btnJoin;
+        GameButton btnCheck, btnJoin, btnLobby;
+        Panel holder, body;
+        /// <summary>The server card's height without the server's mods; the mod list adds its own height on top.</summary>
+        const int CardBase = 390, BodyMinHeight = 720;
         LinkLabel lnkMap, lnkLan, lnkGame, lnkHud, lnkSkins, lnkWorkshop;
         Card serverCard, emptyCard;
         Label lblFound, lblName, lblMap, lblCount, lblPing, lblVersion, lblMapState, lblNotes, lblEmptyTitle, lblEmptyBody;
@@ -154,7 +157,7 @@ namespace L4D2EightPlayer.Join
             g.Controls.Add(pw, 0, 1);
 
             // ---- server card (shown after a check) and its empty state
-            var holder = new Panel { Dock = DockStyle.Fill, Height = S(470), Margin = P(0, 0, 0, 16) };
+            holder = new Panel { Dock = DockStyle.Fill, Height = S(CardBase), Margin = P(0, 0, 0, 16) };
             serverCard = new Card { Dock = DockStyle.Fill, Padding = P(18, 16, 18, 16), Visible = false };
             var sc = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = P(0) };
             sc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -178,8 +181,19 @@ namespace L4D2EightPlayer.Join
             lnkMap.LinkClicked += (s, e) => Process.Start(missingWorkshopId != null
                 ? "steam://url/CommunityFilePage/" + missingWorkshopId
                 : "https://steamcommunity.com/workshop/browse/?appid=550&searchtext=" + Uri.EscapeDataString(missingMap ?? ""));
-            btnJoin = new GameButton("Join game", ButtonKind.Primary, 15f) { Dock = DockStyle.Top, AutoSizeLocked = true, Margin = P(0, 4, 0, 0) };
+            btnJoin = new GameButton("Join game", ButtonKind.Primary, 15f) { Dock = DockStyle.Top, AutoSizeLocked = true, Margin = P(0) };
             btnJoin.Click += async (s, e) => await JoinGame();
+            // the game's own lobby instead: start L4D2 (mods and skins ready) and stop at the main menu
+            btnLobby = new GameButton("Go to lobby", ButtonKind.Outline, 12f) { AutoSizeLocked = true, Anchor = AnchorStyles.Top | AnchorStyles.Right, Margin = P(10, 0, 0, 0) };
+            btnLobby.Height = btnJoin.Height - S(4);
+            btnLobby.Click += async (s, e) => await JoinGame(lobby: true);
+            new ToolTip().SetToolTip(btnLobby, "Starts Left 4 Dead 2 without joining the server, so you land on the main menu.\n" +
+                "From there, join your host's lobby: accept their invite, or right-click them in Steam's friends list and choose Join Game.");
+            var joinRow = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, AutoSize = true, Margin = P(0, 4, 0, 0) };
+            joinRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            joinRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            joinRow.Controls.Add(btnJoin, 0, 0);
+            joinRow.Controls.Add(btnLobby, 1, 0);
             sc.Controls.Add(lblFound, 0, 0);
             sc.Controls.Add(lblCount, 1, 0); sc.SetRowSpan(lblCount, 3);
             sc.Controls.Add(lblName, 0, 1);
@@ -196,7 +210,7 @@ namespace L4D2EightPlayer.Join
             tail.Controls.Add(lblNotes, 0, 0);
             tail.Controls.Add(lnkMap, 0, 1);
             tail.Controls.Add(BuildModsPanel(), 0, 2);   // the server's mods, between the notes and Join
-            tail.Controls.Add(btnJoin, 0, 3);
+            tail.Controls.Add(joinRow, 0, 3);
             sc.Controls.Add(tail, 0, 5); sc.SetColumnSpan(tail, 2);
             serverCard.Controls.Add(sc);
 
@@ -262,12 +276,32 @@ namespace L4D2EightPlayer.Join
             foot.Controls.Add(lnkHud);
 
             // On a screen too short for the whole window, the body scrolls instead of squashing the lists.
-            var body = new Panel { Dock = DockStyle.Fill, AutoScroll = true, AutoScrollMinSize = Sz(620, 720), BackColor = Theme.Ground };
+            // A long list of the server's mods makes the card, and so the page, taller: it scrolls (FitServerCard).
+            body = new Panel { Dock = DockStyle.Fill, AutoScroll = true, AutoScrollMinSize = Sz(620, BodyMinHeight), BackColor = Theme.Ground };
             Theme.DarkScrollbars(body);
             body.Controls.Add(g);
             Controls.Add(body);
             Controls.Add(foot);
             Controls.Add(header);
+        }
+
+        /// <summary>
+        /// The server card grows until the whole mod list fits (measured from the laid-out list, so there's no gap
+        /// above Join game), and the page scrolls to fit the card. Without a list it's back to its usual height.
+        /// </summary>
+        void FitServerCard()
+        {
+            var panel = modsList.Parent;
+            int h = S(CardBase);
+            if (serverCard.Visible && panel.Visible)
+            {
+                serverCard.PerformLayout();
+                h = holder.Height + (modsList.Bottom + modsList.Margin.Bottom) - panel.Height;
+            }
+            h = Math.Max(S(CardBase), h);
+            if (holder.Height == h) return;
+            holder.Height = h;
+            body.AutoScrollMinSize = new Size(S(620), S(BodyMinHeight) + h - S(CardBase));
         }
 
         void FitToScreen()
@@ -300,6 +334,7 @@ namespace L4D2EightPlayer.Join
                 emptyCard.Visible = true;
                 serverCard.Visible = false;
             });
+            FitServerCard();
         }
 
         void UpdateGameLabel()
@@ -426,21 +461,47 @@ namespace L4D2EightPlayer.Join
                 lblNotes.Text = string.Join(Environment.NewLine, notes);
                 lblNotes.Visible = notes.Count > 0;
                 btnJoin.Text = "Join game";
+                btnLobby.Text = "Go to lobby";
                 Draw.Batch(serverCard.Parent, () => { emptyCard.Visible = false; serverCard.Visible = true; });
+                FitServerCard();
                 Remember(t, info.Name);
                 return info;
             }
             finally { btnCheck.Enabled = true; }
         }
 
-        async Task JoinGame()
+        const string LobbyHow = "join your host's lobby: accept their invite, or right-click them in Steam's friends list and choose Join Game.";
+
+        /// <summary>
+        /// Join game: start L4D2 and connect once the add-ons load. lobby: the same preparation (the server's mods, the
+        /// skin picks) but the game stays on the main menu, for joining the host's lobby there.
+        /// </summary>
+        async Task JoinGame(bool lobby = false)
         {
             var t = Target();
-            if (t == null) { await Check(); return; }
+            if (t == null && !lobby) { await Check(); return; }
             var steam = GameLocator.FindSteam();
             if (steam == null) { MessageBox.Show(this, "Steam wasn't found. Start Steam and try again.", Title); return; }
             try
             {
+                if (lobby)
+                {
+                    if (Launcher.GameRunning())
+                    {
+                        MessageBox.Show(this, "Left 4 Dead 2 is already open. To play in the lobby, " + LobbyHow, Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                    if (!await GetServerMods()) return;
+                    ReapplySkins();
+                    if (!SkinsSettled()) return;
+                    Process.Start(new ProcessStartInfo(Path.Combine(steam, "steam.exe"), $"-applaunch {GameLocator.GameAppId}") { UseShellExecute = true });
+                    if (t != null) Remember(t, null, joined: true);
+                    btnLobby.Text = "Starting L4D2…";
+                    lblNotes.Text = "Starting L4D2 to the main menu. Once it's there, " + LobbyHow + " The lobby sends everyone to the server when the host starts.";
+                    lblNotes.ForeColor = Theme.Bone;
+                    lblNotes.Visible = true;
+                    return;
+                }
                 if (Launcher.GameRunning())
                 {
                     // a running game can't load new add-ons: missing required mods mean closing it first

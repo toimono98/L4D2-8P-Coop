@@ -38,7 +38,19 @@ namespace L4D2EightPlayer.Join
                 cosmeticPicks["3815316510"].Checked = true;
                 await Task.CompletedTask;
             }),
-            ("lan-search", async () => { await FindLan(); }),
+            // a host with many mods: the card holds every row and the page scrolls to the bottom of it
+            ("server-mods-many", async () =>
+            {
+                serverMods = Enumerable.Range(0, 28).Select(i => new ServerMods.Item
+                {
+                    Id = (3700000000L + i).ToString(), Required = i < 5, Have = i % 3 == 0, Url = "x", Size = (i + 1) * 3L << 20,
+                    Title = i < 5 ? $"Required campaign or script {i + 1}" : $"Cosmetic skin number {i + 1} with a fairly long Workshop title",
+                }).ToList();
+                ShowMods();
+                await Task.Delay(200);
+                body.AutoScrollPosition = new Point(0, body.DisplayRectangle.Height);
+            }),
+            ("lan-search", async () => { body.AutoScrollPosition = Point.Empty; serverMods.Clear(); ShowMods(); await FindLan(); }),
         };
     }
 

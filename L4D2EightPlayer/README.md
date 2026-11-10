@@ -271,6 +271,9 @@ The post shows the server name, campaign, mode, difficulty and size, the `steam:
    - **Cosmetic** ones (the host's skins, sounds, HUD) are your choice: tick the ones you want and they download too. The ones you already have show a check mark.
    - Downloads come straight from Steam and go into your game's `addons` folder as `8p_<number>.vpk`. If you later subscribe to the same item on the Workshop, the app removes its own copy. A running game can't load new add-ons, so if required mods are missing, close the game first.
 4. **Join game** starts L4D2, waits until it has loaded your Workshop add-ons (skins, the host's campaign), then connects. If the game is already running, it connects directly.
+5. **Go to lobby** (next to Join game) does the same preparation, downloading the server's mods and putting your skin picks back, but leaves the game on its main menu instead of connecting. From there, join your host's lobby: accept their invite, or right-click them in Steam's friends list and choose **Join Game**.
+
+A host with many mods makes the list long: the whole Join page scrolls, so every mod and the Join buttons stay reachable.
 
 **Find games on my network** lists LAN servers, and recent servers are remembered. Joiners don't need SourceMod, the lobby mod or anything else, only the host's required mods, which the app can download for them.
 

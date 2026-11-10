@@ -31,7 +31,7 @@ namespace L4D2EightPlayer.Join
             box.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            box.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var head = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = P(0) };
             head.Controls.Add(Caps("Mods on this server"));
             modsSummary = new Label { AutoSize = true, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(10, 1, 0, 0) };
@@ -42,11 +42,9 @@ namespace L4D2EightPlayer.Join
             new ToolTip().SetToolTip(chkDownloadMods, "Required mods you don't have, and the cosmetic ones you tick, download from Steam before the game starts.\n" +
                 "They go into your game's addons folder (8p_<number>.vpk). If you subscribe to one later, this copy is removed.");
             box.Controls.Add(chkDownloadMods, 0, 1);
-            modsList = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, AutoScroll = true, Margin = P(0) };
+            // every mod is listed in full: the card grows and the page scrolls (FitServerCard), no box inside a box
+            modsList = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 1, AutoSize = true, Margin = P(0) };
             modsList.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            modsList.HorizontalScroll.Maximum = 0;
-            modsList.HorizontalScroll.Visible = false;
-            Theme.DarkScrollbars(modsList);
             box.Controls.Add(modsList, 0, 2);
             return box;
         }
@@ -70,7 +68,7 @@ namespace L4D2EightPlayer.Join
         {
             var panel = modsList.Parent;
             panel.Visible = serverMods.Count > 0;
-            if (serverMods.Count == 0) return;
+            if (serverMods.Count == 0) { FitServerCard(); return; }
             var picked = new HashSet<string>(cosmeticPicks.Where(kv => kv.Value.Checked).Select(kv => kv.Key));
             cosmeticPicks.Clear();
             modsList.SuspendLayout();
@@ -104,6 +102,7 @@ namespace L4D2EightPlayer.Join
                 modsList.Controls.Add(c);
             }
             modsList.ResumeLayout();
+            FitServerCard();
         }
 
         static string SizeText(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / (1024 * 1024)} MB" : $"{Math.Max(1, bytes / 1024)} KB";
