@@ -13,8 +13,7 @@ namespace L4D2EightPlayer.Join
 
         void OpenSkins()
         {
-            using (var f = new SkinsForm(() => ClientGameDir)) f.ShowDialog(TopLevelControl as Form ?? this);
-            _ = CheckConflicts();
+            _ = ShowSkins();   // the Skins tab
         }
 
         /// <summary>Before the game starts (not when it's already running: then nothing can change).</summary>

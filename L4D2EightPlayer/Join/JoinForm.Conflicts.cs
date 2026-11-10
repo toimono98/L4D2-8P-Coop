@@ -27,11 +27,11 @@ namespace L4D2EightPlayer.Join
             lnkConflicts.LinkClicked += async (s, e) =>
             {
                 int n = ConflictsForm.Run(TopLevelControl as Form ?? this, ClientGameDir, Manifest.BuiltIn());
-                if (n >= 0) await CheckConflicts();
+                if (n >= 0) { await CheckConflicts(); await AddonsChanged(); }
             };
             new ToolTip().SetToolTip(lnkConflicts, "Add-ons that are on and replace the same files with different copies: the game uses only one, so you'd see part of each.\n" +
                 "Click to choose which to turn off. Add-ons that share the same copy of a file are harmless and aren't counted.");
-            addonTimer.Tick += async (s, e) => { addonTimer.Stop(); await CheckConflicts(); };
+            addonTimer.Tick += async (s, e) => { addonTimer.Stop(); await CheckConflicts(); await AddonsChanged(); };
             return lnkConflicts;
         }
 

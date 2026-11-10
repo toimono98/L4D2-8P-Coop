@@ -58,16 +58,23 @@ namespace L4D2EightPlayer.Join
             new TourStep
             {
                 Targets = () => new Control[] { lnkHud.Parent },
-                Title = "The HUD add-on and skins",
+                Title = "The HUD add-on",
                 Body = "If your host turns on the 8-Player HUD, this small add-on shows everyone's health bars and items. " +
-                       "Skins… picks which skin add-on you see for each survivor, weapon, item and infected. Change game folder helps if Left 4 Dead 2 wasn't found.",
+                       "Change game folder helps if Left 4 Dead 2 wasn't found, and a link here says when two of your add-ons conflict.",
+            },
+            new TourStep
+            {
+                Targets = () => new Control[] { header },
+                Title = "Mods, skins and settings",
+                Body = "MODS lists every add-on you have: tick or untick one to turn it on or off, with a color for how safe it is. " +
+                       "SKINS picks which skin you see for each survivor, weapon, item and infected. SETTINGS has Check for updates, how updates install, and your game folder.",
             },
             new TourStep
             {
                 Targets = () => new Control[] { header },
                 Title = "Host or join",
                 Body = "Hosting a game yourself? Click HOST at the top: the same app sets up and runs the server, and JOIN brings you back here. " +
-                       "It opens on whichever you used last. TOUR shows this tour again.",
+                       "It opens on whichever you used last. Show the tour on the SETTINGS tab brings this tour back.",
             },
         });
     }

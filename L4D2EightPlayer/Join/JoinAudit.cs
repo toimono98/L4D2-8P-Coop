@@ -51,6 +51,14 @@ namespace L4D2EightPlayer.Join
                 body.AutoScrollPosition = new Point(0, body.DisplayRectangle.Height);
             }),
             ("lan-search", async () => { body.AutoScrollPosition = Point.Empty; serverMods.Clear(); ShowMods(); await FindLan(); }),
+            // the other tabs, on this PC's own add-ons (read only: nothing is ticked or unticked)
+            ("tab-mods", async () => { joinTabs.SelectedIndex = TabMods; await modsPanel.Reload(); }),
+            ("tab-mods-row-selected", async () => { modsPanel.SelectFirst(); await Task.CompletedTask; }),
+            ("tab-mods-skins-only", async () => { modsPanel.ShowKind("skins"); await Task.CompletedTask; }),
+            ("tab-mods-game-running", async () => { UI.ModsPanel.PretendGameOpen = true; modsPanel.ShowKind("all"); await Task.CompletedTask; }),
+            ("tab-skins", async () => { UI.ModsPanel.PretendGameOpen = false; joinTabs.SelectedIndex = TabSkins; await skinsPanel.Reload(); }),
+            ("tab-settings", async () => { joinTabs.SelectedIndex = TabSettings; await Task.CompletedTask; }),
+            ("tab-settings-bottom", async () => { if (joinTabs.Current is Panel page) page.AutoScrollPosition = new Point(0, 10000); await Task.CompletedTask; }),
         };
     }
 

@@ -61,7 +61,8 @@ namespace L4D2EightPlayer.UI
             head.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             head.Controls.Add(new TapeLabel("Wardrobe") { Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 14, 6) }, 0, 0);
-            head.Controls.Add(new Label { Text = "PICK YOUR SKINS", AutoSize = true, Font = Theme.Display(26f), ForeColor = Theme.Bone, Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 16, 0) }, 1, 0);
+            var title = new Label { Text = "PICK YOUR SKINS", AutoSize = true, Font = Theme.Display(26f), ForeColor = Theme.Bone, Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = P(0, 0, 16, 0) };
+            head.Controls.Add(title, 1, 0);
             var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Anchor = AnchorStyles.Right | AnchorStyles.Bottom, Margin = P(0, 0, 0, 4) };
             // every skin back to the game's own look, in one go
             disableAll = new GameButton("Disable all", ButtonKind.Ghost, 10f) { Margin = P(0, 0, 10, 0), Enabled = false };
@@ -77,6 +78,7 @@ namespace L4D2EightPlayer.UI
             buttons.Controls.Add(browse);
             buttons.Controls.Add(refresh);
             head.Controls.Add(buttons, 3, 0);
+            TitleRow.Wrap(head, buttons, title);
             g.Controls.Add(head, 0, 0);
             g.SetColumnSpan(head, 2);
 

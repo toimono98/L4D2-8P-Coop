@@ -51,6 +51,28 @@ namespace L4D2EightPlayer.UI
                 (installed ? "Click the notice at the top to install it." : "Download it from " + UpdateCheck.ReleasePage));
         }
 
+        /// <summary>
+        /// Check for updates: asks GitHub now, whatever the daily check said. A newer version goes the usual way
+        /// (downloaded for automatic updates, else offered) and its window opens. Returns a line saying where things stand.
+        /// </summary>
+        public static async Task<string> CheckNow()
+        {
+            started = true;   // no second, background check this run
+            if (!await UpdateCheck.Refresh()) return "Couldn't reach GitHub to check (offline?). Try again later.";
+            var v = UpdateCheck.IsNewer(UpdateCheck.Last.Latest, AppInfo.Version) ? UpdateCheck.Last.Latest : null;
+            if (v == null) return $"You have the latest version ({AppInfo.Version}).";
+            if (stage == Stage.None || version != v)
+            {
+                version = v;
+                installed = Updater.RunningInstalled(Application.ExecutablePath);
+                if (installed && Updater.Auto) await Download(); else Set(Stage.Out);
+            }
+            await Clicked();
+            return stage == Stage.Ready ? $"Version {v} is downloaded" + (Updater.Auto ? ": it installs when you close the app." : ".")
+                 : stage == Stage.Failed ? $"Version {v} is out, but it couldn't be downloaded: the release page has it."
+                 : $"Version {v} is out (you have {AppInfo.Version}).";
+        }
+
         static async Task<bool> Download()
         {
             Set(Stage.Downloading);

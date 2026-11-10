@@ -76,7 +76,7 @@ namespace L4D2EightPlayer.Join
         Panel holder, body;
         /// <summary>The server card's height without the server's mods; the mod list adds its own height on top.</summary>
         const int CardBase = 390, BodyMinHeight = 720;
-        LinkLabel lnkMap, lnkLan, lnkGame, lnkHud, lnkSkins, lnkWorkshop;
+        LinkLabel lnkMap, lnkLan, lnkGame, lnkHud, lnkWorkshop;
         Card serverCard, emptyCard;
         Label lblFound, lblName, lblMap, lblCount, lblPing, lblVersion, lblMapState, lblNotes, lblEmptyTitle, lblEmptyBody;
         PipBar pips;
@@ -91,7 +91,7 @@ namespace L4D2EightPlayer.Join
             ForeColor = Theme.Bone;
             AutoScaleMode = AutoScaleMode.None; // every size goes through Ui.S
             StartPosition = FormStartPosition.CenterScreen;
-            Size = Sz(820, 880);
+            Size = Sz(860, 880);   // the app window's narrowest: the four tabs, HOST | JOIN and TOUR fit
             MinimumSize = Sz(640, 600);
             FitToScreen();
             Icon = Theme.AppIcon();
@@ -117,10 +117,10 @@ namespace L4D2EightPlayer.Join
 
         void BuildUi()
         {
-            header = new NavBar() { Title = "JOIN YOUR GROUP", Subtitle = "L4D2 8-PLAYER CO-OP" };
+            // the tabs: joining, your add-ons, your skins, and settings, for friends who only use this side
+            header = new NavBar("Join", "Mods", "Skins", "Settings") { Title = "8-PLAYER CO-OP", Subtitle = "LEFT 4 DEAD 2 · JOIN" };
             UI.UpdateUi.Attach(header);
-            header.Help = "? TOUR";
-            header.HelpClicked += (s, e) => StartTour();
+            // the tour is on the Settings tab (Show the tour), which leaves the header to the tabs
             // the same app hosts: HOST | JOIN swaps to the host window
             header.Modes = new[] { "HOST", "JOIN" };
             header.Mode = 1;
@@ -263,15 +263,11 @@ namespace L4D2EightPlayer.Join
             lnkHud = new LinkLabel { AutoSize = true, Font = Theme.Body(9f), Margin = P(0) };
             lnkHud.LinkClicked += (s, e) => ToggleHudAddon();
             new ToolTip().SetToolTip(lnkHud, "The host's 8-Player HUD can show survivors 6-8 with health bars and the game's item icons.\nThat look needs this small add-on in your game; without it you'd see stray boxes.");
-            var foot = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true, Padding = P(24, 0, 24, 10), BackColor = Theme.Ground };
-            lnkSkins = new LinkLabel { Text = "Skins…", AutoSize = true, Font = Theme.Body(9f), Margin = P(0, 0, 24, 0) };
-            lnkSkins.LinkClicked += (s, e) => OpenSkins();
-            new ToolTip().SetToolTip(lnkSkins, "Pick which skin add-on to use for each survivor, weapon, item and infected (only you see them).");
+            var foot = joinFooter = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true, Padding = P(24, 0, 24, 10), BackColor = Theme.Ground };
             lnkWorkshop = new LinkLabel { Text = "Open Workshop", AutoSize = true, Font = Theme.Body(9f), Margin = P(0, 0, 24, 0) };
             lnkWorkshop.LinkClicked += (s, e) => Workshop.Open();
             new ToolTip().SetToolTip(lnkWorkshop, "Left 4 Dead 2's Steam Workshop, for skins and the campaigns your host plays.");
             foot.Controls.Add(lnkGame);
-            foot.Controls.Add(lnkSkins);
             foot.Controls.Add(lnkWorkshop);
             foot.Controls.Add(lnkHud);
             foot.Controls.Add(BuildConflictsLink());   // shown when add-ons that are on clash
@@ -281,7 +277,7 @@ namespace L4D2EightPlayer.Join
             body = new Panel { Dock = DockStyle.Fill, AutoScroll = true, AutoScrollMinSize = Sz(620, BodyMinHeight), BackColor = Theme.Ground };
             Theme.DarkScrollbars(body);
             body.Controls.Add(g);
-            Controls.Add(body);
+            Controls.Add(BuildTabs(body));
             Controls.Add(foot);
             Controls.Add(header);
         }

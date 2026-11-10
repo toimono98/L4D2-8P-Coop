@@ -147,7 +147,7 @@ A campaign's own scripts and dialogue count as part of the campaign. An add-on t
 
 **Disable / enable highlighted** moves a plugin to `plugins/disabled` or turns an addon off in `addonlist.txt`, and the same button reverses it.
 
-## Skins (Skins tab, or Skins… on the Join side)
+## Skins (the Skins tab, on both sides)
 
 The picker sorts the skin add-ons you have (in `left4dead2\addons` and Workshop subscriptions) by what they change:
 
@@ -277,6 +277,20 @@ The invite at the bottom of Play (**Copy invite**) is a `steam://connect/...` li
 The post shows the server name, campaign, mode, difficulty and size, the `steam://connect` link and console command, a download link for the app (friends click JOIN), and the Workshop link when you run a custom campaign. **Post when it stops** (off by default) adds a short "has stopped" post. Nothing is posted for **Just me** servers or listen servers, and the post never mentions anyone. The webhook is stored only in `settings.json` and is never written to the log.
 ## Joining only (for friends): the Join side
 
+The Join side has its own tabs, so friends who only join never need the Host side: **JOIN** (the invite and the server), **MODS**, **SKINS** and **SETTINGS**.
+
+- **Mods** lists every add-on in your game, ticked when it's on. Tick one to turn it on, untick it to turn it off; the change takes effect the next time the game starts, and the list is read-only while the game runs.
+  - Each add-on shows its rating (the color key from the Mods tab on the Host side), what kind it is (campaign, game mode, scripts, weapon stats, dialogue, the skins it has) and why it got its color. Hover a row for the details, or click it to see where the file is.
+  - **All / Campaigns / Gameplay / Skins / Other** shows one kind at a time.
+  - **Disable conflicting** shows up when add-ons that are on clash. **Open Workshop** and **Look again** are there too.
+  - A skin turned on here becomes your pick for what it skins (so the next launch turns the other skins for those off); turned off, its picks go back to the game's own look. The 8-Player HUD add-on and the lobby mod can't be turned off here.
+- **Skins** is the same skin picker as the Host side's Skins tab.
+- **Settings** holds:
+  - **Updates:** the version you have and the latest on GitHub, **Check for updates** (asks GitHub now, then installs or offers it the usual way), **What's new**, and the automatic or by-hand choice.
+  - **Your game:** the game folder (**Change game folder**, **Open the addons folder**), **Download a server's missing mods when I join**, and installing, updating or removing the 8-Player HUD add-on.
+  - **Help and files:** **Show the tour** (the tour's button lives here now), the settings folder, the error log, and **Uninstall…** (Windows' Installed apps).
+- The links under the Join tab (game folder, Workshop, HUD add-on, add-on conflicts) show only on that tab.
+
 1. Paste the host's invite. A `steam://connect/...` link, an `IP:port`, or a `connect ...` line all work.
 2. **Check server** shows the server name, map, players and ping. It also warns about:
    - a game version mismatch
@@ -307,7 +321,8 @@ A host with many mods makes the list long: the whole Join page scrolls, so every
   - **Install updates automatically** (the first install's default): the new version's Setup downloads in the background ("Downloading version X" in the header), then installs when you close the app. The header says "Version X ready · Restart to update": click it to restart into the new version now.
   - **Let me install updates myself:** the header says "Version X is out · Install". Click it for **Install now**, which downloads it, closes the app, installs it and opens the app again, or **Later**.
   - Either way the update keeps the install folder, the shortcuts you have and the side the app opens on; settings, skins and the server aren't touched. The Setup waits for the app to close before replacing it, and if an update fails, the app says so the next time it starts.
-  - The update window (click the notice) has **What's new** and an **Install updates automatically** box to switch between the two. Running the Setup again (Windows' Installed apps, Modify) changes it too.
+  - The update window (click the notice) has **What's new** and an **Install updates automatically** box to switch between the two. So do the Join side's **Settings** tab and the Host side's Setup tab (**Advanced**: **Check for app updates** and **Install app updates automatically**). Running the Setup again (Windows' Installed apps, Modify) changes it too.
+  - **Check for updates** asks GitHub right away instead of waiting for the daily check.
   - A copy of the app that isn't the installed one (run straight from Downloads) only points at the release page.
 - **Built-in plugins update themselves.** When a new version of the app brings changed built-in plugins, they are rebuilt on the server the next time it starts (the log lists each one).
 - **Updates are looked for by themselves** the first time you open Setup in a session: SourceMod, Metamod, L4DToolZ and Source Scramble against their latest releases, and the dedicated server against your game version. The line above **Install / update** says what's out of date (**Advanced › Check for updates** looks again).
