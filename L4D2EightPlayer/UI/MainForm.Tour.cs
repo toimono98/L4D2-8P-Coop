@@ -111,7 +111,7 @@ namespace L4D2EightPlayer.UI
                     Targets = () => new Control[] { nav },
                     Title = "Host or join",
                     Body = "Joining a friend's game instead? Click JOIN at the top: the same app pastes their invite and joins, and HOST brings you back " +
-                           "(a running server keeps going). It opens on whichever you used last. TOUR shows this tour again.",
+                           "(a running server keeps going). It opens on whichever you used last. Show the tour on the SETTINGS tab brings this tour back.",
                 },
             });
         }

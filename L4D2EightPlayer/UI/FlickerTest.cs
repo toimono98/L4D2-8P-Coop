@@ -90,6 +90,7 @@ namespace L4D2EightPlayer.UI
             PaintOver.Direct = legacy;
             Frame.Keep = Environment.GetCommandLineArgs().Contains("--keep");
             Draw.NoBatch = legacy;
+            HoverTips.Off = true;
             MainForm.Preview = true;
             Settings.ReadOnly = true;
             Application.EnableVisualStyles();
@@ -149,43 +150,91 @@ namespace L4D2EightPlayer.UI
             // 2. tab switches: frames that are neither the old page nor the new one
             var client = window.RectangleToScreen(window.ClientRectangle);
             int totalMixed = 0;
-            foreach (var to in new[] { MainForm.TabPlay, MainForm.TabPlay, MainForm.TabMods, MainForm.TabPlay, MainForm.TabSetup, MainForm.TabPlay })   // from the Play tab
+            string[] hostNames = { "Setup", "Mods", "Skins", "Play", "Settings" };
+            foreach (var to in new[] { MainForm.TabPlay, MainForm.TabPlay, MainForm.TabMods, MainForm.TabPlay, MainForm.TabSetup, MainForm.TabSkins, MainForm.TabSettings, MainForm.TabSkins, MainForm.TabPlay })   // from the Play tab
             {
                 var from = tabs.SelectedIndex;
-                rec = new Recorder();
-                rec.Start(client);
-                Pump(150);
-                var switchedAt = Clock.Elapsed.TotalMilliseconds;
-                tabs.SelectedIndex = to;
-                Pump(1200);
-                var frames = rec.Stop();
-                var before = frames.Last(f => f.At < switchedAt);
-                var after = frames.Last();
-                // only the cells that differ between the two pages say which page a frame shows
-                var changing = Enumerable.Range(0, before.Cells.Length).Where(i => Math.Abs(before.Cells[i] - after.Cells[i]) > Same).ToArray();
-                int mixed = 0;
-                double firstMixed = -1, lastMixed = -1;
-                foreach (var f in frames.Where(f => f.At >= switchedAt))
-                {
-                    int asAfter = changing.Count(i => Math.Abs(f.Cells[i] - after.Cells[i]) <= Same);
-                    int asBefore = changing.Count(i => Math.Abs(f.Cells[i] - before.Cells[i]) <= Same);
-                    double fa = changing.Length == 0 ? 1 : (double)asAfter / changing.Length, fb = changing.Length == 0 ? 0 : (double)asBefore / changing.Length;
-                    if (fa < 0.97 && fb < 0.97)
-                    {
-                        mixed++;
-                        if (firstMixed < 0) firstMixed = f.At - switchedAt;
-                        lastMixed = f.At - switchedAt;
-                    }
-                }
+                var (n, mixed, firstMixed, lastMixed) = Watch(client, () => tabs.SelectedIndex = to);
                 totalMixed += mixed;
-                log.AppendLine($"tab {from + 1} -> {to + 1}: {frames.Count(f => f.At >= switchedAt)} captures, {mixed} half-switched" +
-                               (mixed > 0 ? $" (from {firstMixed:0} to {lastMixed:0} ms after the click)" : ""));
+                log.AppendLine($"host {hostNames[from]} -> {hostNames[to]}: {n} captures, {mixed} half-switched" + (mixed > 0 ? $" (from {firstMixed:0} to {lastMixed:0} ms after the click)" : ""));
             }
-            log.AppendLine($"tab switches: {totalMixed} half-switched captures in all");
+            log.AppendLine($"host tab switches: {totalMixed} half-switched captures in all");
+
+            // 3. the skin picker: clicking one target after another redraws its choices
+            tabs.SelectedIndex = MainForm.TabSkins;
+            Pump(1500);
+            var skins = (SkinsPanel)typeof(MainForm).GetField("skins", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(form);
+            int skinMixed = 0;
+            foreach (var id in new[] { "rochelle", "nick", "coach", "ak47", "hunter", "nick" })
+            {
+                var (n, mixed, firstMixed, lastMixed) = Watch(client, () => skins.SelectTarget(id));
+                skinMixed += mixed;
+                log.AppendLine($"skins -> {id}: {n} captures, {mixed} half-drawn" + (mixed > 0 ? $" (from {firstMixed:0} to {lastMixed:0} ms)" : ""));
+            }
+            log.AppendLine($"skin picker clicks: {skinMixed} half-drawn captures in all");
+
+            // 4. the Join side's tabs (switched to in the same window)
+            if (window is AppWindow aw)
+            {
+                aw.Switch(StartMode.Join);
+                Pump(4000);
+                var join = aw.JoinSide;
+                var jtabs = All(join).OfType<PageHost>().First();
+                for (int i = 0; i < jtabs.Count; i++) { jtabs.SelectedIndex = i; Pump(1500); }   // each once (the Mods and Skins tabs read your add-ons)
+                jtabs.SelectedIndex = 0;
+                Pump(800);
+                string[] joinNames = { "Join", "Mods", "Skins", "Settings" };
+                int joinMixed = 0;
+                foreach (var to in new[] { 1, 2, 3, 0, 2, 1, 0 })
+                {
+                    var from = jtabs.SelectedIndex;
+                    var (n, mixed, firstMixed, lastMixed) = Watch(client, () => jtabs.SelectedIndex = to);
+                    joinMixed += mixed;
+                    log.AppendLine($"join {joinNames[from]} -> {joinNames[to]}: {n} captures, {mixed} half-switched" + (mixed > 0 ? $" (from {firstMixed:0} to {lastMixed:0} ms)" : ""));
+                }
+                log.AppendLine($"join tab switches: {joinMixed} half-switched captures in all");
+                totalMixed += joinMixed;
+            }
+            log.AppendLine($"TOTAL half-drawn: {totalMixed + skinMixed}");
 
             window.Close();
             File.WriteAllText(outFile, log.ToString());
             return 0;
+        }
+
+        /// <summary>
+        /// Records a screen rectangle around one change: the frames that are neither the picture before it nor the one it
+        /// settles on (a half-drawn page, boxes appearing one by one), and when they were.
+        /// </summary>
+        static (int captures, int mixed, double first, double last) Watch(Rectangle area, Action change)
+        {
+            var rec = new Recorder();
+            rec.Start(area);
+            Pump(150);
+            var at = Clock.Elapsed.TotalMilliseconds;
+            change();
+            Pump(1200);
+            var frames = rec.Stop();
+            var before = frames.Last(f => f.At < at);
+            var after = frames.Last();
+            // only the cells that differ between the two pictures say which one a frame shows
+            var changing = Enumerable.Range(0, before.Cells.Length).Where(i => Math.Abs(before.Cells[i] - after.Cells[i]) > Same).ToArray();
+            int mixed = 0;
+            double first = -1, last = -1;
+            foreach (var f in frames.Where(f => f.At >= at))
+            {
+                int asAfter = changing.Count(i => Math.Abs(f.Cells[i] - after.Cells[i]) <= Same);
+                int asBefore = changing.Count(i => Math.Abs(f.Cells[i] - before.Cells[i]) <= Same);
+                double fa = changing.Length == 0 ? 1 : (double)asAfter / changing.Length, fb = changing.Length == 0 ? 0 : (double)asBefore / changing.Length;
+                if (fa < 0.97 && fb < 0.97)
+                {
+                    mixed++;
+                    if (first < 0) first = f.At - at;
+                    last = f.At - at;
+                    if (Frame.Keep && f.Image != null && (mixed == 1 || mixed == 8 || mixed == 20)) f.Image.Save(Path.Combine(Path.GetTempPath(), $"flicker-{at:0}-{mixed}.png"));
+                }
+            }
+            return (frames.Count(f => f.At >= at), mixed, first, last);
         }
 
         /// <summary>How many cells of two same-size frames look different.</summary>

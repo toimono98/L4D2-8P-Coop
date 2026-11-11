@@ -96,7 +96,7 @@ namespace L4D2EightPlayer.UI
 
             filter = new Pills(Kinds, new[] { "All", "Campaigns", "Gameplay", "Skins", "Other" }, 620) { Margin = P(0, 0, 0, 10) };
             filter.SelectedIndex = 0;
-            filter.SelectedIndexChanged += (s, e) => Fill();
+            filter.SelectedIndexChanged += (s, e) => Draw.Batch(this, Fill);
             g.Controls.Add(filter, 0, 2);
 
             list = new ListView { View = View.Details, CheckBoxes = true, FullRowSelect = true, Dock = DockStyle.Fill, HideSelection = false, HeaderStyle = ColumnHeaderStyle.Nonclickable };
@@ -148,7 +148,7 @@ namespace L4D2EightPlayer.UI
                     conflictsButton.Visible = conflicts.Count > 0;
                     Fill();
                 }
-                if (InvokeRequired) Invoke((Action)Show); else Show();
+                if (InvokeRequired) Invoke((Action)(() => Draw.Batch(this, Show))); else Draw.Batch(this, Show);
             }
             finally { loading = false; }
         }

@@ -62,7 +62,8 @@ namespace L4D2EightPlayer.UI
             ("play-listen-internet", async () => { cmbNetwork.SelectedItem = "internet"; AuditMode("listen"); await CheckNetwork(verbose: false); }),
             ("skins-tab", async () => { AuditMode("dedicated"); tabs.SelectedIndex = TabSkins; await skins.Reload(); }),
             ("skins-packs", async () => { skins.ShowPacks("add"); await Task.Delay(200); }),
-            // the narrowest window: the four tabs, HOST | JOIN and TOUR must all still fit in the top bar
+            ("settings-tab", async () => { tabs.SelectedIndex = TabSettings; await Task.CompletedTask; }),
+            // the narrowest window: the five tabs and HOST | JOIN must all still fit in the top bar
             ("narrow-window-skins", async () => { var top = TopLevelControl as Form ?? this; top.WindowState = FormWindowState.Normal; top.Size = top.MinimumSize; await Task.Delay(300); }),
             ("narrow-window-skin-packs", async () => { tabs.SelectedIndex = TabSkins; skins.ShowPacks(); await Task.Delay(200); }),
             ("narrow-window-play", async () => { tabs.SelectedIndex = TabPlay; await Task.CompletedTask; }),

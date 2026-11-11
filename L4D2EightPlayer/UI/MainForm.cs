@@ -67,6 +67,8 @@ namespace L4D2EightPlayer.UI
             SetupWatchers();
             if (settings.TargetGameDir != null) await RunScan(auto: true, quiet: true);
             await CleanupStaleForward();
+            // the Skins tab read ahead, so opening it the first time shows it whole instead of filling in
+            if (!Preview && !skinsLoaded) { skinsLoaded = true; _ = skins.Reload(); }
             await CheckForNewVersion();
         }
 

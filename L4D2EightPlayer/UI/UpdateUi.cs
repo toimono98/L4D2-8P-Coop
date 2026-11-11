@@ -34,15 +34,29 @@ namespace L4D2EightPlayer.UI
             nav.Notice = Notice;
         }
 
-        /// <summary>Asks GitHub once per run (the answer is cached for a day) and, for automatic updates, downloads it.</summary>
+        /// <summary>
+        /// Asks GitHub when the app opens (the answer is kept for a few hours), and again every few hours while it stays
+        /// open, so a new release is noticed the same day. For automatic updates it's downloaded straight away.
+        /// </summary>
         public static async Task Begin()
         {
             if (started) return;
             started = true;
+            Updater.CleanUp();   // the Setup that installed this version isn't needed any more
             var failed = Updater.LastFailure();
             if (failed != null) Log("The last update didn't install (" + failed + "). It's tried again when the next version is ready; or download it from " + UpdateCheck.ReleasePage);
+            var again = new Timer { Interval = (int)UpdateCheck.MaxAge.TotalMilliseconds };
+            again.Tick += async (s, e) => await Look();
+            again.Start();
+            await Look();
+        }
+
+        /// <summary>One look: a version newer than the one already found (or none found yet) goes the usual way.</summary>
+        static async Task Look()
+        {
+            if (stage == Stage.Downloading) return;
             var v = await UpdateCheck.Newer();
-            if (v == null) return;
+            if (v == null || (v == version && stage != Stage.None)) return;
             version = v;
             installed = Updater.RunningInstalled(Application.ExecutablePath);
             if (installed && Updater.Auto) { await Download(); return; }

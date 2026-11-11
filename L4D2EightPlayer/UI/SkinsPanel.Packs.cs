@@ -71,8 +71,11 @@ namespace L4D2EightPlayer.UI
         void SelectPackItem(string sel)
         {
             packSel = sel;
-            foreach (var c in list.Controls.OfType<PackCard>()) c.Selected = (string)c.Tag == sel;   // no rebuild: the list keeps its scroll
-            ShowOptions();
+            Draw.Batch(this, () =>
+            {
+                foreach (var c in list.Controls.OfType<PackCard>()) c.Selected = (string)c.Tag == sel;   // no rebuild: the list keeps its scroll
+                ShowOptions();
+            });
         }
 
         static string Names(IEnumerable<Skins.Target> ts, int max)

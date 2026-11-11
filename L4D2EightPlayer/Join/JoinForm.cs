@@ -107,6 +107,7 @@ namespace L4D2EightPlayer.Join
             {
                 ActiveControl = txtTarget;
                 _ = CheckConflicts();
+                _ = ReadAhead();
                 if (txtTarget.Text.Length > 0) await Check();
                 // a newer version (GitHub, checked once a day; silent offline): downloaded or offered in the header
                 if (!Preview && !Audit.On) await UI.UpdateUi.Begin();

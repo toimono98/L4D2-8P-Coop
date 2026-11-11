@@ -32,6 +32,8 @@ namespace L4D2EightPlayer.UI
         SkinPrefs prefs = SkinPrefs.Load();
         Skins.Target selected;
         readonly Dictionary<string, Image> thumbs = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>The game's own look for each target (GamePictures), shown for Game default and wherever no skin is on.</summary>
+        Dictionary<string, Image> defaults = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
         readonly FlowLayoutPanel list;
         readonly TableLayoutPanel options;
         readonly Label banner, footnote;
@@ -141,15 +143,18 @@ namespace L4D2EightPlayer.UI
             {
                 var dir = gameDir();
                 var man = manifest();
-                var (scanned, images, cols, survey) = await Task.Run(() =>
+                bool needDefaults = defaults.Count == 0;
+                var (scanned, images, cols, survey, gamePics) = await Task.Run(() =>
                 {
+                    var gp = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
+                    if (needDefaults) foreach (var kv in GamePictures.For(dir)) { var im = Thumbnail(kv.Value); if (im != null) gp[kv.Key] = im; }
                     var i = Skins.Scan(dir, man);
                     var sv = Clashes.Look(dir, man);   // for the color key: what clashes with what
                     var pics = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
                     foreach (var m in i.Mods) if (!thumbs.ContainsKey(m.Path)) pics[m.Path] = Thumbnail(m);
                     var c = SkinPrefs.Load().Collections.Select(x => Packs.State(dir, i, man, x)).ToList();
                     foreach (var x in c) { var pic = Workshop.CollectionPicture(x.Saved.Id); if (!thumbs.ContainsKey(pic)) pics[pic] = Thumbnail(pic); }
-                    return (i, pics, c, sv);
+                    return (i, pics, c, sv, gp);
                 });
                 // back on the window's thread before touching any control (a caller without a message loop's
                 // context would otherwise get the rest of this on a pool thread)
@@ -158,13 +163,17 @@ namespace L4D2EightPlayer.UI
                     foreach (var kv in images) thumbs[kv.Key] = kv.Value;
                     inv = scanned;
                     collections = cols;
+                    if (gamePics.Count > 0) defaults = gamePics;
                     rated = Ratings.Rate(survey, path => findingFor?.Invoke(path)?.Severity >= Severity.Problem ? "the compatibility check found a problem with it" : null);
                     prefs = SkinPrefs.Load();
                     if (selected == null) selected = Skins.Targets[0];
-                    SuspendLayout();
-                    Fill();
-                    ShowOptions();
-                    ResumeLayout();
+                    Draw.Batch(this, () =>
+                    {
+                        SuspendLayout();
+                        Fill();
+                        ShowOptions();
+                        ResumeLayout();
+                    });
                 }
                 if (InvokeRequired) Invoke((Action)Show); else Show();
             }
@@ -181,8 +190,11 @@ namespace L4D2EightPlayer.UI
         internal void SelectTarget(string id)
         {
             selected = Skins.Get(id);
-            foreach (var c in list.Controls.OfType<TargetCard>()) c.Selected = c.Target == selected;
-            ShowOptions();
+            Draw.Batch(this, () =>
+            {
+                foreach (var c in list.Controls.OfType<TargetCard>()) c.Selected = c.Target == selected;
+                ShowOptions();
+            });
         }
 
         /// <summary>For the screenshot check: the question a pick would ask, without applying it.</summary>
@@ -204,13 +216,14 @@ namespace L4D2EightPlayer.UI
             {
                 var targets = Skins.Targets.Where(t => t.Section == section).ToList();
                 var shown = section == Skins.Survivors ? targets : targets.Where(t => inv != null && inv.ByTarget[t.Id].Mods.Count > 0).ToList();
-                AddBreak(section.ToUpperInvariant(), shown.Count == 0 ? $"No {(section == Skins.Weapons ? "weapon" : section == Skins.Items ? "item" : section.ToLowerInvariant())} skins installed." : null, top: section != Skins.Survivors);
+                AddBreak(section.ToUpperInvariant(), shown.Count == 0 ? $"No {(section == Skins.Weapons ? "weapon" : section == Skins.Items ? "item" : section.ToLowerInvariant())} skins installed." : null, top: section != Skins.Survivors,
+                         disable: (Skins.InSection(section), section.ToLowerInvariant()));
                 if (section == Skins.Infected)
                     foreach (var subName in new[] { Skins.Special, Skins.Common })
                     {
                         var part = shown.Where(t => t.Sub == subName).ToList();
                         if (part.Count == 0) continue;
-                        AddBreak(subName.ToUpperInvariant() + " INFECTED", null, top: false, small: true);
+                        AddBreak(subName.ToUpperInvariant() + " INFECTED", null, top: false, small: true, disable: (Skins.InSection(Skins.Infected, subName), subName.ToLowerInvariant() + " infected"));
                         foreach (var t in part) list.Controls.Add(Card(t));
                     }
                 else foreach (var t in shown) list.Controls.Add(Card(t));
@@ -222,11 +235,25 @@ namespace L4D2EightPlayer.UI
                 + "The 8-Player HUD add-on and the lobby mod are never touched.";
         }
 
-        /// <summary>A section header that takes a whole row in the flowing list.</summary>
-        void AddBreak(string title, string note, bool top, bool small = false)
+        /// <summary>
+        /// A section header that takes a whole row in the flowing list. With disable, a "Disable survivors" button beside
+        /// the title turns off every skin that's on for that section (shown when there's one to turn off).
+        /// </summary>
+        void AddBreak(string title, string note, bool top, bool small = false, (Func<Skins.Target, bool> pick, string name)? disable = null)
         {
             var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = P(0, top ? 16 : 6, 0, 4), Tag = "break" };
-            box.Controls.Add(new Label { Text = title, AutoSize = true, Font = small ? Theme.BodyBold(8.5f) : Theme.Stencil(13f), ForeColor = small ? Theme.Muted : Theme.Bone, Margin = P(0) });
+            var titleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = P(0) };
+            titleRow.Controls.Add(new Label { Text = title, AutoSize = true, Font = small ? Theme.BodyBold(8.5f) : Theme.Stencil(13f), ForeColor = small ? Theme.Muted : Theme.Bone, Margin = P(0, small ? 6 : 4, 0, 0) });
+            if (disable != null && inv != null && !Skins.PlanSection(inv, disable.Value.pick).Nothing)
+            {
+                var d = disable.Value;
+                var b = new GameButton("Disable " + d.name, ButtonKind.Ghost, small ? 8.5f : 9f) { Margin = P(14, 0, 0, 0), Enabled = !GameOpen };
+                b.Height = S(small ? 28 : 32);
+                b.Click += async (s, e) => await DisableSection(d.pick, d.name);
+                new ToolTip().SetToolTip(b, $"Turns off every skin that's on for {d.name}: they go back to the game's own look (and stay that way at launch until you pick a skin again).");
+                titleRow.Controls.Add(b);
+            }
+            box.Controls.Add(titleRow);
             if (note != null) box.Controls.Add(new Label { Text = note, AutoSize = true, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 2, 0, 0) });
             list.Controls.Add(box);
             list.SetFlowBreak(box, true);
@@ -247,13 +274,18 @@ namespace L4D2EightPlayer.UI
         TargetCard Card(Skins.Target t)
         {
             var state = inv?.ByTarget[t.Id];
-            var card = new TargetCard(t, state, state?.Active != null ? Thumb(state.Active) : null, RatingOf(state?.Active)?.Rating) { Selected = t == selected };
-            card.Click += (s, e) =>
+            // the skin in use, or the game's own look when there's none
+            var pic = state?.Active != null ? Thumb(state.Active) : null;
+            bool gameLook = pic == null && state?.On.Count == 0;
+            if (pic == null && gameLook) defaults.TryGetValue(t.Id, out pic);
+            var card = new TargetCard(t, state, pic, RatingOf(state?.Active)?.Rating) { Selected = t == selected };
+            // the highlight and the choices on the right change in one paint, not card by card
+            card.Click += (s, e) => Draw.Batch(this, () =>
             {
                 selected = t;
                 foreach (var c in list.Controls.OfType<TargetCard>()) c.Selected = c.Target == t;
                 ShowOptions();
-            };
+            });
             return card;
         }
 
@@ -277,7 +309,8 @@ namespace L4D2EightPlayer.UI
             options.Controls.Add(new Label { Text = what, AutoSize = true, MaximumSize = Sz(360, 0), Font = Theme.Body(10f), ForeColor = state.Conflict ? Theme.Amber : Theme.Muted, Margin = P(0, 0, 0, 10) });
 
             bool none = state.On.Count == 0;
-            options.Controls.Add(Option(null, "Game default", "The look the game ships with.", none, null, Severity.Ok, null));
+            defaults.TryGetValue(selected.Id, out var gamePic);
+            options.Controls.Add(Option(null, "Game default", "The look the game ships with.", none, gamePic, Severity.Ok, null));
             foreach (var m in state.Mods)
             {
                 var detail = m.Pack ? "Also skins: " + string.Join(", ", m.Targets.Where(t => t != selected).Select(t => t.Name)) : "Only " + selected.Name;
@@ -345,6 +378,25 @@ namespace L4D2EightPlayer.UI
             await Reload();
         }
 
+        /// <summary>Disable survivors (weapons, items, infected...): asks with what goes, then turns those skins off.</summary>
+        async Task DisableSection(Func<Skins.Target, bool> pick, string name)
+        {
+            if (inv == null) return;
+            if (GameOpen) { MessageBox.Show(FindForm(), "Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.", "Skins", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var plan = Skins.PlanSection(inv, pick);
+            if (plan.Nothing) return;
+            string List(IEnumerable<string> names, int max) { var l = names.ToList(); return string.Join(", ", l.Take(max)) + (l.Count > max ? $" and {l.Count - max} more" : ""); }
+            var text = $"Turn off {plan.TurnOff.Count} skin add-on{(plan.TurnOff.Count == 1 ? "" : "s")} for {name}?\n\n{List(plan.TurnOff.Select(m => m.Title), 6)}\n\n" +
+                       $"{char.ToUpper(name[0]) + name.Substring(1)} go back to the game's own look, and stay that way at launch until you pick a skin again. The skins stay installed." +
+                       (plan.AlsoDefault.Count > 0 ? $"\n\nSome of these are packs that also skin {List(plan.AlsoDefault.Select(t => t.Name), 5)}: those go back to the game's look too." : "") +
+                       (plan.StaysOn.Count > 0 ? $"\n\n{plan.StaysOn.Count} campaign or script mod{(plan.StaysOn.Count == 1 ? "" : "s")} with skins here stay{(plan.StaysOn.Count == 1 ? "s" : "")} on." : "");
+            if (MessageBox.Show(FindForm(), text, "Disable " + name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            try { Skins.ApplySection(inv, plan, prefs); }
+            catch (Exception ex) { MessageBox.Show(FindForm(), ex.Message, "Skins", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            Changed?.Invoke(this, EventArgs.Empty);
+            await Reload();
+        }
+
         /// <summary>For the screenshot check: what Disable all would turn off.</summary>
         internal int DisableAllCount => Skins.AllOn(inv).Count;
 
@@ -373,9 +425,29 @@ namespace L4D2EightPlayer.UI
                 if (bytes == null) return null;
                 using (var ms = new MemoryStream(bytes))
                 using (var img = Image.FromStream(ms))
-                    return new Bitmap(img, S(72), S(72) * img.Height / Math.Max(1, img.Width));
+                {
+                    // fits a 72-pixel square whichever way it's longer (a wide weapon icon, a tall portrait)
+                    double k = Math.Min(S(72) / (double)Math.Max(1, img.Width), S(72) / (double)Math.Max(1, img.Height));
+                    var bmp = new Bitmap(Math.Max(1, (int)(img.Width * k)), Math.Max(1, (int)(img.Height * k)));
+                    using (var g = Graphics.FromImage(bmp))
+                    {
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                        g.DrawImage(img, 0, 0, bmp.Width, bmp.Height);
+                    }
+                    return bmp;
+                }
             }
             catch { return null; }   // not a picture we can read (addonimage.vtf, a placeholder file)
+        }
+
+        /// <summary>A picture's place in a box: as big as fits, kept in proportion, centred.</summary>
+        internal static Rectangle Fit(Size img, Rectangle box)
+        {
+            if (img.Width <= 0 || img.Height <= 0) return box;
+            double k = Math.Min(box.Width / (double)img.Width, box.Height / (double)img.Height);
+            int w = (int)(img.Width * k), h = (int)(img.Height * k);
+            return new Rectangle(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
         }
     }
 
@@ -418,8 +490,8 @@ namespace L4D2EightPlayer.UI
             if (state?.Active != null) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, 0, 0, S(4), r.Height);
             int pad = S(10), pic = r.Height - pad * 2, x = pad + S(2);
             var box = new Rectangle(x, pad, pic, pic);
-            if (thumb != null) g.DrawImage(thumb, box);
-            else using (var b = new SolidBrush(Theme.Header)) g.FillRectangle(b, box);
+            using (var b = new SolidBrush(Theme.Header)) g.FillRectangle(b, box);
+            if (thumb != null) g.DrawImage(thumb, SkinsPanel.Fit(thumb.Size, Rectangle.Inflate(box, -S(2), -S(2))));
             Draw.Border(g, box, Theme.Line);
             if (thumb == null) Draw.Text(g, Target.Name.Substring(0, 1), Theme.Display(16f), Theme.Bot, box, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             x += pic + S(10);
@@ -493,8 +565,8 @@ namespace L4D2EightPlayer.UI
             if (on) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, 0, 0, S(4), r.Height);
             int pad = S(10), pic = S(66);
             var box = new Rectangle(pad + S(4), pad, pic, pic);
-            if (thumb != null) g.DrawImage(thumb, box.X, box.Y, pic, Math.Min(pic, thumb.Height * pic / Math.Max(1, thumb.Width)));
-            else using (var b = new SolidBrush(Theme.Panel)) g.FillRectangle(b, box);
+            using (var b = new SolidBrush(Theme.Panel)) g.FillRectangle(b, box);
+            if (thumb != null) g.DrawImage(thumb, SkinsPanel.Fit(thumb.Size, Rectangle.Inflate(box, -S(2), -S(2))));
             Draw.Border(g, box, Theme.Line);
             int x = box.Right + S(12), w = r.Width - x - pad;
             var tf = Theme.Stencil(11f);

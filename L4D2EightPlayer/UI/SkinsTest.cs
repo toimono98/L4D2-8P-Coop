@@ -62,6 +62,17 @@ namespace L4D2EightPlayer.UI
             var hunter = Skins.Plan(inv, Skins.Get("hunter"), M("Hunter Skin"));
             Check("Hunter -> its skin (already the only one): nothing to do, nothing wider", hunter.Nothing && !hunter.Wider);
 
+            // Disable survivors / weapons / items / infected
+            var svp = Skins.PlanSection(inv, Skins.InSection(Skins.Survivors));
+            Check("Disable survivors: the Nick model skin and the pack off, the AK-47 keeps the rifle pack: " + Names(svp.TurnOff) + " / also default " + Ids(svp.AlsoDefault),
+                Names(svp.TurnOff) == "Nick Model Skin, Survivors and AK Pack" && svp.AlsoDefault.Count == 0 && Ids(svp.Sets) == "coach,ellis,nick,rochelle");
+            var wp = Skins.PlanSection(inv, Skins.InSection(Skins.Weapons));
+            Check("Disable weapons: both packs off, the campaign stays on, Rochelle, Coach and Ellis go back to default with the pack: " + Names(wp.TurnOff) + " / " + Ids(wp.AlsoDefault),
+                Names(wp.TurnOff) == "Rifle Pack, Survivors and AK Pack" && Names(wp.StaysOn) == "Campaign With AK" && Ids(wp.AlsoDefault) == "coach,ellis,rochelle");
+            Check("Disable items: nothing on, so no button", Skins.PlanSection(inv, Skins.InSection(Skins.Items)).Nothing);
+            var sp = Skins.PlanSection(inv, Skins.InSection(Skins.Infected, Skins.Special));
+            Check("Disable special infected: only the Hunter skin (the commons skin is the common section's): " + Names(sp.TurnOff), Names(sp.TurnOff) == "Hunter Skin");
+
             // 3. overlaps asked about before a launch
             var ov = Skins.Overlaps(game, manifest, SkinPrefs.Load());
             Check("before launch: Nick and the AK-47 have more than one skin on and nothing picked: " + Ids(ov.Select(s => s.Target)), Ids(ov.Select(s => s.Target)) == "ak47,nick");
@@ -175,6 +186,13 @@ namespace L4D2EightPlayer.UI
             File.Delete(Path.Combine(game, "addons", "nick_texture.vpk"));
             var gone = Skins.Reapply(game, manifest, prefs);
             Check("a picked skin that's gone is reported: " + string.Join(" | ", gone), gone.Any(l => l.StartsWith("Nick:") && l.Contains("gone")));
+
+            // Disable infected, applied: both infected skins off and remembered as the game's look
+            inv = Skins.Scan(game, manifest);
+            Skins.ApplySection(inv, Skins.PlanSection(inv, Skins.InSection(Skins.Infected)), prefs);
+            var infOff = Compat.ReadAddonList(game);
+            prefs = SkinPrefs.Load();
+            Check("Disable infected applied: Hunter and commons skins off, picked as the game's look", !infOff["hunter_skin.vpk"] && !infOff["commons_skin.vpk"] && prefs.Picks["hunter"] == "" && prefs.Picks["common"] == "");
 
             // Disable all: every skin off, the campaign (it has an AK-47) stays on, every skinned target back to default
             inv = Skins.Scan(game, manifest);

@@ -46,7 +46,8 @@ namespace L4D2EightPlayer.UI
         bool rosterBusy;
 
         /// <summary>The pages, in nav order.</summary>
-        internal const int TabSetup = 0, TabMods = 1, TabSkins = 2, TabPlay = 3;
+        internal const int TabSetup = 0, TabMods = 1, TabSkins = 2, TabPlay = 3, TabSettings = 4;
+        SettingsPage settingsPage;
 
         /// <summary>Set by the screenshot self-test: never touch the router or saved state.</summary>
         public static bool Preview;
@@ -86,11 +87,10 @@ namespace L4D2EightPlayer.UI
 
         void BuildUi()
         {
-            nav = new NavBar("Setup", "Mods", "Skins", "Play");
+            nav = new NavBar("Setup", "Mods", "Skins", "Play", "Settings");
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
             UpdateUi.Attach(nav, Info);   // "Version X is out / ready": the update window
-            nav.Help = "? TOUR";
-            nav.HelpClicked += (s, e) => StartTour();
+            // the tour is on the Settings tab (Show the tour), which leaves the header to the tabs
             // the same app joins friends: HOST | JOIN swaps to the join window (this one stays alive)
             nav.Modes = new[] { "HOST", "JOIN" };
             nav.Mode = 0;
@@ -103,6 +103,7 @@ namespace L4D2EightPlayer.UI
                 nav.Selected = tabs.SelectedIndex;
                 if (tabs.SelectedIndex == TabSkins && !skinsLoaded) { skinsLoaded = true; await skins.Reload(); }
                 if (tabs.SelectedIndex == TabSetup) await MaybeCheckUpdates();
+                if (tabs.SelectedIndex == TabSettings) settingsPage.RefreshAll();
                 // friends over the internet: the route check runs the first time Play is shown
                 if (tabs.SelectedIndex == TabPlay && settings.Internet && !routerSearched && !busy) await CheckNetwork(verbose: false);
             };
@@ -110,6 +111,9 @@ namespace L4D2EightPlayer.UI
             tabs.Add(BuildCompatTab());
             tabs.Add(BuildSkinsTab());
             tabs.Add(BuildPlayTab());
+            tabs.Add(settingsPage = new SettingsPage(
+                "New here, or want a reminder? The tour walks through setting up the server, checking mods, picking skins and inviting friends.",
+                () => { tabs.SelectedIndex = TabSetup; BeginInvoke((Action)StartTour); }, null));
 
             // docked last-added first: the nav on top, the status bar at the very bottom, the log drawer above it
             Controls.Add(tabs);
@@ -378,18 +382,11 @@ namespace L4D2EightPlayer.UI
             advanced.Controls.Add(txtComponentInfo, 0, 2);
 
             btnCheckUpdates = Btn("Check for mod updates", ButtonKind.Ghost, async (s, e) => await CheckUpdates());
-            // the app itself (the same as the Join side's Settings tab): ask GitHub now, and how updates install
-            var btnCheckApp = Btn("Check for app updates", ButtonKind.Ghost, null);
-            btnCheckApp.Click += async (s, e) => { btnCheckApp.Enabled = false; try { Info(await UpdateUi.CheckNow()); } finally { btnCheckApp.Enabled = true; } };
-            var chkAutoApp = new GameCheck { Text = "Install app updates automatically", AutoSize = true, Font = Theme.Body(10f), Margin = P(6, 16, 0, 0), Checked = Updater.Auto };
-            chkAutoApp.CheckedChanged += (s, e) => { if (!loading && chkAutoApp.Checked != Updater.Auto) { Updater.SetAuto(chkAutoApp.Checked); Info(chkAutoApp.Checked ? "App updates now install automatically (when you close the app)." : "App updates are now yours to install: the notice at the top says when one is out."); } };
-            new ToolTip().SetToolTip(chkAutoApp, "New versions of this app download in the background and install when you close it.\nOff: the notice at the top says when one is out, and you choose when to install it.");
-            advancedToggle.Click += (s, e) => { loading = true; chkAutoApp.Checked = Updater.Auto; loading = false; };   // changed on the Join side meanwhile
             btnUninstall = Btn("Remove highlighted", async (s, e) => await UninstallHighlighted());
             btnUninstallAll = Btn("Remove everything", async (s, e) => await UninstallAll());
             var manualLink = new LinkLabel { Text = "Forum-only extras…", AutoSize = true, Font = Theme.BodySemi(10f), Margin = P(6, 16, 0, 0) };
             manualLink.LinkClicked += (s, e) => ShowManualExtras();
-            advanced.Controls.Add(Row(btnCheckUpdates, btnUninstall, btnUninstallAll, manualLink, btnCheckApp, chkAutoApp), 0, 3);
+            advanced.Controls.Add(Row(btnCheckUpdates, btnUninstall, btnUninstallAll, manualLink), 0, 3);
             g.Controls.Add(advanced, 0, 7);
 
             page.Controls.Add(g);
@@ -613,7 +610,9 @@ namespace L4D2EightPlayer.UI
             jc.Controls.Add(cmbNetwork, 0, 0);
             jc.SetColumnSpan(cmbNetwork, 3);
             jc.Controls.Add(lblNetworkNote, 0, 1);
-            jc.SetColumnSpan(lblNetworkNote, 2);
+            jc.SetColumnSpan(lblNetworkNote, 3);
+            // wraps at the box's real width, so its row is as tall as the lines it ends up with
+            jc.SizeChanged += (s, e) => { var w = Math.Min(S(700), Math.Max(S(200), jc.ClientSize.Width - S(4))); if (lblNetworkNote.MaximumSize.Width != w) lblNetworkNote.MaximumSize = new Size(w, 0); };
             rbDirect = new ChoiceCard("Direct connect", "Paste invite or connect <IP>") { Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, Margin = P(0, 0, 10, 10) };
             rbLobby = new ChoiceCard("Steam lobby", "8 Slots Lobby Mod") { Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, Margin = P(0, 0, 10, 10) };
             txtLobbyAddress = new TextBox { Dock = DockStyle.Top, Font = Theme.Body(10f) };

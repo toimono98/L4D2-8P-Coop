@@ -120,6 +120,21 @@ namespace L4D2EightPlayer.Core
             Process.Start(new ProcessStartInfo(setup, args) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Folder });
         }
 
+        /// <summary>Downloaded Setups for this version or older: done with, once the app is running the new version.</summary>
+        public static void CleanUp()
+        {
+            try
+            {
+                if (!Directory.Exists(Folder)) return;
+                foreach (var f in Directory.GetFiles(Folder, "L4D2-8P-Setup-*.exe"))
+                {
+                    var v = Path.GetFileNameWithoutExtension(f).Substring("L4D2-8P-Setup-".Length);
+                    if (!UpdateCheck.IsNewer(v, AppInfo.Version)) try { File.Delete(f); } catch { }
+                }
+            }
+            catch { }
+        }
+
         /// <summary>
         /// When the last update didn't go through (its Setup log has an error, and this is still the older version):
         /// the error, once. Null otherwise.

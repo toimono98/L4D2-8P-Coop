@@ -391,6 +391,46 @@ namespace L4D2EightPlayer.Core
             prefs.Save();
         }
 
+        /// <summary>What Disable survivors (weapons, items, infected...) changes: the skins turned off, and what else goes back to default.</summary>
+        public sealed class SectionPlan
+        {
+            public List<Mod> TurnOff = new List<Mod>();
+            /// <summary>Targets in the section that had a skin on (they go back to the game's look).</summary>
+            public List<Target> Sets = new List<Target>();
+            /// <summary>Targets outside the section that a turned-off pack also skinned, with no other skin left on for them.</summary>
+            public List<Target> AlsoDefault = new List<Target>();
+            /// <summary>Campaign or script mods with skins in the section: they stay on.</summary>
+            public List<Mod> StaysOn = new List<Mod>();
+            public bool Nothing => TurnOff.Count == 0;
+        }
+
+        /// <summary>The section's targets: Survivors, Weapons, Items, Infected, or Special / Common infected (sub).</summary>
+        public static Func<Target, bool> InSection(string section, string sub = null) => t => t.Section == section && (sub == null || t.Sub == sub);
+
+        /// <summary>Every skin that's on for something in the section, off: a pack that also skins other things goes too.</summary>
+        public static SectionPlan PlanSection(Inventory inv, Func<Target, bool> inSection)
+        {
+            var plan = new SectionPlan();
+            if (inv == null) return plan;
+            plan.TurnOff = inv.Mods.Where(m => m.Enabled && !m.Locked && m.Targets.Any(inSection)).ToList();
+            plan.StaysOn = inv.Mods.Where(m => m.Enabled && m.Locked && m.Targets.Any(inSection)).ToList();
+            plan.Sets = inv.ByTarget.Values.Where(s => inSection(s.Target) && s.On.Any(m => plan.TurnOff.Contains(m))).Select(s => s.Target).ToList();
+            plan.AlsoDefault = plan.TurnOff.SelectMany(m => m.Targets).Distinct().Where(t => !inSection(t))
+                .Where(t => !inv.ByTarget[t.Id].On.Any(m => !plan.TurnOff.Contains(m))).ToList();
+            return plan;
+        }
+
+        /// <summary>Applies a section's plan: the skins off, and those targets remembered as the game's own look.</summary>
+        public static void ApplySection(Inventory inv, SectionPlan plan, SkinPrefs prefs)
+        {
+            if (Launcher.GameRunning()) throw new InvalidOperationException("Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.");
+            if (plan.Nothing) return;
+            Compat.SetAddonsEnabled(inv.GameDir, plan.TurnOff.ToDictionary(m => m.Key, m => false, StringComparer.OrdinalIgnoreCase));
+            foreach (var m in plan.TurnOff) m.Enabled = false;
+            foreach (var t in plan.Sets.Concat(plan.AlsoDefault)) prefs.Picks[t.Id] = "";
+            prefs.Save();
+        }
+
         /// <summary>The skins Disable all turns off: every one that's on, except campaign and script mods (they stay on).</summary>
         public static List<Mod> AllOn(Inventory inv) => inv?.Mods.Where(m => m.Enabled && !m.Locked).ToList() ?? new List<Mod>();
 

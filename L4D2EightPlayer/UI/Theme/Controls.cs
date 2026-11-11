@@ -478,6 +478,9 @@ namespace L4D2EightPlayer.UI.Themes
     /// </summary>
     public static class HoverTips
     {
+        /// <summary>For the flicker test: no tooltips (one popping up under a resting mouse isn't a drawing glitch).</summary>
+        public static bool Off;
+
         public static void Attach(ListView lv)
         {
             lv.ShowItemToolTips = false;
@@ -504,7 +507,7 @@ namespace L4D2EightPlayer.UI.Themes
             timer.Tick += (s, e) =>
             {
                 timer.Stop();
-                if (pending == null || !lv.IsHandleCreated) return;
+                if (Off || pending == null || !lv.IsHandleCreated) return;
                 var p = lv.PointToClient(Cursor.Position);
                 if (lv.GetItemAt(p.X, p.Y) != pending) { pending = null; return; }
                 shown = pending;
@@ -754,16 +757,28 @@ namespace L4D2EightPlayer.UI.Themes
 
             hits.Clear();
             int x = left + Math.Max(ts.Width, ss.Width) + S(36);
+            // On a narrow window the tabs close up (less room around each name) so HOST | JOIN and the help link
+            // still fit on the right; they never shrink below their names.
+            int pad = S(32);
+            if (items.Count > 0)
+            {
+                int names = items.Sum(it => Draw.Measure(it.ToUpperInvariant(), ItemFont).Width) + S(2) * items.Count;
+                int right = 0;
+                if (modes != null && modes.Length > 1) right += (modes.Max(m => Draw.Measure(m, ModeFont).Width) + S(26)) * modes.Length + S(10);
+                if (!string.IsNullOrEmpty(help)) right += Draw.Measure(help, ItemFont).Width + S(16) + S(8);
+                int room = Width - S(26) - right - x;
+                if (names + pad * items.Count > room) pad = Math.Max(S(12), (room - names) / items.Count);
+            }
             for (int i = 0; i < items.Count; i++)
             {
                 var t = items[i].ToUpperInvariant();
-                int w = Draw.Measure(t, ItemFont).Width + S(32);
+                int w = Draw.Measure(t, ItemFont).Width + pad;
                 var r = new Rectangle(x, 0, w, Height);
                 hits.Add(r);
                 bool sel = i == selected;
                 if (i == hover && !sel) using (var b = new SolidBrush(Theme.Panel)) g.FillRectangle(b, r);
                 Draw.Text(g, t, ItemFont, sel ? Theme.Bone : Theme.Muted, r, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                if (sel) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, r.X + S(10), Height - S(5), r.Width - S(20), S(4));
+                if (sel) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, r.X + pad * 10 / 32, Height - S(5), r.Width - pad * 20 / 32, S(4));
                 if (sel && Focused && ShowFocusCues) Draw.FocusRing(g, Rectangle.Inflate(r, -S(4), -S(12)));
                 x += w + S(2);
             }
@@ -804,6 +819,8 @@ namespace L4D2EightPlayer.UI.Themes
                     modeRoom = seg * modes.Length + S(18);
                 }
             }
+            // the layout check: HOST | JOIN must always be on screen
+            if (Audit.On && modes != null && modes.Length > 1 && modeHits.Count == 0) lock (Audit.Issues) Audit.Issues.Add("CLIPPED: the top bar has no room for " + string.Join(" | ", modes) + $" at width {Width}");
 
             // The status repeats what the page shows, so on a narrow window it gives way instead of clipping.
             int roomAll = Width - x - S(46) - helpRoom - modeRoom;
@@ -1205,6 +1222,8 @@ namespace L4D2EightPlayer.UI.Themes
             int rowH = Draw.Measure("X", Theme.BodyBold(10f)).Height + S(12);
             lv.SmallImageList = new ImageList { ImageSize = new Size(1, rowH) }; // taller rows
             Theme.DarkScrollbars(lv);
+            // drawn off-screen and shown whole: without it the rows appear on screen one by one as they're drawn
+            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(lv, true);
 
             // The last column takes the spare width; when the columns don't fit, they all shrink in
             // proportion (cells ellipsize and carry tooltips) instead of scrolling sideways.
@@ -1215,14 +1234,18 @@ namespace L4D2EightPlayer.UI.Themes
                 if (n == 0 || avail <= 0) return;
                 if (design == null || design.Length != n) design = lv.Columns.Cast<ColumnHeader>().Select(c => c.Width).ToArray();
                 int total = design.Sum(), others = 0;
+                var widths = new int[n];
                 for (int i = 0; i < n - 1; i++)
                 {
-                    int w = total <= avail ? design[i] : design[i] * avail / total;
-                    if (lv.Columns[i].Width != w) lv.Columns[i].Width = w;
-                    others += w;
+                    widths[i] = total <= avail ? design[i] : design[i] * avail / total;
+                    others += widths[i];
                 }
-                int last = Math.Max(S(40), avail - others);
-                if (lv.Columns[n - 1].Width != last) lv.Columns[n - 1].Width = last;
+                widths[n - 1] = Math.Max(S(40), avail - others);
+                if (Enumerable.Range(0, n).All(i => lv.Columns[i].Width == widths[i])) return;
+                // every column at once: one width at a time repaints the whole list once per column
+                lv.BeginUpdate();
+                try { for (int i = 0; i < n; i++) if (lv.Columns[i].Width != widths[i]) lv.Columns[i].Width = widths[i]; }
+                finally { lv.EndUpdate(); }
             }
             lv.ClientSizeChanged += (s, e) => Fit();
             lv.HandleCreated += (s, e) => Fit();
