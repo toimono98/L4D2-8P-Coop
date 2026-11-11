@@ -244,14 +244,18 @@ namespace L4D2EightPlayer.UI
             var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = P(0, top ? 16 : 6, 0, 4), Tag = "break" };
             var titleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = P(0) };
             titleRow.Controls.Add(new Label { Text = title, AutoSize = true, Font = small ? Theme.BodyBold(8.5f) : Theme.Stencil(13f), ForeColor = small ? Theme.Muted : Theme.Bone, Margin = P(0, small ? 6 : 4, 0, 0) });
-            if (disable != null && inv != null && !Skins.PlanSection(inv, disable.Value.pick).Nothing)
+            // every section with skins installed has its button; greyed out (with a note) when none of them is on
+            if (disable != null && inv != null && inv.Mods.Any(m => m.Targets.Any(disable.Value.pick)))
             {
                 var d = disable.Value;
-                var b = new GameButton("Disable " + d.name, ButtonKind.Ghost, small ? 8.5f : 9f) { Margin = P(14, 0, 0, 0), Enabled = !GameOpen };
+                bool anyOn = !Skins.PlanSection(inv, d.pick).Nothing;
+                var b = new GameButton("Disable " + d.name, ButtonKind.Ghost, small ? 8.5f : 9f) { Margin = P(14, 0, 0, 0), Enabled = anyOn && !GameOpen };
                 b.Height = S(small ? 28 : 32);
                 b.Click += async (s, e) => await DisableSection(d.pick, d.name);
                 new ToolTip().SetToolTip(b, $"Turns off every skin that's on for {d.name}: they go back to the game's own look (and stay that way at launch until you pick a skin again).");
                 titleRow.Controls.Add(b);
+                if (!anyOn)
+                    titleRow.Controls.Add(new Label { Text = "all on the game's own look", AutoSize = true, Font = Theme.Body(9f), ForeColor = Theme.Muted, Margin = P(10, small ? 7 : 9, 0, 0) });
             }
             box.Controls.Add(titleRow);
             if (note != null) box.Controls.Add(new Label { Text = note, AutoSize = true, Font = Theme.Body(9.5f), ForeColor = Theme.Muted, Margin = P(0, 2, 0, 0) });

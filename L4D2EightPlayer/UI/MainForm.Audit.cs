@@ -61,6 +61,7 @@ namespace L4D2EightPlayer.UI
             ("play-just-me-mode", async () => { cmbNetwork.SelectedItem = "local"; await Task.CompletedTask; }),
             ("play-listen-internet", async () => { cmbNetwork.SelectedItem = "internet"; AuditMode("listen"); await CheckNetwork(verbose: false); }),
             ("skins-tab", async () => { AuditMode("dedicated"); tabs.SelectedIndex = TabSkins; await skins.Reload(); }),
+            ("skins-tab-bottom", async () => { if (skins.TargetList is ScrollableControl sl) sl.AutoScrollPosition = new System.Drawing.Point(0, 100000); await Task.Delay(200); }),
             ("skins-packs", async () => { skins.ShowPacks("add"); await Task.Delay(200); }),
             ("settings-tab", async () => { tabs.SelectedIndex = TabSettings; await Task.CompletedTask; }),
             // the narrowest window: the five tabs and HOST | JOIN must all still fit in the top bar
