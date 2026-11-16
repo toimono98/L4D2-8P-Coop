@@ -26,6 +26,8 @@ namespace L4D2EightPlayer
         ///   --skins-test &lt;fixtures&gt; &lt;report&gt;                the skin picker's logic on tools\make_skin_fixtures.py's fake game
         ///   --mods-test &lt;report&gt;                          the server mod list: parts, Steam details, downloads (needs the internet)
         ///   --update-shot &lt;dir&gt;                           the update window (out, and downloaded), off-screen, to PNGs
+        ///   --splash-preview &lt;dir&gt;                        the loading screen designs at three points of the startup, to PNGs and one sheet
+        ///   --splash-demo [n]                             plays the loading screen designs (or just design n) on screen
         ///   --skin-catalog &lt;game folder&gt; &lt;out.json&gt;         maps the skin targets to the game's materials (writes &lt;out.json&gt;.log)
         /// </summary>
         [STAThread]
@@ -55,6 +57,8 @@ namespace L4D2EightPlayer
             if (args.Length >= 3 && args[0] == "--skins-test") { Environment.Exit(SkinsTest.Run(args[1], args[2])); return; }
             if (args.Length >= 2 && args[0] == "--mods-test") { Environment.Exit(ModsTest.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--update-shot") { UpdateShot(args[1]); return; }
+            if (args.Length >= 2 && args[0] == "--splash-preview") { SplashScreen.Preview(args[1]); return; }
+            if (args.Length >= 1 && args[0] == "--splash-demo") { SplashScreen.Demo(args.Length >= 2 && int.TryParse(args[1], out var n) ? n : 0); return; }
             if (args.Length >= 3 && args[0] == "--skin-catalog") { File.WriteAllText(args[2] + ".log", Skins.BuildCatalog(args[1], args[2])); return; }
             if (args.Length >= 2 && args[0] == "--flicker-test") { Environment.Exit(FlickerTest.Run(args[1], args.Contains("--legacy"), args.Contains("--composited"))); return; }
             if (args.Length >= 2 && args[0] == "--paint-test") { PaintTest.OffScreen = args.Contains("--off-screen"); Environment.Exit(PaintTest.Run(args[1])); return; }
@@ -79,6 +83,8 @@ namespace L4D2EightPlayer
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.ThreadException += (s, e) => UnexpectedError(e.Exception);
+                // the loading screen first (Safe room wall): it follows the side's startup steps and goes once it's ready
+                Startup.Begin(mode);
                 Application.Run(AppWindow.Instance = new AppWindow(mode, invite));
             }
             // a downloaded update installs now that the window has closed (or, after Restart now, opens it again)

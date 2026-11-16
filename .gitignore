@@ -13,3 +13,5 @@ scratchtest/
 screenshots/
 *.log
 __pycache__/
+# loading screen previews: they show the game's own portraits, which stay out of the repo
+screenshots/splash/

@@ -22,6 +22,7 @@ namespace L4D2EightPlayer.UI
         async Task MaybeStartTour()
         {
             if (Preview || TourDeclined || !(TourRequested || (firstRun && !settings.TourSeen))) return;
+            await Startup.Finished;   // after the loading screen, not under it
             await Task.Delay(700);   // let the first layout and the startup checks settle
             if (!IsDisposed) StartTour();
         }

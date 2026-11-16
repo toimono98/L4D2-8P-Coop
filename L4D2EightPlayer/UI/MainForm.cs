@@ -37,11 +37,21 @@ namespace L4D2EightPlayer.UI
 
         async Task OnLoaded()
         {
+            try { await StartUp(); }
+            finally { Startup.Finish(); }   // the loading screen goes whatever happened
+        }
+
+        /// <summary>Everything the Host side does when it opens, step by step on the loading screen (Startup).</summary>
+        async Task StartUp()
+        {
+            Startup.Step(0);
             seen = new HashSet<string>(Json.Load<List<string>>(Path.Combine(Paths.AppData, "seen.json")), StringComparer.OrdinalIgnoreCase);
             manifest = await Manifest.Load(settings.ManifestUrl, this);
             Info($"{Title} ready. Component list: {manifest.Source} (updated {manifest.updated}).");
 
+            Startup.Step(1);
             if (string.IsNullOrWhiteSpace(settings.GamePath) || !GameLocator.IsGameDir(settings.GamePath)) DetectGame(false);
+            Startup.Step(2);
             if (string.IsNullOrWhiteSpace(settings.ServerRoot) && string.IsNullOrWhiteSpace(settings.ExistingServerPath))
             {
                 var tools = GameLocator.FindSteamToolsServer();
@@ -63,13 +73,21 @@ namespace L4D2EightPlayer.UI
 
             LoadSettingsIntoUi();
             RefreshAll();
+            Startup.Step(3);
             await LoadCampaigns();
             SetupWatchers();
+            Startup.Step(4);
             if (settings.TargetGameDir != null) await RunScan(auto: true, quiet: true);
             await CleanupStaleForward();
             // the Skins tab read ahead, so opening it the first time shows it whole instead of filling in
-            if (!Preview && !skinsLoaded) { skinsLoaded = true; _ = skins.Reload(); }
-            await CheckForNewVersion();
+            Startup.Step(5);
+            if (!Preview && !skinsLoaded) { skinsLoaded = true; await Startup.Briefly(skins.Reload(), 4000); }
+            // a download for an automatic update carries on behind the window
+            Startup.Step(6);
+            var updates = CheckForNewVersion();
+            await Startup.Briefly(updates, 1500);
+            Startup.Finish();
+            await updates;
         }
 
         /// <summary>A newer release on GitHub (checked once a day): downloaded for automatic updates, else offered in the header.</summary>

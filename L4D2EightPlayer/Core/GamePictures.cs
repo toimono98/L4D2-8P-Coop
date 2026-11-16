@@ -60,6 +60,8 @@ namespace L4D2EightPlayer.Core
                 var done = Path.Combine(folder, "done.txt");
                 if (!File.Exists(done))
                 {
+                    // not the game (a test folder, a moved install): nothing to read, so nothing is kept
+                    if (!File.Exists(Path.Combine(root, "left4dead2", "pak01_dir.vpk"))) return result;
                     Directory.CreateDirectory(folder);
                     Build(root, folder);
                     File.WriteAllText(done, DateTime.Now.ToString("s"));

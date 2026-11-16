@@ -106,10 +106,31 @@ namespace L4D2EightPlayer.Join
             Shown += async (s, e) =>
             {
                 ActiveControl = txtTarget;
+                if (UI.Startup.Active)
+                {
+                    // the loading screen is up: the add-ons, the Mods and Skins tabs and the update check, one step each
+                    try
+                    {
+                        UI.Startup.Step(1);
+                        await CheckConflicts();
+                        UI.Startup.Step(2);
+                        if (!modsLoaded) { modsLoaded = true; await UI.Startup.Briefly(modsPanel.Reload(), 4000); }
+                        UI.Startup.Step(3);
+                        if (!skinsLoaded) { skinsLoaded = true; await UI.Startup.Briefly(skinsPanel.Reload(), 4000); }
+                        UI.Startup.Step(4);
+                        var updates = UI.UpdateUi.Begin();
+                        await UI.Startup.Briefly(updates, 1500);
+                        UI.Startup.Finish();
+                        if (txtTarget.Text.Length > 0) await Check();
+                        await updates;
+                    }
+                    finally { UI.Startup.Finish(); }
+                    return;
+                }
                 _ = CheckConflicts();
                 _ = ReadAhead();
                 if (txtTarget.Text.Length > 0) await Check();
-                // a newer version (GitHub, checked once a day; silent offline): downloaded or offered in the header
+                // a newer version (GitHub, checked every few hours; silent offline): downloaded or offered in the header
                 if (!Preview && !Audit.On) await UI.UpdateUi.Begin();
             };
         }
