@@ -88,6 +88,8 @@ $p = Start-Process $app -ArgumentList "--skins-test `"$fx`" `"$tmp\skins.txt`"" 
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\skins.txt" | Write-Host; Fail "the skin picker test failed" }
 $p = Start-Process $app -ArgumentList "--skins-shot `"$fx`" `"$tmp\shots`"" -PassThru -Wait
 if ($p.ExitCode -ne 0 -or -not (Test-Path "$tmp\shots\skins-pack-question.png") -or -not (Test-Path "$tmp\shots\skins-overlap-question.png") -or -not (Test-Path "$tmp\shots\skins-clash-question.png") -or -not (Test-Path "$tmp\shots\skins-packs.png") -or -not (Test-Path "$tmp\shots\skins-collection.png")) { Fail "skin picker screenshots missing" }
+$p = Start-Process $app -ArgumentList "--tabs-test `"$tmp\tabs.txt`"" -PassThru -Wait
+if ($p.ExitCode -ne 0) { Get-Content "$tmp\tabs.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "the tab order test failed" }
 $p = Start-Process $app -ArgumentList "--shell-test `"$tmp\shell.txt`"" -PassThru -Wait
 if ($p.ExitCode -ne 0) { Get-Content "$tmp\shell.txt" -ErrorAction SilentlyContinue | Write-Host; Fail "the HOST | JOIN switch check failed" }
 $p = Start-Process $app -ArgumentList "--update-shot `"$tmp\shots`"" -PassThru -Wait

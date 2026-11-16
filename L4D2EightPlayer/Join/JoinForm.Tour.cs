@@ -68,7 +68,7 @@ namespace L4D2EightPlayer.Join
                 Targets = () => new Control[] { header },
                 Title = "Mods, skins and settings",
                 Body = "MODS lists every add-on you have: tick or untick one to turn it on or off, with a color for how safe it is. " +
-                       "SKINS picks which skin you see for each survivor, weapon, item and infected. SETTINGS has Check for updates, how updates install, and your game folder.",
+                       "SKINS picks which skin you see for each survivor, weapon, item and infected. SETTINGS has Check for updates, how updates install, your game folder and the order of these tabs.",
             },
             new TourStep
             {

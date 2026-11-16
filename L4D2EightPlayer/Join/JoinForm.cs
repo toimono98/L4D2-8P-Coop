@@ -110,7 +110,9 @@ namespace L4D2EightPlayer.Join
             Shown += async (s, e) => await MaybeStartTour();
             Shown += async (s, e) =>
             {
-                ActiveControl = txtTarget;
+                // the first tab in the user's order (Settings › Tab order); Join unless they moved it
+                if (!Preview && !Audit.On && header.Order[0] != TabJoin) joinTabs.SelectedIndex = header.Order[0];
+                ActiveControl = joinTabs.SelectedIndex == TabJoin ? (Control)txtTarget : header;
                 if (UI.Startup.Active)
                 {
                     // the loading screen is up: the add-ons, the Mods and Skins tabs and the update check, one step each
@@ -146,6 +148,7 @@ namespace L4D2EightPlayer.Join
         {
             // the tabs: joining, your add-ons, your skins, and settings, for friends who only use this side
             header = new NavBar("Join", "Mods", "Skins", "Settings") { Title = "8-PLAYER CO-OP", Subtitle = "LEFT 4 DEAD 2 · JOIN" };
+            header.Order = TabOrder.Get(TabOrder.Side.Join);   // the user's order (Settings › Tab order); the pages keep their numbers
             UI.UpdateUi.Attach(header);
             // the tour is on the Settings tab (Show the tour), which leaves the header to the tabs
             // the same app hosts: HOST | JOIN swaps to the host window

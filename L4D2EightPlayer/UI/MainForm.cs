@@ -82,6 +82,8 @@ namespace L4D2EightPlayer.UI
             if (settings.TargetGameDir != null) await RunScan(auto: true, quiet: true);
             await CleanupStaleForward();
             // the Skins tab read ahead, so opening it the first time shows it whole instead of filling in
+            // the first tab in the user's order (Play, unless they moved it), or Setup until the mods are installed
+            if (!Preview && !Audit.On) tabs.SelectedIndex = ModsInstalled() ? nav.Order[0] : TabSetup;
             Startup.Step(5);
             if (!Preview && !skinsLoaded) { skinsLoaded = true; await Startup.Briefly(skins.Reload(), 4000); }
             // a download for an automatic update carries on behind the window
@@ -949,11 +951,21 @@ namespace L4D2EightPlayer.UI
             catch (Exception ex) { Error("Could not look up your public IP: " + ex.Message); }
         }
 
+        /// <summary>The 8-player mods are installed where this hosting mode needs them.</summary>
+        bool ModsInstalled()
+        {
+            try
+            {
+                var target = settings.TargetGameDir;
+                var ms = manifest?.Get("multislots");
+                return target != null && Directory.Exists(target) && ms != null && new Installer(target, this).Status(ms) != ComponentStatus.NotInstalled;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { return false; }
+        }
+
         bool EnsureInstalled()
         {
-            var target = settings.TargetGameDir;
-            var ms = manifest.Get("multislots");
-            if (target != null && Directory.Exists(target) && ms != null && new Installer(target, this).Status(ms) != ComponentStatus.NotInstalled) return true;
+            if (ModsInstalled()) return true;
             if (MessageBox.Show(this, "The 8-player mods are not installed for this hosting mode yet. Go to Setup and install them now?", Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 tabs.SelectedIndex = TabSetup;
             return false;

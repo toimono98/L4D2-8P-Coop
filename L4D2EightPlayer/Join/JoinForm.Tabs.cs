@@ -117,6 +117,7 @@ namespace L4D2EightPlayer.Join
                     lblHudState = p.Note("");
                     btnHud = SettingsPage.Button("Install the HUD add-on", ButtonKind.Outline, () => { ToggleHudAddon(); RefreshSettings(); });
                     p.Add(SettingsPage.Row(btnHud));
+                    p.AddTabOrder(header, TabOrder.Side.Join);
                 });
             settingsPage.Refreshing += (s, e) => RefreshGameSection();
             RefreshGameSection();

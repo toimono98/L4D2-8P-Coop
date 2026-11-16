@@ -24,6 +24,7 @@ namespace L4D2EightPlayer
         ///   --paint-test &lt;report&gt; [--off-screen]          repaint passes, two-pass boxes and the progress bar's frame rate
         ///   --flicker-test &lt;report&gt; [--legacy] [--composited]   glitches seen on screen while a dropdown repaints and tabs switch
         ///   --skins-test &lt;fixtures&gt; &lt;report&gt;                the skin picker's logic on tools\make_skin_fixtures.py's fake game
+        ///   --tabs-test &lt;report&gt;                          the tab order: stored lists, clicks and keys in any order
         ///   --mods-test &lt;report&gt;                          the server mod list: parts, Steam details, downloads (needs the internet)
         ///   --update-shot &lt;dir&gt;                           the update window (out, and downloaded), off-screen, to PNGs
         ///   --splash-preview &lt;dir&gt;                        the loading screen designs at three points of the startup, to PNGs and one sheet
@@ -55,6 +56,7 @@ namespace L4D2EightPlayer
             if (args.Length >= 2 && args[0] == "--shell-test") { Environment.Exit(ShellTest(args[1])); return; }
             if (args.Length >= 3 && args[0] == "--skins-shot") { Environment.Exit(SkinsTest.Shots(args[1], args[2])); return; }
             if (args.Length >= 3 && args[0] == "--skins-test") { Environment.Exit(SkinsTest.Run(args[1], args[2])); return; }
+            if (args.Length >= 2 && args[0] == "--tabs-test") { Environment.Exit(TabsTest.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--mods-test") { Environment.Exit(ModsTest.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--update-shot") { UpdateShot(args[1]); return; }
             if (args.Length >= 2 && args[0] == "--splash-preview") { SplashScreen.Preview(args[1]); return; }

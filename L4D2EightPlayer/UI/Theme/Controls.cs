@@ -742,6 +742,19 @@ namespace L4D2EightPlayer.UI.Themes
         public int Selected { get => selected; set { if (selected == value) return; selected = value; Invalidate(); SelectedChanged?.Invoke(this, EventArgs.Empty); } }
         public void SetItem(int i, string text) { items[i] = text; Invalidate(); }
 
+        /// <summary>
+        /// Where each tab sits along the row: Order[position] is the tab's number (the one Selected and SetItem use),
+        /// so moving tabs around never changes which page a tab shows. Null or an incomplete list: as added.
+        /// </summary>
+        public int[] Order
+        {
+            get => Positions().ToArray();
+            set { order = value != null && value.Length == items.Count && value.OrderBy(i => i).SequenceEqual(Enumerable.Range(0, items.Count)) ? (int[])value.Clone() : null; hover = -1; Invalidate(); }
+        }
+        int[] order;
+        IEnumerable<int> Positions() => order ?? Enumerable.Range(0, items.Count);
+        public string ItemText(int i) => items[i];
+
         protected override void OnPaint(PaintEventArgs e)
         {
             Audit.Context = this;
@@ -769,14 +782,14 @@ namespace L4D2EightPlayer.UI.Themes
                 int room = Width - S(26) - right - x;
                 if (names + pad * items.Count > room) pad = Math.Max(S(12), (room - names) / items.Count);
             }
-            for (int i = 0; i < items.Count; i++)
+            foreach (int i in Positions())
             {
                 var t = items[i].ToUpperInvariant();
                 int w = Draw.Measure(t, ItemFont).Width + pad;
                 var r = new Rectangle(x, 0, w, Height);
                 hits.Add(r);
                 bool sel = i == selected;
-                if (i == hover && !sel) using (var b = new SolidBrush(Theme.Panel)) g.FillRectangle(b, r);
+                if (hits.Count - 1 == hover && !sel) using (var b = new SolidBrush(Theme.Panel)) g.FillRectangle(b, r);
                 Draw.Text(g, t, ItemFont, sel ? Theme.Bone : Theme.Muted, r, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                 if (sel) using (var b = new SolidBrush(Theme.Red)) g.FillRectangle(b, r.X + pad * 10 / 32, Height - S(5), r.Width - pad * 20 / 32, S(4));
                 if (sel && Focused && ShowFocusCues) Draw.FocusRing(g, Rectangle.Inflate(r, -S(4), -S(12)));
@@ -863,7 +876,7 @@ namespace L4D2EightPlayer.UI.Themes
         protected override void OnMouseClick(MouseEventArgs e)
         {
             int h = hits.FindIndex(r => r.Contains(e.Location));
-            if (h >= 0) { Focus(); Selected = h; }
+            if (h >= 0) { Focus(); Selected = Positions().ElementAt(h); }
             else if (noticeHit.Contains(e.Location)) NoticeClicked?.Invoke(this, EventArgs.Empty);
             else if (helpHit.Contains(e.Location)) HelpClicked?.Invoke(this, EventArgs.Empty);
             else
@@ -878,8 +891,11 @@ namespace L4D2EightPlayer.UI.Themes
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Right) Selected = (selected + 1) % items.Count;
-            else if (e.KeyCode == Keys.Left) Selected = (selected + items.Count - 1) % items.Count;
+            // left and right follow the row as it's shown
+            var row = Positions().ToList();
+            int at = row.IndexOf(selected);
+            if (e.KeyCode == Keys.Right) Selected = row[(at + 1) % row.Count];
+            else if (e.KeyCode == Keys.Left) Selected = row[(at + row.Count - 1) % row.Count];
             base.OnKeyDown(e);
         }
 

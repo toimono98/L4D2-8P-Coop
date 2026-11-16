@@ -29,6 +29,8 @@ It's an original take on the style; no Valve art or logos are used.
 4. **Play**: click **Launch L4D2 & join**. It starts the server and the game, waits until the game has loaded your Workshop add-ons (usually under a minute: joining sooner would leave your skins and campaigns out for the whole session), then puts you in. While the server runs, the survivor cards show who is connected (refreshed every 5 seconds); when it's stopped, they preview your settings. **Start server only** runs the server without your game.
 5. Still on **Play**: click **Copy invite** and send it to friends along with `L4D2-8P-Setup.exe` (they pick Join a friend), or just `L4D2-8P-Coop.exe` (they click JOIN at the top). Over the internet, **Can friends reach you?** under the settings opens the port on your router.
 
+The tabs along the top are **PLAY, SKINS, MODS, SETUP, SETTINGS**, and the app opens on the first one (on Setup until the 8-player mods are installed). **Settings › Tab order** moves them into any order you like (**Move up** / **Move down**, **Reset to default**); the row changes straight away and the order is remembered, separately for each side (`tabs.json`).
+
 The app opens maximized. At the bottom, a one-line status bar shows the latest message and progress; **Log** opens the full log, and it opens by itself when something goes wrong.
 
 ## Hosting modes
@@ -281,7 +283,7 @@ The invite at the bottom of Play (**Copy invite**) is a `steam://connect/...` li
 The post shows the server name, campaign, mode, difficulty and size, the `steam://connect` link and console command, a download link for the app (friends click JOIN), and the Workshop link when you run a custom campaign. **Post when it stops** (off by default) adds a short "has stopped" post. Nothing is posted for **Just me** servers or listen servers, and the post never mentions anyone. The webhook is stored only in `settings.json` and is never written to the log.
 ## Joining only (for friends): the Join side
 
-The Join side has its own tabs, so friends who only join never need the Host side: **JOIN** (the invite and the server), **MODS**, **SKINS** and **SETTINGS**.
+The Join side has its own tabs, so friends who only join never need the Host side: **JOIN** (the invite and the server), **SKINS**, **MODS** and **SETTINGS** (in that order unless you change it under **Settings › Tab order**; the app opens on the first one).
 
 - **Mods** lists every add-on in your game, ticked when it's on. Tick one to turn it on, untick it to turn it off; the change takes effect the next time the game starts, and the list is read-only while the game runs.
   - Each add-on shows its rating (the color key from the Mods tab on the Host side), what kind it is (campaign, game mode, scripts, weapon stats, dialogue, the skins it has) and why it got its color. Hover a row for the details, or click it to see where the file is.
@@ -292,6 +294,7 @@ The Join side has its own tabs, so friends who only join never need the Host sid
 - **Settings** holds:
   - **Updates:** the version you have and the latest on GitHub, **Check for updates** (asks GitHub now, then installs or offers it the usual way), **What's new**, and the automatic or by-hand choice.
   - **Your game:** the game folder (**Change game folder**, **Open the addons folder**), **Download a server's missing mods when I join**, and installing, updating or removing the 8-Player HUD add-on.
+  - **Tab order:** the order of the tabs along the top (**Move up**, **Move down**, **Reset to default**).
   - **Help and files:** **Show the tour** (the tour's button lives here now), the settings folder, the error log, and **Uninstall…** (Windows' Installed apps).
 - The links under the Join tab (game folder, Workshop, HUD add-on, add-on conflicts) show only on that tab.
 

@@ -88,6 +88,8 @@ namespace L4D2EightPlayer.UI
         void BuildUi()
         {
             nav = new NavBar("Setup", "Mods", "Skins", "Play", "Settings");
+            // the pages keep their numbers (Tab*); only where each sits along the row is the user's (Settings › Tab order)
+            nav.Order = TabOrder.Get(TabOrder.Side.Host);
             nav.SelectedChanged += (s, e) => { if (tabs.SelectedIndex != nav.Selected) tabs.SelectedIndex = nav.Selected; };
             UpdateUi.Attach(nav, Info);   // "Version X is out / ready": the update window
             // the tour is on the Settings tab (Show the tour), which leaves the header to the tabs
@@ -113,7 +115,8 @@ namespace L4D2EightPlayer.UI
             tabs.Add(BuildPlayTab());
             tabs.Add(settingsPage = new SettingsPage(
                 "New here, or want a reminder? The tour walks through setting up the server, checking mods, picking skins and inviting friends.",
-                () => { tabs.SelectedIndex = TabSetup; BeginInvoke((Action)StartTour); }, null));
+                () => { tabs.SelectedIndex = TabSetup; BeginInvoke((Action)StartTour); },
+                p => p.AddTabOrder(nav, TabOrder.Side.Host)));
 
             // docked last-added first: the nav on top, the status bar at the very bottom, the log drawer above it
             Controls.Add(tabs);

@@ -113,6 +113,57 @@ namespace L4D2EightPlayer.UI
             return Add(c);
         }
 
+        /// <summary>
+        /// TAB ORDER: the tabs along the top in their order, each with Up and Down, and Reset to default. A move
+        /// shows in the row at once and is remembered (tabs.json); the first tab is the one the app opens on.
+        /// </summary>
+        public void AddTabOrder(NavBar nav, TabOrder.Side side)
+        {
+            Section("TAB ORDER");
+            Note("Move the tabs along the top into the order you like. The change shows straight away, and the app opens on the first one" +
+                 (side == TabOrder.Side.Host ? " (or on Setup, until the 8-player mods are installed)." : "."));
+            int n = nav.Order.Length;
+            var list = Add(new TableLayoutPanel { AutoSize = true, ColumnCount = 4, RowCount = n, Margin = P(0, 0, 0, 4) });
+            var names = new Label[n];
+            var ups = new GameButton[n];
+            var downs = new GameButton[n];
+            GameButton reset = null;
+            void Fill()
+            {
+                var order = nav.Order;
+                for (int pos = 0; pos < n; pos++)
+                {
+                    names[pos].Text = TabOrder.Title(side, order[pos]).ToUpperInvariant();
+                    ups[pos].Enabled = pos > 0;
+                    downs[pos].Enabled = pos < n - 1;
+                }
+                reset.Enabled = !TabOrder.IsDefault(side, order);
+            }
+            void Apply(int[] order) { Draw.Batch(this, () => { nav.Order = order; TabOrder.Save(side, order); Fill(); }); }
+            void Move(int pos, int by)
+            {
+                var o = nav.Order;
+                (o[pos], o[pos + by]) = (o[pos + by], o[pos]);
+                Apply(o);
+                // the focus goes with the tab, so pressing again keeps moving it
+                var follow = by < 0 ? ups[pos + by] : downs[pos + by];
+                (follow.Enabled ? follow : by < 0 ? downs[pos + by] : ups[pos + by]).Focus();
+            }
+            for (int pos = 0; pos < n; pos++)
+            {
+                int at = pos;
+                var num = Line($"{pos + 1}.", Theme.BodySemi(10.5f), Theme.Muted, P(0, 0, 10, 6));
+                list.Controls.Add(num, 0, pos);
+                list.Controls.Add(names[pos] = Line("", Theme.Stencil(11f), Theme.Bone, P(0, 0, 28, 6)), 1, pos);
+                num.Anchor = names[pos].Anchor = AnchorStyles.Left;   // centred on the buttons' height
+                list.Controls.Add(ups[pos] = Button("Move up", ButtonKind.Ghost, () => Move(at, -1)), 2, pos);
+                list.Controls.Add(downs[pos] = Button("Move down", ButtonKind.Ghost, () => Move(at, +1)), 3, pos);
+            }
+            reset = Button("Reset to default", ButtonKind.Outline, () => Apply(TabOrder.Indexes(side, null)));
+            Add(Row(reset));
+            Fill();
+        }
+
         /// <summary>Fills every box from the current settings (opening the tab, and after a check).</summary>
         public void RefreshAll(bool keepResult = false)
         {
