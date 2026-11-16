@@ -56,7 +56,7 @@ namespace L4D2EightPlayer.Join
             ("tab-mods-row-selected", async () => { modsPanel.SelectFirst(); await Task.CompletedTask; }),
             ("tab-mods-skins-only", async () => { modsPanel.ShowKind("skins"); await Task.CompletedTask; }),
             ("tab-mods-game-running", async () => { UI.ModsPanel.PretendGameOpen = true; modsPanel.ShowKind("all"); await Task.CompletedTask; }),
-            ("tab-skins", async () => { UI.ModsPanel.PretendGameOpen = false; joinTabs.SelectedIndex = TabSkins; await skinsPanel.Reload(); }),
+            ("tab-skins", async () => { UI.ModsPanel.PretendGameOpen = false; joinTabs.SelectedIndex = TabSkins; await skinsPanel.Reload(); while (skinsPanel.Busy) await Task.Delay(100); }),
             ("tab-settings", async () => { joinTabs.SelectedIndex = TabSettings; await Task.CompletedTask; }),
             ("tab-settings-bottom", async () => { if (joinTabs.Current is Panel page) page.AutoScrollPosition = new Point(0, 10000); await Task.CompletedTask; }),
         };

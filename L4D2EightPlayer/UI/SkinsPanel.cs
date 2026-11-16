@@ -35,7 +35,7 @@ namespace L4D2EightPlayer.UI
         /// <summary>The game's own look for each target (GamePictures), shown for Game default and wherever no skin is on.</summary>
         Dictionary<string, Image> defaults = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
         readonly FlowLayoutPanel list;
-        readonly TableLayoutPanel options;
+        readonly StackPanel options;
         readonly Label banner, footnote;
         bool loading;
 
@@ -106,16 +106,13 @@ namespace L4D2EightPlayer.UI
             list = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, AutoScroll = true, Margin = P(0, 0, 18, 0), Padding = P(0, 0, 6, 0) };
             Theme.DarkScrollbars(list);
             Theme.Buffer(list);
-            list.Resize += (s, e) => SizeSectionBreaks();
+            // ClientSize, not Size: the scrollbar coming or going changes the room without resizing the list
+            list.ClientSizeChanged += (s, e) => SizeSectionBreaks();
             g.Controls.Add(list, 0, 2);
 
             var optionsCard = new Card { Dock = DockStyle.Fill, Padding = P(16, 14, 16, 14), Margin = P(0) };
-            options = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Margin = P(0), BackColor = Theme.Panel };
-            // scrolls down only: the cards follow the column's width
-            options.HorizontalScroll.Maximum = 0;
-            options.HorizontalScroll.Visible = false;
-            options.AutoScroll = true;
-            options.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            // scrolls down only: the cards follow the column's width (StackPanel)
+            options = new StackPanel { Dock = DockStyle.Fill, Margin = P(0), BackColor = Theme.Panel };
             Theme.DarkScrollbars(options);
             Theme.Buffer(options);
             optionsCard.Controls.Add(options);
@@ -129,6 +126,10 @@ namespace L4D2EightPlayer.UI
             {
                 var max = new Size(Math.Max(S(300), g.ClientSize.Width - g.Padding.Horizontal), 0);
                 sub.MaximumSize = banner.MaximumSize = footnote.MaximumSize = max;
+                // a narrow window: the choices column gives up room (down to 320) so two rows of cards still fit beside it
+                int twoCards = 2 * (Sz(206, 86).Width + S(10)) + S(18) + S(6) + SystemInformation.VerticalScrollBarWidth + S(4);
+                int opt = Math.Max(S(320), Math.Min(S(440), max.Width - twoCards));
+                if ((int)g.ColumnStyles[1].Width != opt) g.ColumnStyles[1].Width = opt;
             };
             Controls.Add(g);
             ShowOptions();
@@ -214,7 +215,11 @@ namespace L4D2EightPlayer.UI
 
         bool GameOpen => PretendGameOpen || Launcher.GameRunning();
         /// <summary>The list of targets (the tour spotlights it).</summary>
+        /// <summary>A read of the add-ons is under way (the screenshot checks wait for it).</summary>
+        internal bool Busy => loading || reloadAgain;
         internal Control TargetList => list;
+        /// <summary>The selected target's choices (the scroll check reads it).</summary>
+        internal Control OptionsList => options;
         /// <summary>For the screenshot check: show the panel as it looks while the game runs.</summary>
         internal static bool PretendGameOpen;
 
@@ -242,7 +247,7 @@ namespace L4D2EightPlayer.UI
             disableAll.Enabled = !GameOpen && Skins.AllOn(inv).Count > 0;
             banner.Text = dir == null ? "Left 4 Dead 2 wasn't found, so there are no skins to show. Set the game folder first."
                         : "Left 4 Dead 2 is running: close it to change skins (it rewrites its add-on list when it exits).";
-            if (packsView) { FillPacks(); list.ResumeLayout(); SizeSectionBreaks(); return; }
+            if (packsView) { FillPacks(); SizeSectionBreaks(); list.ResumeLayout(); Relayout(); return; }
 
             foreach (var section in new[] { Skins.Survivors, Skins.Weapons, Skins.Items, Skins.Infected })
             {
@@ -260,8 +265,9 @@ namespace L4D2EightPlayer.UI
                     }
                 else foreach (var t in shown) list.Controls.Add(Card(t));
             }
+            SizeSectionBreaks();   // every piece at its final size before the list is laid out
             list.ResumeLayout();
-            SizeSectionBreaks();
+            Relayout();
             footnote.Text = inv == null ? "" : (none ? "No skin add-ons found. " : $"{inv.Mods.Count} skin add-on{(inv.Mods.Count == 1 ? "" : "s")}. ")
                 + (inv.Others == 1 ? "1 other add-on isn't a skin (a map, sounds or scripts), so it's left alone. " : inv.Others > 1 ? $"{inv.Others} other add-ons aren't skins (maps, sounds, scripts), so they're left alone. " : "")
                 + "The 8-Player HUD add-on and the lobby mod are never touched.";
@@ -273,8 +279,10 @@ namespace L4D2EightPlayer.UI
         /// </summary>
         void AddBreak(string title, string note, bool top, bool small = false, (Func<Skins.Target, bool> pick, string name)? disable = null)
         {
-            var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = P(0, top ? 16 : 6, 0, 4), Tag = "break" };
-            var titleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = P(0) };
+            // a whole row from the start (laid out beside the cards first, the list came out a row short: see Relayout)
+            var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = P(0, top ? 16 : 6, 0, 4), Tag = "break", MinimumSize = new Size(RowWidth, 0) };
+            // wraps (the note under the button) rather than run past a narrow list
+            var titleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = true, AutoSize = true, Margin = P(0), MaximumSize = new Size(RowWidth, 0) };
             titleRow.Controls.Add(new Label { Text = title, AutoSize = true, Font = small ? Theme.BodyBold(8.5f) : Theme.Stencil(13f), ForeColor = small ? Theme.Muted : Theme.Bone, Margin = P(0, small ? 6 : 4, 0, 0) });
             // every section with skins installed has its button; greyed out (with a note) when none of them is on
             if (disable != null && inv != null && inv.Mods.Any(m => m.Targets.Any(disable.Value.pick)))
@@ -295,17 +303,32 @@ namespace L4D2EightPlayer.UI
             list.SetFlowBreak(box, true);
         }
 
+        /// <summary>
+        /// A whole row's width, the same with or without the scrollbar (its room is always left), so the scrollbar
+        /// showing up never makes a header too wide for the list.
+        /// </summary>
+        int RowWidth => Math.Max(S(220), list.ClientSize.Width - S(12) - (list.VerticalScroll.Visible ? 0 : SystemInformation.VerticalScrollBarWidth));
+
         void SizeSectionBreaks()
         {
+            int row = RowWidth;
             foreach (Control c in list.Controls)
                 if (c.Tag as string == "break")
                 {
-                    c.MinimumSize = new Size(list.ClientSize.Width - S(12), 0);
-                    foreach (var l in c.Controls.OfType<Label>()) l.MaximumSize = new Size(Math.Max(S(200), list.ClientSize.Width - S(16)), 0);   // long notes wrap
+                    if (c.MinimumSize.Width != row) c.MinimumSize = new Size(row, 0);
+                    foreach (var r in c.Controls.OfType<FlowLayoutPanel>()) if (r.MaximumSize.Width != row) r.MaximumSize = new Size(row, 0);
+                    foreach (var l in c.Controls.OfType<Label>()) l.MaximumSize = new Size(Math.Max(S(200), row - S(4)), 0);   // long notes wrap
                 }
             // pack cards take a whole row: their names are long
-            foreach (var c in list.Controls.OfType<PackCard>()) c.Width = Math.Max(S(220), list.ClientSize.Width - S(12));
+            foreach (var c in list.Controls.OfType<PackCard>()) if (c.Width != row) c.Width = row;
         }
+
+        /// <summary>
+        /// Lays the list out again with everything at its final size. The scroll range is worked out when the list
+        /// is laid out, and a size changed after that (a header widened, a note wrapped) could leave it short: the
+        /// last row of cards out of reach. The headers are made full width from the start for the same reason.
+        /// </summary>
+        void Relayout() => list.PerformLayout();
 
         TargetCard Card(Skins.Target t)
         {
@@ -329,7 +352,6 @@ namespace L4D2EightPlayer.UI
         {
             options.SuspendLayout();
             options.Controls.Clear();
-            options.RowStyles.Clear();
             if (packsView) { ShowPackOptions(); options.ResumeLayout(); return; }
             if (selected == null || inv == null)
             {
@@ -687,6 +709,49 @@ namespace L4D2EightPlayer.UI
     }
 
     /// <summary>The Join side's Skins window: the same picker, for the Join side's game folder.</summary>
+    /// <summary>
+    /// A column that scrolls down only: each piece under the last, as wide as the column (text wraps to it, cards
+    /// stretch to it and set their own height). The scrollbar's room is always kept, so it appearing never changes
+    /// the width, and the scroll range always reaches the last piece. A table laid the cards out before they had
+    /// set their height for its width, so the last ones could end up out of reach.
+    /// </summary>
+    sealed class StackPanel : Panel
+    {
+        sealed class Engine : System.Windows.Forms.Layout.LayoutEngine
+        {
+            public override bool Layout(object container, LayoutEventArgs args)
+            {
+                var p = (StackPanel)container;
+                int w = Math.Max(S(120), p.ClientSize.Width - (p.VerticalScroll.Visible ? 0 : SystemInformation.VerticalScrollBarWidth) - p.Padding.Horizontal);
+                int top = p.AutoScrollPosition.Y + p.Padding.Top, y = top;
+                foreach (Control c in p.Controls)
+                {
+                    if (!c.Visible) continue;
+                    int cw = Math.Max(S(40), w - c.Margin.Horizontal);
+                    if (c.AutoSize && !(c is TextBoxBase))   // a text box's AutoSize is only its height: it stretches like a card
+                    {
+                        // text wraps at the column; sizing it is the container's job (as the stock layouts do)
+                        if (c.MaximumSize.Width != cw) c.MaximumSize = new Size(cw, 0);
+                        var ps = c.GetPreferredSize(new Size(cw, 0));
+                        c.Bounds = new Rectangle(p.Padding.Left + c.Margin.Left, y + c.Margin.Top, Math.Min(ps.Width, cw), ps.Height);
+                    }
+                    else
+                    {
+                        c.Bounds = new Rectangle(p.Padding.Left + c.Margin.Left, y + c.Margin.Top, cw, c.Height);
+                        c.PerformLayout();   // a card sets its height for this width
+                    }
+                    y = c.Bottom + c.Margin.Bottom;
+                }
+                var min = new Size(0, y - top + p.Padding.Vertical);
+                if (p.AutoScrollMinSize != min) p.AutoScrollMinSize = min;
+                return false;
+            }
+        }
+        static readonly Engine engine = new Engine();
+        public override System.Windows.Forms.Layout.LayoutEngine LayoutEngine => engine;
+        public StackPanel() { AutoScroll = true; }
+    }
+
     public sealed class SkinsForm : Form
     {
         public readonly SkinsPanel Panel;
