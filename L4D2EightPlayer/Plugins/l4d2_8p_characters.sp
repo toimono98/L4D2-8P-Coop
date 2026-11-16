@@ -431,7 +431,7 @@ int PickMenu(Menu menu, MenuAction action, int client, int item)
 	menu.GetItem(item, info, sizeof(info));
 	int entry = StringToInt(info);
 	if (!IsClientInGame(client) || GetClientTeam(client) != TEAM_SURVIVOR) return 0;
-	if (GetGameTime() - g_fLastPick[client] < 2.0) { PrintToChat(client, "[8P] One moment, then try again."); return 0; }
+	if (GetEngineTime() - g_fLastPick[client] < 2.0) { PrintToChat(client, "[8P] One moment, then try again."); return 0; }
 	if (!CanTake(client, entry, false, why, sizeof(why)))
 	{
 		// someone got there first while the menu was open
@@ -439,7 +439,7 @@ int PickMenu(Menu menu, MenuAction action, int client, int item)
 		ShowPickMenu(client, 0);
 		return 0;
 	}
-	g_fLastPick[client] = GetGameTime();
+	g_fLastPick[client] = GetEngineTime();   // engine time: it doesn't restart at a map change
 	if (!IsPlayerAlive(client))
 	{
 		Remember(client, entry);

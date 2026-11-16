@@ -44,7 +44,8 @@ namespace L4D2EightPlayer.UI
 
             var t = new TableLayoutPanel { ColumnCount = 1, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = P(24, 20, 24, 16), BackColor = Theme.Panel, Location = Point.Empty };
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(ColumnWidth)));
-            Label Line(string text, Font font, Color color, Padding margin) => new Label { Text = text, AutoSize = true, MaximumSize = Sz(ColumnWidth, 0), Font = font, ForeColor = color, Margin = margin };
+            // UseMnemonic off: an add-on called "Guns & Ammo" keeps its "&"
+            Label Line(string text, Font font, Color color, Padding margin) => new Label { Text = text, AutoSize = true, MaximumSize = Sz(ColumnWidth, 0), Font = font, ForeColor = color, Margin = margin, UseMnemonic = false };
             t.Controls.Add(Line("Before you launch", Theme.Display(16f), Theme.Bone, P(0, 0, 0, 4)));
             t.Controls.Add(Line("A few things would show up wrong, or not at all, in game. Sort them out here, or launch as they are.", Theme.Body(10f), Theme.Muted, P(0, 0, 0, 4)));
 
@@ -173,7 +174,12 @@ namespace L4D2EightPlayer.UI
                 if (d.Result == Outcome.Launch && prefs != null)
                 {
                     if (overlaps.Count > 0) Skins.KeepOverlaps(overlaps, prefs);
-                    Clashes.Resolve(gameDir, d.TurnOff().ToList(), d.KeptBoth().ToList(), prefs);
+                    try { Clashes.Resolve(gameDir, d.TurnOff().ToList(), d.KeptBoth().ToList(), prefs); }
+                    catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+                    {
+                        // the launch goes ahead with the add-ons as they are
+                        MessageBox.Show(owner, "The add-ons couldn't be turned off (" + ex.Message + "), so the game starts with them as they are.\n\nIf addonlist.txt is set to read-only, clear that.", "Before you launch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
                 return (d.Result, overlaps.FirstOrDefault()?.Target.Id);
             }

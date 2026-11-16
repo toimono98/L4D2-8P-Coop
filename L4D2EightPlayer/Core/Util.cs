@@ -24,6 +24,56 @@ namespace L4D2EightPlayer.Core
         public void Progress(string l, double f) { }
     }
 
+    /// <summary>
+    /// Reading and writing the files the app keeps (settings, picks, the game's add-on list) without losing them: a
+    /// write goes to a temporary copy that's then swapped in whole (File.Replace), so a crash or a power cut leaves
+    /// either the old file or the new one, never none; antivirus holding a file for a moment is waited out. Reads
+    /// let other programs keep the file open (the game writing addonlist.txt).
+    /// </summary>
+    public static class SafeFile
+    {
+        public static void WriteText(string path, string text)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
+            var tmp = path + ".tmp";
+            Retry(() => System.IO.File.WriteAllText(tmp, text, new UTF8Encoding(false)));
+            Retry(() =>
+            {
+                if (System.IO.File.Exists(path)) System.IO.File.Replace(tmp, path, null, true);
+                else System.IO.File.Move(tmp, path);
+            });
+        }
+
+        public static string ReadText(string path)
+        {
+            string text = null;
+            Retry(() =>
+            {
+                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var r = new StreamReader(fs, Encoding.UTF8, true))
+                    text = r.ReadToEnd();
+            });
+            return text;
+        }
+
+        /// <summary>A few tries over about a second: a scanner or the game holding the file lets go quickly.</summary>
+        static void Retry(Action a)
+        {
+            for (int i = 0; ; i++)
+            {
+                try { a(); return; }
+                catch (IOException) when (i < 4) { System.Threading.Thread.Sleep(150 + i * 100); }
+                catch (UnauthorizedAccessException) when (i < 4) { System.Threading.Thread.Sleep(150 + i * 100); }
+            }
+        }
+
+        /// <summary>Notes a failure in errors.log (a save the app can live without, for now).</summary>
+        public static void Note(string what, Exception ex)
+        {
+            try { System.IO.File.AppendAllText(Path.Combine(Paths.AppData, "errors.log"), $"{DateTime.Now:s}  {what}: {ex.GetType().Name}: {ex.Message}{Environment.NewLine}"); } catch { }
+        }
+    }
+
     public static class Paths
     {
         public static string AppData
@@ -77,24 +127,26 @@ namespace L4D2EightPlayer.Core
 
         public static string Write(object o) => Pretty(Serializer.Serialize(o));
 
+        /// <summary>
+        /// The saved object, or a new one. A missing or damaged file falls back to the copy a save left behind
+        /// (path.tmp: written, not yet swapped in), so an interrupted save never resets the settings.
+        /// </summary>
         public static T Load<T>(string path) where T : new()
         {
-            try
+            foreach (var p in new[] { path, path + ".tmp" })
             {
-                if (System.IO.File.Exists(path)) return Parse<T>(System.IO.File.ReadAllText(path)) ?? new T();
+                try
+                {
+                    if (!System.IO.File.Exists(p)) continue;
+                    var o = Parse<T>(SafeFile.ReadText(p));
+                    if (o != null) return o;
+                }
+                catch { /* damaged: try the next copy */ }
             }
-            catch { /* corrupt file: start fresh */ }
             return new T();
         }
 
-        public static void Save(string path, object o)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            var tmp = path + ".tmp";
-            System.IO.File.WriteAllText(tmp, Write(o), new UTF8Encoding(false));
-            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
-            System.IO.File.Move(tmp, path);
-        }
+        public static void Save(string path, object o) => SafeFile.WriteText(path, Write(o));
 
         /// <summary>Indents compact JSON so saved state files stay readable.</summary>
         static string Pretty(string json)

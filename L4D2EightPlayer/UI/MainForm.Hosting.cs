@@ -244,6 +244,8 @@ namespace L4D2EightPlayer.UI
                 }
                 if (publicIp == null) { try { publicIp = await Launcher.PublicAddress(); } catch { } }
                 bool firewall = await Task.Run(() => Firewall.RuleExists());
+                var program = HostProgram;
+                bool blocked = program != null && File.Exists(program) && await Task.Run(() => Firewall.Blocked(program));
 
                 string Mark(string to) => to == null ? "✖ not forwarded" : to == lan ? "✔ forwarded to this PC" : $"⚠ forwarded to another device ({to})";
                 var sb = new System.Text.StringBuilder();
@@ -253,7 +255,7 @@ namespace L4D2EightPlayer.UI
                 sb.Append($"Your public address        {publicIp ?? "unknown (no internet?)"}{nl}");
                 sb.Append($"Port {HostPort} UDP (game)      {(upnp == null ? "unknown (check your router)" : Mark(udp))}{nl}");
                 sb.Append($"Port {HostPort} TCP (rcon)      {(upnp == null ? "unknown (check your router)" : Mark(tcp))}{nl}");
-                sb.Append($"Windows Firewall rule      {(firewall ? "✔ present" : "– not added (Windows will ask when the server first starts)")}{nl}{nl}");
+                sb.Append($"Windows Firewall rule      {(blocked ? "✖ Windows is blocking the server (a cancelled \"Allow access?\" prompt): click Allow in firewall" : firewall ? "✔ present" : "– not added (Windows will ask when the server first starts)")}{nl}{nl}");
 
                 bool cgnat = Network.IsPrivate(routerExternal) || (routerExternal != null && publicIp != null && routerExternal != publicIp);
                 if (cgnat)
@@ -362,7 +364,9 @@ namespace L4D2EightPlayer.UI
         {
             if (Preview || settings.ForwardedPort == 0 || !settings.AutoPortForward) return;
             bool hosting = (serverProcess != null && !serverProcess.HasExited) || System.Diagnostics.Process.GetProcessesByName("srcds").Length > 0 || Launcher.GameRunning();
-            if (!hosting) await Unforward(settings.ForwardedPort);
+            // offline, or no router answering: it's tried again next time
+            try { if (!hosting) await Unforward(settings.ForwardedPort); }
+            catch (Exception ex) { Warn("Couldn't close the port left open last time: " + ex.Message); }
         }
 
         async Task AllowFirewall()
@@ -417,7 +421,12 @@ namespace L4D2EightPlayer.UI
             if (publicIp == null) { try { publicIp = await Launcher.PublicAddress(); } catch { } }
             var t = new JoinTarget { Host = ShareHost(), Port = HostPort, Password = settings.Mode == "listen" ? "" : settings.Password };
             var text = $"Join my L4D2 8-player game: {t.SteamUrl}   (or in the L4D2 console: {t.ConsoleCommand})" + CampaignNeeds();
-            Clipboard.SetText(text);
+            try { Clipboard.SetDataObject(text, true, 5, 100); }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException || ex is System.Threading.ThreadStateException)
+            {
+                MessageBox.Show(this, "Another program is using the clipboard, so the invite couldn't be copied. Try again in a moment.\n\n" + text, Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             Info("Copied invite: " + text + (publicIp == null ? "  (LAN address only; no internet address found)" : ""));
         }
 

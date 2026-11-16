@@ -13,10 +13,17 @@ namespace L4D2EightPlayer.Core
         /// <summary>"STEAM_1:y:z" (the form SourceMod reports) for the signed-in account, else the last one used; null if none.</summary>
         public static string Steam2()
         {
+            long account = AccountId();
+            return account > 0 ? $"STEAM_1:{account & 1}:{account >> 1}" : null;
+        }
+
+        /// <summary>The signed-in account's number (its userdata folder's name), else the last one used; 0 if none.</summary>
+        public static long AccountId()
+        {
             long account = 0;
             try { account = Convert.ToInt64(Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam\ActiveProcess", "ActiveUser", 0) ?? 0); } catch { }
             if (account <= 0) account = MostRecent();
-            return account > 0 ? $"STEAM_1:{account & 1}:{account >> 1}" : null;
+            return account;
         }
 
         /// <summary>The account Steam marks MostRecent in config\loginusers.vdf (when Steam isn't running).</summary>

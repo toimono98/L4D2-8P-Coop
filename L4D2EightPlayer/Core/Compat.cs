@@ -147,6 +147,8 @@ namespace L4D2EightPlayer.Core
         public static AddonInfo ReadAddon(string path)
         {
             var fi = new FileInfo(path);
+            try { fi.Refresh(); if (!fi.Exists) return new AddonInfo { Error = "the file is gone (Steam may be updating it)" }; _ = fi.Length; }
+            catch (Exception ex) { return new AddonInfo { Error = ex.Message }; }
             lock (VpkCache)   // the Skins tab reads add-ons in the background while the Mods tab may scan
                 if (VpkCache.TryGetValue(path, out var c) && c.size == fi.Length && c.mtime == fi.LastWriteTimeUtc) return c.info;
 
@@ -224,7 +226,8 @@ namespace L4D2EightPlayer.Core
             var result = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
             var path = Path.Combine(gameDir, "addonlist.txt");
             if (!File.Exists(path)) return result;
-            foreach (Match m in Regex.Matches(File.ReadAllText(path), "\"([^\"]+\\.vpk)\"\\s+\"(\\d)\"", RegexOptions.IgnoreCase))
+            // shared: the game may be writing it right now
+            foreach (Match m in Regex.Matches(SafeFile.ReadText(path), "\"([^\"]+\\.vpk)\"\\s+\"(\\d)\"", RegexOptions.IgnoreCase))
                 result[m.Groups[1].Value.Replace('/', '\\').Replace("\\\\", "\\")] = m.Groups[2].Value != "0";
             return result;
         }
@@ -686,7 +689,7 @@ namespace L4D2EightPlayer.Core
             if (changes.Count == 0) return;
             var path = Path.Combine(gameDir, "addonlist.txt");
             var backup = Path.Combine(InstallState.Dir(gameDir), "addonlist.txt.original");
-            string text = File.Exists(path) ? File.ReadAllText(path) : "\"AddonList\"\n{\n}\n";
+            string text = File.Exists(path) ? SafeFile.ReadText(path) : "\"AddonList\"\n{\n}\n";
             if (File.Exists(path) && !File.Exists(backup))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(backup));
@@ -706,7 +709,8 @@ namespace L4D2EightPlayer.Core
                     text = close >= 0 ? text.Substring(0, close) + line + text.Substring(close) : text + line;
                 }
             }
-            File.WriteAllText(path, text, new UTF8Encoding(false));
+            // swapped in whole: a failed write never leaves the game a half list (it would turn every add-on on)
+            SafeFile.WriteText(path, text);
         }
 
         public static void SetAddonEnabled(string gameDir, string key, bool enabled) =>

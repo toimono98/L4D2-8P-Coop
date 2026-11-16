@@ -558,7 +558,12 @@ namespace L4D2EightPlayer.Core
         public static string FilePath = Path.Combine(Paths.AppData, "skins.json");
 
         public static SkinPrefs Load() => Json.Load<SkinPrefs>(FilePath);
-        public void Save() { if (!ReadOnly) Json.Save(FilePath, this); }
+        public void Save()
+        {
+            if (ReadOnly) return;
+            try { Json.Save(FilePath, this); }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { SafeFile.Note("Couldn't save the skin picks", ex); }
+        }
 
         static string Stamp(Skins.Mod m)
         {

@@ -83,6 +83,11 @@ namespace L4D2EightPlayer
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.ThreadException += (s, e) => UnexpectedError(e.Exception);
+                // an error on a background thread ends the app: at least errors.log says why
+                AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                {
+                    try { File.AppendAllText(Path.Combine(Paths.AppData, "errors.log"), $"{DateTime.Now:s}  {AppInfo.Version}  (background, the app closed){Environment.NewLine}{e.ExceptionObject}{Environment.NewLine}{Environment.NewLine}"); } catch { }
+                };
                 // the loading screen first (Safe room wall): it follows the side's startup steps and goes once it's ready
                 Startup.Begin(mode);
                 Application.Run(AppWindow.Instance = new AppWindow(mode, invite));

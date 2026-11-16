@@ -64,7 +64,7 @@ namespace L4D2EightPlayer.Join
             try
             {
                 var w = new FileSystemWatcher(addons, "*.vpk") { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size };
-                FileSystemEventHandler h = (s, e) => { if (!IsDisposed) BeginInvoke((Action)(() => { addonTimer.Stop(); addonTimer.Start(); })); };
+                FileSystemEventHandler h = (s, e) => { try { if (!IsDisposed && IsHandleCreated) BeginInvoke((Action)(() => { addonTimer.Stop(); addonTimer.Start(); })); } catch (InvalidOperationException) { /* closing */ } };
                 w.Created += h; w.Changed += h; w.Deleted += h;
                 w.Renamed += (s, e) => h(s, e);
                 // the game's own list changes when add-ons are turned on and off in its menu

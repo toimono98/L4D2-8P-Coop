@@ -21,6 +21,8 @@ namespace L4D2EightPlayer.UI
         Process serverProcess;
         CancellationTokenSource cts;
         bool busy, loading;
+        /// <summary>What RunBusy is doing ("Installing"), for the question when the window is closed meanwhile.</summary>
+        string busyWhat = "An install";
         readonly List<FileSystemWatcher> watchers = new List<FileSystemWatcher>();
         readonly System.Windows.Forms.Timer rescanTimer = new System.Windows.Forms.Timer { Interval = 3000 };
         readonly System.Windows.Forms.Timer gameWatch = new System.Windows.Forms.Timer { Interval = 3000 };
@@ -827,7 +829,7 @@ namespace L4D2EightPlayer.UI
             {
                 if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
                 var w = new FileSystemWatcher(dir, filter) { IncludeSubdirectories = sub, NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size };
-                FileSystemEventHandler h = (s, e) => BeginInvoke((Action)(() => { rescanTimer.Stop(); rescanTimer.Start(); }));
+                FileSystemEventHandler h = (s, e) => { try { if (!IsDisposed && IsHandleCreated) BeginInvoke((Action)(() => { rescanTimer.Stop(); rescanTimer.Start(); })); } catch (InvalidOperationException) { /* closing */ } };
                 w.Created += h; w.Changed += h; w.Deleted += h;
                 w.Renamed += (s, e) => h(s, e);
                 w.EnableRaisingEvents = true;
@@ -854,7 +856,8 @@ namespace L4D2EightPlayer.UI
             numPlayers.Maximum = listen ? 8 : 16;
             rbDirect.Enabled = rbLobby.Enabled = txtLobbyAddress.Enabled = chkSync.Enabled = chkUpdateOnStart.Enabled = !listen;
             btnStart.Visible = btnStop.Visible = !listen;
-            btnStart.Enabled = !running && !busy;
+            btnStart.Enabled = !running && !busy && !starting;
+            btnJoin.Enabled = !busy && !starting;
             btnStop.Enabled = running;
             btnJoin.Text = listen ? "Launch L4D2 to host" : "Launch L4D2 & join";
             lblServerState.Text = listen ? "⚠ YOUR GAME RUNS -INSECURE (NO VAC) WHILE YOU HOST" : "✔ YOUR GAME STAYS VAC-SECURE · THE MODS RUN ON THE SERVER";
@@ -976,8 +979,21 @@ namespace L4D2EightPlayer.UI
             return outcome == LaunchReview.Outcome.Launch;
         }
 
+        /// <summary>A launch or server start is under way (from the click to the server or game being up): a second click waits.</summary>
+        bool starting;
+
         /// <param name="launching">Launch L4D2 & join is starting it: the review covers your skins too.</param>
         async Task StartServer(bool launching = false)
+        {
+            if (launching) { await StartServerCore(true); return; }   // Launch L4D2 & join already holds the guard
+            if (starting) return;
+            starting = true;
+            UpdatePlayState();
+            try { await StartServerCore(false); }
+            finally { starting = false; UpdatePlayState(); }
+        }
+
+        async Task StartServerCore(bool launching)
         {
             ReadPlaySettings();
             if (!EnsureInstalled()) return;
@@ -1004,6 +1020,7 @@ namespace L4D2EightPlayer.UI
                 Info($"Mod list for joining friends: {mods.Count(m => m.Required)} required, {mods.Count(m => !m.Required)} cosmetic.");
             });
             if (!ok || !await ReviewBeforeLaunch(skins: launching, problems: true)) return;
+            if (!ClearTheWay()) return;
 
             try
             {
@@ -1075,6 +1092,40 @@ namespace L4D2EightPlayer.UI
         }
 
         async Task LaunchGame()
+        {
+            if (starting) return;
+            starting = true;
+            UpdatePlayState();
+            try { await LaunchGameCore(); }
+            finally { starting = false; UpdatePlayState(); }
+        }
+
+        /// <summary>
+        /// Before a server starts: one from this folder still running (left open when the app closed last time) or
+        /// another program on the port would leave the new one on another port, while the invite, the auto-join
+        /// and the router still point at the first. Stops the old one (asked first), or says what's in the way.
+        /// </summary>
+        bool ClearTheWay()
+        {
+            var stray = Launcher.ServersRunningFrom(settings.ServerInstallDir).Where(p => serverProcess == null || p.Id != serverProcess.Id).ToList();
+            if (stray.Count > 0)
+            {
+                var r = MessageBox.Show(this, "A server from this folder is still running (left open last time).\n\nStop it and start a new one with your current settings?",
+                    Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (r != DialogResult.Yes) { foreach (var p in stray) p.Dispose(); return false; }
+                foreach (var p in stray) { Launcher.StopServer(p); p.Dispose(); }
+                Info("Stopped the server left running from last time.");
+            }
+            if (Launcher.PortInUse(settings.Port))
+            {
+                MessageBox.Show(this, $"Port {settings.Port} is in use by another program, so the server would start on a different port and friends couldn't reach it.\n\nClose that program (another server?), or pick another port under More settings on the Play tab.",
+                    Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            return true;
+        }
+
+        async Task LaunchGameCore()
         {
             ReadPlaySettings();
             if (!GameLocator.IsGameDir(settings.GamePath)) { MessageBox.Show(this, "Set your Left 4 Dead 2 folder on the Setup tab first.", Title); return; }
@@ -1177,6 +1228,7 @@ namespace L4D2EightPlayer.UI
         {
             if (busy) return false;
             busy = true;
+            busyWhat = label;
             cts = new CancellationTokenSource();
             SetBusyUi(true, label);
             try
@@ -1252,6 +1304,14 @@ namespace L4D2EightPlayer.UI
         /// <summary>Closing: the running-server question, listen mods off, the tray icon. The app window calls it too.</summary>
         internal void OnClosing(object sender, FormClosingEventArgs e)
         {
+            // closing now would stop it mid-copy: files half written, and the backups of your own files not recorded
+            if (busy)
+            {
+                var keep = MessageBox.Show(this, $"{busyWhat} is still running. Closing now can leave files half copied.\n\nKeep the app open until it finishes?",
+                    Title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (keep == DialogResult.Yes) { e.Cancel = true; return; }
+                cts?.Cancel();
+            }
             if (serverProcess != null && !serverProcess.HasExited)
             {
                 var r = MessageBox.Show(this, "The server is still running. Stop it before closing?", Title, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);

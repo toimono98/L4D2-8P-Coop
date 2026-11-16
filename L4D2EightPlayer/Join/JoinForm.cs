@@ -34,7 +34,12 @@ namespace L4D2EightPlayer.Join
         public static JoinSettings Load() => Json.Load<JoinSettings>(FilePath);
         /// <summary>Set by the layout audit so it never overwrites the real recent list.</summary>
         public static bool ReadOnly;
-        public void Save() { if (!ReadOnly) Json.Save(FilePath, this); }
+        public void Save()
+        {
+            if (ReadOnly) return;
+            try { Json.Save(FilePath, this); }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { SafeFile.Note("Couldn't save the join settings", ex); }
+        }
     }
 
     /// <summary>The 8 survivor pips under a server: red = host, bone = filled, outline = open.</summary>
@@ -164,7 +169,11 @@ namespace L4D2EightPlayer.Join
             txtTarget = new TextBox { Dock = DockStyle.Fill, Font = Theme.Mono(12f), Margin = P(0, 4, 10, 0), AccessibleName = "Invite, IP or connect line" };
             txtTarget.KeyDown += async (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; await Check(); } };
             var paste = new GameButton("Paste", ButtonKind.Ghost, 10f) { Margin = P(0, 0, 10, 0) };
-            paste.Click += (s, e) => { if (Clipboard.ContainsText()) txtTarget.Text = Clipboard.GetText().Trim(); };
+            paste.Click += (s, e) =>
+            {
+                try { if (Clipboard.ContainsText()) txtTarget.Text = Clipboard.GetText().Trim(); }
+                catch (System.Runtime.InteropServices.ExternalException) { MessageBox.Show(this, "Another program is using the clipboard. Try Paste again in a moment, or press Ctrl+V in the box.", Title); }
+            };
             btnCheck = new GameButton("Check server", ButtonKind.Outline, 11f) { Margin = P(0) };
             btnCheck.Click += async (s, e) => await Check();
             inv.Controls.Add(txtTarget, 0, 1);
@@ -498,6 +507,7 @@ namespace L4D2EightPlayer.Join
         /// </summary>
         async Task JoinGame(bool lobby = false)
         {
+            if (downloads != null) { downloads.Cancel(); return; }   // the button reads "Stop" while the mods download
             var t = Target();
             if (t == null && !lobby) { await Check(); return; }
             var steam = GameLocator.FindSteam();
@@ -540,8 +550,9 @@ namespace L4D2EightPlayer.Join
                     // the connect waits until the game has loaded the Workshop add-ons: joining straight away leaves them
                     // (skins, the host's campaign) out for the whole session
                     var started = DateTime.UtcNow;
+                    bool steamUp = Launcher.SteamRunning();   // if not, Steam starts first and the game comes later
                     Process.Start(new ProcessStartInfo(Path.Combine(steam, "steam.exe"), $"-applaunch {GameLocator.GameAppId}") { UseShellExecute = true });
-                    _ = ConnectOnceAddonsLoad(t, started);
+                    _ = ConnectOnceAddonsLoad(t, started, steamUp);
                 }
                 Remember(t, null, joined: true);
                 btnJoin.Text = "Starting L4D2…";
@@ -554,12 +565,22 @@ namespace L4D2EightPlayer.Join
         }
 
         /// <summary>The game just started: once it has loaded the Workshop add-ons, it's sent to the server (steam://connect).</summary>
-        async Task ConnectOnceAddonsLoad(JoinTarget t, DateTime started)
+        async Task ConnectOnceAddonsLoad(JoinTarget t, DateTime started, bool steamWasRunning = true)
         {
-            lblNotes.Text = "Starting L4D2. It joins once your Workshop add-ons (skins, campaigns) have loaded, usually under a minute.";
-            bool loaded = ClientGameDir != null && await Launcher.WaitForWorkshopAddons(ClientGameDir, started, TimeSpan.FromMinutes(2));
+            lblNotes.Text = steamWasRunning
+                ? "Starting L4D2. It joins once your Workshop add-ons (skins, campaigns) have loaded, usually under a minute."
+                : "Starting Steam, then L4D2. It joins once your Workshop add-ons have loaded; with Steam starting too, that can take a couple of minutes.";
+            // Steam starting (and signing in) first takes longer
+            var wait = TimeSpan.FromMinutes(steamWasRunning ? 2 : 4);
+            bool loaded = ClientGameDir != null && await Launcher.WaitForWorkshopAddons(ClientGameDir, started, wait);
             if (!loaded && ClientGameDir == null) await Task.Delay(20000);
-            if (IsDisposed || !Launcher.GameRunning()) return;
+            if (IsDisposed) return;
+            if (!Launcher.GameRunning())
+            {
+                lblNotes.Text = "Left 4 Dead 2 didn't start (or was closed). Check Steam, then click Join game again.";
+                lblNotes.ForeColor = Theme.Amber;
+                return;
+            }
             try { Process.Start(t.SteamUrl); } catch (Exception ex) { lblNotes.Text = "Couldn't send the game to the server: " + ex.Message; return; }
             lblNotes.Text = "Connecting. You'll spawn as a survivor automatically. If you end up spectating, type !join in chat.";
         }
@@ -570,7 +591,9 @@ namespace L4D2EightPlayer.Join
             ShowEmpty("Listening on your network…", "Looking for L4D2 servers on this network.");
             try
             {
-                var found = await ServerQuery.FindLan();
+                List<ServerInfo> found;
+                try { found = await ServerQuery.FindLan(); }
+                catch (Exception ex) { ShowEmpty("Couldn't search your network", ex.Message + " Use the host's invite instead."); return; }
                 if (found.Count == 0) { ShowEmpty("Nothing on your network", "No L4D2 servers answered here. Use the host's invite instead."); return; }
                 foreach (var f in found) Remember(JoinTarget.Parse(f.Address), f.Name);
                 ShowEmpty($"Found {found.Count} game(s) on your network", "They're in Recent groups below. Double-click one to check it.");

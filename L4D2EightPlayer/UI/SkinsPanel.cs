@@ -137,7 +137,7 @@ namespace L4D2EightPlayer.UI
         /// <summary>Reads the add-ons again (in the background) and redraws the lists.</summary>
         public async Task Reload()
         {
-            if (loading) return;
+            if (loading) { reloadAgain = true; return; }
             loading = true;
             try
             {
@@ -176,8 +176,40 @@ namespace L4D2EightPlayer.UI
                     });
                 }
                 if (InvokeRequired) Invoke((Action)Show); else Show();
+                loadedStamp = Stamp();
             }
-            finally { loading = false; }
+            catch (Exception ex)
+            {
+                // a file locked or vanishing mid-read (Steam updating an add-on): said here; Look again (or the next change) retries
+                banner.Text = "Couldn't read your add-ons just now (" + ex.Message + "). Click Look again in a moment.";
+                banner.Visible = true;
+            }
+            finally
+            {
+                loading = false;
+                if (reloadAgain && !IsDisposed) { reloadAgain = false; await Reload(); }
+            }
+        }
+
+        bool reloadAgain;
+        string loadedStamp;
+
+        /// <summary>When the picks and the game's add-on list were last written: changed means the panel is out of date.</summary>
+        string Stamp()
+        {
+            try
+            {
+                var list = gameDir() == null ? null : Path.Combine(gameDir(), "addonlist.txt");
+                return File.GetLastWriteTimeUtc(SkinPrefs.FilePath).Ticks + "|" + (list != null && File.Exists(list) ? File.GetLastWriteTimeUtc(list).Ticks : 0);
+            }
+            catch { return null; }
+        }
+
+        protected override async void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            // shown again (switching HOST | JOIN or tabs) after the picks or the add-on list changed elsewhere: read them again
+            if (Visible && inv != null && !loading && loadedStamp != null && Stamp() != loadedStamp) await Reload();
         }
 
         bool GameOpen => PretendGameOpen || Launcher.GameRunning();
@@ -339,6 +371,7 @@ namespace L4D2EightPlayer.UI
         {
             if (inv == null || selected == null) return;
             if (GameOpen) { MessageBox.Show(FindForm(), "Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.", "Skins", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            prefs = SkinPrefs.Load();   // the latest picks: the other side, a launch or the Mods tab may have saved newer ones
             var cs = Skins.Plan(inv, selected, mod);
             var finding = mod == null ? null : findingFor?.Invoke(mod.Path);
             bool risky = finding != null && finding.Severity >= Severity.Problem;
@@ -368,6 +401,7 @@ namespace L4D2EightPlayer.UI
         {
             if (inv == null) return;
             if (GameOpen) { MessageBox.Show(FindForm(), "Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.", "Skins", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            prefs = SkinPrefs.Load();   // the latest picks: the other side, a launch or the Mods tab may have saved newer ones
             var off = Skins.AllOn(inv);
             if (off.Count == 0) return;
             int stays = inv.Mods.Count(m => m.Enabled && m.Locked);
@@ -387,6 +421,7 @@ namespace L4D2EightPlayer.UI
         {
             if (inv == null) return;
             if (GameOpen) { MessageBox.Show(FindForm(), "Close Left 4 Dead 2 first: it rewrites its add-on list when it exits.", "Skins", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            prefs = SkinPrefs.Load();   // the latest picks: the other side, a launch or the Mods tab may have saved newer ones
             var plan = Skins.PlanSection(inv, pick);
             if (plan.Nothing) return;
             string List(IEnumerable<string> names, int max) { var l = names.ToList(); return string.Join(", ", l.Take(max)) + (l.Count > max ? $" and {l.Count - max} more" : ""); }

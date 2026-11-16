@@ -35,6 +35,11 @@ namespace L4D2EightPlayer.Setup
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             ClientSize = Sz(780, 700);
+            // a 1080p laptop at 150% has less room than that: kept on the screen, the page scrolls instead
+            var wa = Screen.FromPoint(Cursor.Position).WorkingArea;
+            int chrome = Height - ClientSize.Height;
+            if (Height > wa.Height) ClientSize = new Size(ClientSize.Width, wa.Height - chrome);
+            body.AutoScroll = true;
             Icon = Theme.AppIcon();
             header = new NavBar() { Title = "8-PLAYER CO-OP", Subtitle = "LEFT 4 DEAD 2 · SETUP" };
             Controls.Add(body);

@@ -58,29 +58,56 @@ namespace L4D2EightPlayer.Core
         }
 
         /// <summary>Downloads to <paramref name="dest"/> via a temp file, reporting progress.</summary>
+        /// <summary>A download that receives nothing for this long has stalled (Wi-Fi dropped): it stops instead of waiting forever.</summary>
+        public static readonly TimeSpan Stall = TimeSpan.FromSeconds(60);
+
+        /// <summary>
+        /// Downloads to <paramref name="dest"/> via a temp file, reporting progress. Stops when no data arrives for a minute,
+        /// checks the length the server announced, and leaves no half file behind when it fails.
+        /// </summary>
         public static async Task Download(string url, string dest, ILog log, CancellationToken ct = default)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(dest));
             var tmp = dest + ".part";
-            using (var resp = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+            using (var stall = CancellationTokenSource.CreateLinkedTokenSource(ct))
             {
-                if (!resp.IsSuccessStatusCode)
-                    throw new IOException($"HTTP {(int)resp.StatusCode} downloading {url}");
-                long? total = resp.Content.Headers.ContentLength;
-                using (var src = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                using (var dst = File.Create(tmp))
+                try
                 {
-                    var buf = new byte[81920];
-                    long done = 0;
-                    int n;
-                    var name = Path.GetFileName(dest);
-                    while ((n = await src.ReadAsync(buf, 0, buf.Length, ct).ConfigureAwait(false)) > 0)
+                    stall.CancelAfter(Stall);
+                    using (var resp = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false))
+                    // on .NET Framework a read that's waiting doesn't notice its token: closing the response ends it
+                    using (stall.Token.Register(() => { try { resp.Dispose(); } catch { } }))
                     {
-                        await dst.WriteAsync(buf, 0, n, ct).ConfigureAwait(false);
-                        done += n;
-                        if (total > 0) log?.Progress("Downloading " + name, (double)done / total.Value);
+                        if (!resp.IsSuccessStatusCode)
+                            throw new IOException($"HTTP {(int)resp.StatusCode} downloading {url}");
+                        long? total = resp.Content.Headers.ContentLength;
+                        long done = 0;
+                        using (var src = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                        using (var dst = File.Create(tmp))
+                        {
+                            var buf = new byte[81920];
+                            int n;
+                            var name = Path.GetFileName(dest);
+                            while ((n = await src.ReadAsync(buf, 0, buf.Length, stall.Token).ConfigureAwait(false)) > 0)
+                            {
+                                stall.CancelAfter(Stall);   // data arrived: the minute starts again
+                                await dst.WriteAsync(buf, 0, n, ct).ConfigureAwait(false);
+                                done += n;
+                                if (total > 0) log?.Progress("Downloading " + name, (double)done / total.Value);
+                            }
+                        }
+                        if (total.HasValue && done != total.Value)
+                            throw new IOException($"the download of {Path.GetFileName(dest)} stopped early ({done / 1024} of {total.Value / 1024} KB)");
                     }
                 }
+                catch (Exception ex) when (!(ex is OperationCanceledException && ct.IsCancellationRequested))
+                {
+                    try { File.Delete(tmp); } catch { }
+                    if (stall.IsCancellationRequested && !ct.IsCancellationRequested)
+                        throw new IOException($"the download of {Path.GetFileName(dest)} stalled (nothing received for a minute). Check the internet connection and try again.");
+                    throw;
+                }
+                catch { try { File.Delete(tmp); } catch { } throw; }   // cancelled by the user
             }
             if (File.Exists(dest)) File.Delete(dest);
             File.Move(tmp, dest);

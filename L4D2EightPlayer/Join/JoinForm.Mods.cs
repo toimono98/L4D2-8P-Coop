@@ -20,6 +20,8 @@ namespace L4D2EightPlayer.Join
     public sealed partial class JoinForm
     {
         List<ServerMods.Item> serverMods = new List<ServerMods.Item>();
+        /// <summary>The server's mods downloading (Join game clicked again stops them).</summary>
+        CancellationTokenSource downloads;
         readonly Dictionary<string, CheckBox> cosmeticPicks = new Dictionary<string, CheckBox>();
         TableLayoutPanel modsList;
         Label modsSummary;
@@ -127,22 +129,38 @@ namespace L4D2EightPlayer.Join
             if (todo.Count == 0) return true;
 
             var failed = new List<string>();
-            btnJoin.Enabled = false;
+            // the button stays live to stop it; the other buttons wait
+            downloads = new CancellationTokenSource();
+            btnLobby.Enabled = btnCheck.Enabled = false;
+            bool stopped = false;
             try
             {
-                for (int i = 0; i < todo.Count; i++)
+                for (int i = 0; i < todo.Count && !stopped; i++)
                 {
                     var m = todo[i];
-                    var progress = new ButtonProgress(this, $"Downloading {i + 1}/{todo.Count}");
-                    lblNotes.Text = $"Downloading {m.Title} ({SizeText(m.Size)}) from Steam…";
+                    var progress = new ButtonProgress(this, $"Stop · downloading {i + 1}/{todo.Count}");
+                    lblNotes.Text = $"Downloading {m.Title} ({SizeText(m.Size)}) from Steam… Click the button to stop.";
                     lblNotes.ForeColor = Theme.Bone;
                     lblNotes.Visible = true;
-                    try { await ServerMods.Download(ClientGameDir, m, progress, CancellationToken.None); }
+                    try { await ServerMods.Download(ClientGameDir, m, progress, downloads.Token); }
+                    catch (OperationCanceledException) { stopped = true; }
                     catch (Exception ex) { failed.Add(m.Title + (m.Required ? " (required)" : "") + ": " + ex.Message); }
                 }
             }
-            finally { btnJoin.Enabled = true; btnJoin.Text = "Join game"; }
+            finally
+            {
+                downloads.Dispose();
+                downloads = null;
+                btnJoin.Enabled = btnLobby.Enabled = btnCheck.Enabled = true;
+                btnJoin.Text = "Join game";
+            }
             ShowMods();
+            if (stopped)
+            {
+                lblNotes.Text = "Downloads stopped. Click Join game to start them again (finished ones are kept).";
+                lblNotes.ForeColor = Theme.Amber;
+                return false;
+            }
             _ = CheckConflicts();   // the downloaded mods may clash with ones you have
             if (failed.Count == 0) return true;
             bool requiredFailed = todo.Any(m => m.Required && !m.Have);
@@ -164,7 +182,7 @@ namespace L4D2EightPlayer.Join
             public void Progress(string what, double fraction)
             {
                 if (form.IsDisposed) return;
-                if (form.InvokeRequired) { form.BeginInvoke((Action)(() => Progress(what, fraction))); return; }
+                if (form.InvokeRequired) { try { if (form.IsHandleCreated) form.BeginInvoke((Action)(() => Progress(what, fraction))); } catch (InvalidOperationException) { } return; }
                 form.btnJoin.Text = $"{label} · {fraction:P0}";
             }
         }

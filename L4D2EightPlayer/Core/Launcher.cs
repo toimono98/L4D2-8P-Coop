@@ -213,6 +213,31 @@ namespace L4D2EightPlayer.Core
             catch (IOException) { return ""; }
         }
 
+        /// <summary>Dedicated servers (srcds) running from this server folder.</summary>
+        public static List<Process> ServersRunningFrom(string serverDir)
+        {
+            var found = new List<Process>();
+            if (string.IsNullOrEmpty(serverDir)) return found;
+            var dir = Path.GetFullPath(serverDir).TrimEnd('\\');
+            foreach (var p in Process.GetProcessesByName("srcds"))
+            {
+                try
+                {
+                    if (string.Equals(Path.GetDirectoryName(p.MainModule.FileName), dir, StringComparison.OrdinalIgnoreCase)) { found.Add(p); continue; }
+                }
+                catch { /* another user's process: not ours */ }
+                p.Dispose();
+            }
+            return found;
+        }
+
+        /// <summary>Something already listens on this UDP port (a server answers on it).</summary>
+        public static bool PortInUse(int port)
+        {
+            try { return System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners().Any(e => e.Port == port); }
+            catch { return false; }
+        }
+
         public static void StopServer(Process p)
         {
             if (p == null || p.HasExited) return;
@@ -224,7 +249,17 @@ namespace L4D2EightPlayer.Core
             catch (InvalidOperationException) { }
         }
 
-        public static bool GameRunning() => Process.GetProcessesByName("left4dead2").Length > 0;
+        public static bool GameRunning() => Running("left4dead2");
+
+        /// <summary>The Steam client is running (when it isn't, -applaunch starts it first, which can take a minute).</summary>
+        public static bool SteamRunning() => Running("steam");
+
+        static bool Running(string name)
+        {
+            var ps = Process.GetProcessesByName(name);
+            foreach (var p in ps) p.Dispose();
+            return ps.Length > 0;
+        }
 
         public static void LaunchGame(string args)
         {
@@ -244,10 +279,13 @@ namespace L4D2EightPlayer.Core
             var list = Path.Combine(clientGameDir ?? "", "addonlist.txt");
             var ws = Path.Combine(clientGameDir ?? "", "addons", "workshop");
             var until = DateTime.UtcNow + timeout;
+            bool seen = false;
             while (DateTime.UtcNow < until)
             {
                 await Task.Delay(1000).ConfigureAwait(false);
-                if (!GameRunning() && DateTime.UtcNow - startedUtc > TimeSpan.FromSeconds(20)) return false;
+                // Steam may have to start (and sign in) before the game appears: only once it has, its closing ends the wait
+                if (GameRunning()) seen = true;
+                else if (seen) return false;
                 try
                 {
                     if (!File.Exists(list) || File.GetLastWriteTimeUtc(list) < startedUtc) continue;
@@ -305,7 +343,10 @@ namespace L4D2EightPlayer.Core
                 var steam = GameLocator.FindSteam();
                 var userdata = steam == null ? null : Path.Combine(steam, "userdata");
                 if (userdata == null || !Directory.Exists(userdata)) return null;
-                var cfg = Directory.GetDirectories(userdata)
+                // the signed-in account's own settings first (a shared PC has several accounts); else the newest
+                var account = SteamAccount.AccountId();
+                var mine = account > 0 ? Path.Combine(userdata, account.ToString(), "config", "localconfig.vdf") : null;
+                var cfg = mine != null && File.Exists(mine) ? mine : Directory.GetDirectories(userdata)
                     .Select(d => Path.Combine(d, "config", "localconfig.vdf"))
                     .Where(File.Exists)
                     .OrderByDescending(File.GetLastWriteTimeUtc)
@@ -325,7 +366,9 @@ namespace L4D2EightPlayer.Core
 
         public static async Task<string> PublicAddress()
         {
-            var ip = (await Http.GetString("https://api.ipify.org")).Trim();
+            // a few seconds at most: the invite and the lobby launch wait on this
+            string ip;
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8))) ip = (await Http.GetString("https://api.ipify.org", cts.Token)).Trim();
             return Regex.IsMatch(ip, @"^\d{1,3}(\.\d{1,3}){3}$") ? ip : null;
         }
     }

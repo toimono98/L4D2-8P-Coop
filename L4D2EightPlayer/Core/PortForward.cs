@@ -38,8 +38,18 @@ namespace L4D2EightPlayer.Core
             "urn:schemas-upnp-org:service:WANPPPConnection:1",
         };
 
-        /// <summary>Returns the router's UPnP service, or null if UPnP is off or unsupported.</summary>
+        /// <summary>Returns the router's UPnP service, or null if UPnP is off or unsupported (or there's no network).</summary>
         public static async Task<Upnp> Discover(int timeoutMs = 3000)
+        {
+            try { return await DiscoverCore(timeoutMs); }
+            catch (Exception ex) when (ex is SocketException || ex is FormatException || ex is ObjectDisposedException)
+            {
+                LastDiagnostics.Add("no router search: " + ex.Message);
+                return null;
+            }
+        }
+
+        static async Task<Upnp> DiscoverCore(int timeoutMs)
         {
             var lan = Network.LanAddress();
             var locations = new List<string>();
@@ -202,8 +212,33 @@ namespace L4D2EightPlayer.Core
 
     public static class Network
     {
+        /// <summary>
+        /// The address Windows sends internet traffic from: connecting a UDP socket picks the route without sending
+        /// anything. With Hamachi, Radmin VPN or a second network card, the first adapter listed is often not it.
+        /// </summary>
+        static IPAddress RouteAddress()
+        {
+            try
+            {
+                using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                {
+                    s.Connect(new IPEndPoint(IPAddress.Parse("8.8.8.8"), 53));
+                    var a = ((IPEndPoint)s.LocalEndPoint).Address;
+                    return a.Equals(IPAddress.Any) || IPAddress.IsLoopback(a) ? null : a;
+                }
+            }
+            catch { return null; }   // offline: no route
+        }
+
+        /// <summary>The adapter that has an address (the route's one).</summary>
+        static NetworkInterface AdapterWith(IPAddress a) => a == null ? null :
+            NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n => n.OperationalStatus == OperationalStatus.Up
+                && n.GetIPProperties().UnicastAddresses.Any(u => u.Address.Equals(a)));
+
         public static string LanAddress()
         {
+            var route = RouteAddress();
+            if (route != null && AdapterWith(route) != null) return route.ToString();
             foreach (var ni in NetworkInterface.GetAllNetworkInterfaces()
                          .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
                          .OrderBy(n => n.GetIPProperties().GatewayAddresses.Count == 0))
@@ -216,6 +251,10 @@ namespace L4D2EightPlayer.Core
 
         public static string Gateway()
         {
+            // the gateway of the adapter internet traffic goes through, first
+            var main = AdapterWith(RouteAddress());
+            var gwMain = main?.GetIPProperties().GatewayAddresses.Select(g => g.Address).FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork && !a.Equals(IPAddress.Any));
+            if (gwMain != null) return gwMain.ToString();
             foreach (var ni in NetworkInterface.GetAllNetworkInterfaces().Where(n => n.OperationalStatus == OperationalStatus.Up))
             {
                 var gw = ni.GetIPProperties().GatewayAddresses.Select(g => g.Address).FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork && !a.Equals(IPAddress.Any));
@@ -267,8 +306,35 @@ namespace L4D2EightPlayer.Core
                 $"netsh advfirewall firewall add rule name=\"{RuleName}\" dir=in action=allow protocol=TCP localport={port}",
             };
             if (!string.IsNullOrEmpty(program))
+            {
+                // a cancelled "Allow access?" prompt leaves Windows' own Block rules for the server, and a block rule
+                // beats any allow rule: those go first (every inbound rule for this program; ours are added next)
+                cmds.Insert(0, $"netsh advfirewall firewall delete rule name=all dir=in program=\"{program}\"");
                 cmds.Add($"netsh advfirewall firewall add rule name=\"{RuleName}\" dir=in action=allow program=\"{program}\"");
+            }
             return RunElevated(string.Join(" & ", cmds)) && RuleExists();
+        }
+
+        /// <summary>
+        /// Whether an enabled inbound Block rule names this program (Windows makes them when its "Allow access?" prompt
+        /// is cancelled). Read through PowerShell's firewall module, which needs no admin rights; false if it can't tell.
+        /// </summary>
+        public static bool Blocked(string program)
+        {
+            if (string.IsNullOrEmpty(program)) return false;
+            try
+            {
+                var script = "Get-NetFirewallApplicationFilter -Program '" + program.Replace("'", "''") + "' -ErrorAction SilentlyContinue | " +
+                             "Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' -and $_.Enabled -eq 'True' } | Measure-Object | Select-Object -ExpandProperty Count";
+                var p = Process.Start(new ProcessStartInfo("powershell.exe", "-NoProfile -NonInteractive -Command \"" + script.Replace("\"", "\\\"") + "\"")
+                {
+                    UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true,
+                });
+                var output = p.StandardOutput.ReadToEnd();
+                if (!p.WaitForExit(15000)) { try { p.Kill(); } catch { } return false; }
+                return int.TryParse(output.Trim(), out var n) && n > 0;
+            }
+            catch { return false; }
         }
 
         public static bool Remove() => RunElevated($"netsh advfirewall firewall delete rule name=\"{RuleName}\"");

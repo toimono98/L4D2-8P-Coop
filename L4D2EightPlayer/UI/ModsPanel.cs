@@ -34,7 +34,7 @@ namespace L4D2EightPlayer.UI
         Clashes.Survey survey;
         Dictionary<string, Rated> rated = new Dictionary<string, Rated>(StringComparer.OrdinalIgnoreCase);
         List<Clashes.Clash> conflicts = new List<Clashes.Clash>();
-        bool loading, filling;
+        bool loading, filling, reloadAgain;
 
         public ModsPanel(Func<string> gameDir, Func<Manifest> manifest)
         {
@@ -131,7 +131,7 @@ namespace L4D2EightPlayer.UI
         /// <summary>Reads the add-ons again (in the background) and redraws the list.</summary>
         public async Task Reload()
         {
-            if (loading) return;
+            if (loading) { reloadAgain = true; return; }
             loading = true;
             try
             {
@@ -150,7 +150,17 @@ namespace L4D2EightPlayer.UI
                 }
                 if (InvokeRequired) Invoke((Action)(() => Draw.Batch(this, Show))); else Draw.Batch(this, Show);
             }
-            finally { loading = false; }
+            catch (Exception ex)
+            {
+                // a file locked or vanishing mid-read: said here, Look again retries
+                banner.Text = "Couldn't read your add-ons just now (" + ex.Message + "). Click Look again in a moment.";
+                banner.Visible = true;
+            }
+            finally
+            {
+                loading = false;
+                if (reloadAgain && !IsDisposed) { reloadAgain = false; await Reload(); }
+            }
         }
 
         static string Kind(Clashes.Addon a)

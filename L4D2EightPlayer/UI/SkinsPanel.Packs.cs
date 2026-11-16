@@ -158,6 +158,7 @@ namespace L4D2EightPlayer.UI
             var remove = new GameButton("Remove", ButtonKind.Ghost, 10f);
             remove.Click += async (s, e) =>
             {
+                prefs = SkinPrefs.Load();   // the latest, so nothing saved meanwhile is lost
                 prefs.Collections.RemoveAll(x => x.Id == c.Saved.Id);
                 prefs.Save();
                 packSel = null;
@@ -227,6 +228,7 @@ namespace L4D2EightPlayer.UI
             if (!plan.Nothing)
                 using (var d = new PlanDialog(plan, turningOff))
                     if (d.ShowDialog(FindForm()) != DialogResult.OK) return;
+            prefs = SkinPrefs.Load();
             try { Packs.Apply(gameDir(), plan, prefs); }
             catch (Exception ex) { MessageBox.Show(FindForm(), ex.Message, "Skins", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             if (!plan.Nothing) Changed?.Invoke(this, EventArgs.Empty);

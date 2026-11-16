@@ -142,7 +142,12 @@ namespace L4D2EightPlayer.UI
             {
                 if (d.ShowDialog(owner) != DialogResult.OK || real.Count == 0) return -1;
                 var off = d.TurnOff().ToList();
-                Clashes.Resolve(gameDir, off, d.KeptBoth().ToList(), prefs);
+                try { Clashes.Resolve(gameDir, off, d.KeptBoth().ToList(), prefs); }
+                catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+                {
+                    MessageBox.Show(owner, "The game's add-on list couldn't be changed (" + ex.Message + ").\n\nIf addonlist.txt is set to read-only, clear that, then try again.", "Disable conflicting", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return -1;
+                }
                 return off.Select(a => a.Key.ToLowerInvariant()).Distinct().Count();
             }
         }

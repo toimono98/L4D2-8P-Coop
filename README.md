@@ -9,6 +9,8 @@ Every add-on gets a **rating** (Safe, Stable, Moderate, Unstable, Unsafe) from i
 
 **[Download the latest release](../../releases/latest)** and run **`L4D2-8P-Setup.exe`**: it asks whether you're hosting or joining a friend, then installs the app, set to open on that side, with Start menu and Desktop shortcuts (no admin needed; to remove it, use the Uninstall shortcut in its folder or Start menu, or Windows' Installed apps). On a first install, The Setup also asks whether updates install automatically (downloaded in the background, installed when you close the app) or wait for you to click **Install** in the app's header. **Show me around** (ticked on the last page) opens the app with a one-minute tour of the parts you'll use; **Show the tour** on the Settings tab brings it back. The same file works for everyone, so it's the one to send friends. `L4D2-8P-Coop.exe` is there too if you'd rather not install anything. Upgrading from 1.10 or earlier (two apps)? Run the new Setup once: it replaces both, and your settings carry over.
 
+**If Windows warns about the Setup:** the app isn't code-signed, so the first time you run it Windows may say "Windows protected your PC". Click **More info**, then **Run anyway**. On Windows 11 with Smart App Control turned on, unsigned programs are blocked outright. It needs .NET Framework 4.8, which Windows 10 (version 1903 and later) and Windows 11 already have.
+
 The full guide (setup, hosting modes, bot fill, item scaling, the 8-player HUD, troubleshooting) is in **[L4D2EightPlayer/README.md](L4D2EightPlayer/README.md)**.
 
 Built-in server plugins (SourcePawn, compiled on install): `L4D2EightPlayer/Plugins`.

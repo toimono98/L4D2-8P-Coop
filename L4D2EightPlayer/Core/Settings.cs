@@ -66,7 +66,12 @@ namespace L4D2EightPlayer.Core
         public static Settings Load() => Json.Load<Settings>(Paths.SettingsFile);
         /// <summary>Set by the layout audit so it never overwrites the user's real settings.</summary>
         public static bool ReadOnly;
-        public void Save() { if (!ReadOnly) Json.Save(Paths.SettingsFile, this); }
+        public void Save()
+        {
+            if (ReadOnly) return;
+            try { Json.Save(Paths.SettingsFile, this); }
+            catch (System.Exception ex) when (ex is System.IO.IOException || ex is System.UnauthorizedAccessException) { SafeFile.Note("Couldn't save settings", ex); }
+        }
 
         /// <summary>The srcds install folder (holds srcds.exe) for dedicated mode.</summary>
         public string ServerInstallDir =>

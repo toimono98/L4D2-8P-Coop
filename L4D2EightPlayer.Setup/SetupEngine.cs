@@ -92,7 +92,18 @@ namespace L4D2EightPlayer.Setup
         public static void Install(Options o, Action<string> say)
         {
             var folder = Path.GetFullPath(o.Folder);
-            Directory.CreateDirectory(folder);
+            try
+            {
+                Directory.CreateDirectory(folder);
+                var probe = Path.Combine(folder, ".write-test");
+                File.WriteAllText(probe, "");
+                File.Delete(probe);
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
+            {
+                throw new InvalidOperationException($"Setup can't write to {folder} (it installs without admin rights, so Program Files is out of reach). " +
+                    $"Pick a folder in your own user folder, like the one it suggests: {Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", Product)}.");
+            }
             var running = RunningFrom(folder);
             if (running != null) throw new InvalidOperationException($"{running} is open. Close it, then try again.");
 
@@ -106,21 +117,33 @@ namespace L4D2EightPlayer.Setup
             // a copy of this setup stays, for uninstalling (or switching the start side) later
             var self = Assembly.GetExecutingAssembly().Location;
             var kept = Path.Combine(folder, SetupExe);
-            if (!string.Equals(Path.GetFullPath(self), kept, StringComparison.OrdinalIgnoreCase)) File.Copy(self, kept, true);
+            if (!string.Equals(Path.GetFullPath(self), kept, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(self, kept, true);
+                // the "downloaded from the internet" mark comes along with the copy: without it, Uninstall doesn't warn again
+                try { File.Delete(kept + ":Zone.Identifier"); } catch { }
+            }
+            // registered straight away, so a shortcut that fails below never leaves an install updates can't find
+            if (o.Register) Register(folder);
+
+            void TryShortcut(string lnk, string target, string arguments = null)
+            {
+                try { Directory.CreateDirectory(Path.GetDirectoryName(lnk)); Shortcut(lnk, target, folder, arguments); }
+                catch (Exception ex) { say("Couldn't add the shortcut " + Path.GetFileName(lnk) + " (" + ex.Message + "); the app works without it"); }
+            }
             // a visible way out, beside the app (the same as Windows' Installed apps)
-            Shortcut(Path.Combine(folder, UninstallShortcut + ".lnk"), kept, folder, "--uninstall");
+            TryShortcut(Path.Combine(folder, UninstallShortcut + ".lnk"), kept, "--uninstall");
 
             if (o.StartMenu)
             {
                 say("Adding the Start menu shortcuts");
-                Directory.CreateDirectory(StartMenuFolder);
-                Shortcut(Path.Combine(StartMenuFolder, Product + ".lnk"), Path.Combine(folder, Exe), folder);
-                Shortcut(Path.Combine(StartMenuFolder, UninstallShortcut + ".lnk"), kept, folder, "--uninstall");
+                TryShortcut(Path.Combine(StartMenuFolder, Product + ".lnk"), Path.Combine(folder, Exe));
+                TryShortcut(Path.Combine(StartMenuFolder, UninstallShortcut + ".lnk"), kept, "--uninstall");
             }
             if (o.Desktop)
             {
                 say("Adding the Desktop shortcut");
-                Shortcut(Path.Combine(Desktop, Product + ".lnk"), Path.Combine(folder, Exe), folder);
+                TryShortcut(Path.Combine(Desktop, Product + ".lnk"), Path.Combine(folder, Exe));
             }
             if (o.HudAddon)
             {

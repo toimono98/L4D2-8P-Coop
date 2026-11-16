@@ -162,13 +162,23 @@ namespace L4D2EightPlayer.Core
                 var (url, ver) = await ResolveArchive(c.archive, ct);
                 version = ver;
                 var zipPath = Path.Combine(Paths.Cache, "downloads", Http.FileNameFromUrl(url));
-                if (!File.Exists(zipPath) || c.archive.type == "github-release")
+                bool cached = File.Exists(zipPath) && c.archive.type != "github-release";
+                if (!cached)
                 {
                     log.Info("Downloading " + url);
                     await Http.Download(url, zipPath, log, ct);
                 }
                 else log.Info("Using cached " + Path.GetFileName(zipPath));
-                ExtractArchive(zipPath, c.extract, stage, staged);
+                try { ExtractArchive(zipPath, c.extract, stage, staged); }
+                catch (InvalidDataException) when (cached)
+                {
+                    // the copy kept from an earlier download is damaged (cut short, or a web page instead of the file): fetched again once
+                    log.Warn("The saved copy of " + Path.GetFileName(zipPath) + " is damaged; downloading it again.");
+                    File.Delete(zipPath);
+                    staged.Clear();
+                    await Http.Download(url, zipPath, log, ct);
+                    ExtractArchive(zipPath, c.extract, stage, staged);
+                }
 
                 if (c.id == "sourcemod") RefreshToolchain(zipPath);
             }
@@ -316,8 +326,10 @@ namespace L4D2EightPlayer.Core
         {
             state.components.TryGetValue(c.id, out var previous);
             var next = new ComponentState { version = version, installedAt = DateTime.Now.ToString("s") };
-            var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
 
+            try
+            {
             foreach (var kv in staged)
             {
                 var rel = kv.Key;
@@ -354,6 +366,19 @@ namespace L4D2EightPlayer.Core
                 Directory.CreateDirectory(Path.GetDirectoryName(dest));
                 File.Copy(kv.Value, dest, true);
                 next.files.Add(new FileRecord { path = rel, sha256 = Hash.File(dest), backup = backup });
+            }
+            }
+            catch
+            {
+                // stopped partway (a locked file, Cancel): what was copied and backed up so far is recorded, plus the
+                // older records not reached yet, so Remove can still put your own files back; the version stays the
+                // old one, so the next install finishes the job
+                if (previous != null)
+                    foreach (var old in previous.files.Where(o => !next.files.Any(n => n.path.Equals(o.path, StringComparison.OrdinalIgnoreCase)))) next.files.Add(old);
+                next.version = previous?.version;
+                state.components[c.id] = next;
+                try { state.Save(gameDir); } catch { }
+                throw;
             }
 
             // Remove files an older version of this component installed but the new one no longer ships.
@@ -434,14 +459,23 @@ namespace L4D2EightPlayer.Core
 
         static string Spcomp => Path.Combine(Paths.Toolchain, "spcomp.exe");
 
+        static bool IsAscii(string s) => s.All(ch => ch < 128);
+
         async Task EnsureToolchain(CancellationToken ct)
         {
             if (File.Exists(Spcomp)) return;
             log.Info("Fetching the SourcePawn compiler (from SourceMod 1.12)...");
             var url = await Http.ResolveAlliedModders("https://sm.alliedmods.net/smdrop/1.12/sourcemod-latest-windows", "https://sm.alliedmods.net/smdrop/1.12/", ct);
             var zip = Path.Combine(Paths.Cache, "downloads", Http.FileNameFromUrl(url));
-            if (!File.Exists(zip)) await Http.Download(url, zip, log, ct);
-            RefreshToolchain(zip);
+            bool cached = File.Exists(zip);
+            if (!cached) await Http.Download(url, zip, log, ct);
+            try { RefreshToolchain(zip); }
+            catch (InvalidDataException) when (cached)
+            {
+                File.Delete(zip);   // damaged saved copy: once more from the source
+                await Http.Download(url, zip, log, ct);
+                RefreshToolchain(zip);
+            }
         }
 
         static void RefreshToolchain(string smZip)
@@ -476,9 +510,55 @@ namespace L4D2EightPlayer.Core
         void Compile(string sp, string outPath)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(outPath));
-            var psi = new ProcessStartInfo(Spcomp)
+            // The compiler reads its paths (and its own working folder) in the system code page: a Windows user name
+            // outside it ("Łukasz" on English Windows) breaks them. Then it compiles in a plain-ASCII folder instead
+            // (C:\ProgramData\L4D2-8P-Manager\build, which any user can write to) and the result is copied back.
+            if (IsAscii(sp) && IsAscii(outPath) && IsAscii(Paths.Toolchain)) { RunSpcomp(Paths.Toolchain, sp, outPath); return; }
+            var ascii = AsciiRoot();
+            var tc = Path.Combine(ascii, "toolchain");
+            Mirror(Paths.Toolchain, tc);
+            var work = Path.Combine(ascii, "build", Guid.NewGuid().ToString("N").Substring(0, 8));
+            try
             {
-                Arguments = $"\"{sp}\" -i\"{Path.Combine(Paths.Toolchain, "include")}\" -i\"{Path.Combine(Paths.Toolchain, "extra")}\" -o\"{outPath}\"",
+                // the plugin with what sits beside it (its own includes)
+                var from = Path.GetDirectoryName(sp);
+                Directory.CreateDirectory(work);
+                foreach (var f in Directory.GetFiles(from)) File.Copy(f, Path.Combine(work, Path.GetFileName(f)), true);
+                if (Directory.Exists(Path.Combine(from, "include"))) Mirror(Path.Combine(from, "include"), Path.Combine(work, "include"));
+                var outTmp = Path.Combine(work, "out", Path.GetFileName(outPath));
+                RunSpcomp(tc, Path.Combine(work, Path.GetFileName(sp)), outTmp);
+                File.Copy(outTmp, outPath, true);
+            }
+            finally { try { Directory.Delete(work, true); } catch { } }
+        }
+
+        /// <summary>A plain-ASCII folder for compiling: ProgramData, else the system drive's root.</summary>
+        static string AsciiRoot()
+        {
+            var pd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "L4D2-8P-Manager");
+            return IsAscii(pd) ? pd : Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "L4D2-8P-Build");
+        }
+
+        /// <summary>Copies a folder over another, only what's new or changed.</summary>
+        static void Mirror(string from, string to)
+        {
+            foreach (var f in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+            {
+                var dest = Path.Combine(to, f.Substring(from.Length).TrimStart('\\'));
+                var fi = new FileInfo(f);
+                var di = new FileInfo(dest);
+                if (di.Exists && di.Length == fi.Length && di.LastWriteTimeUtc == fi.LastWriteTimeUtc) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                File.Copy(f, dest, true);
+            }
+        }
+
+        void RunSpcomp(string toolchain, string sp, string outPath)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+            var psi = new ProcessStartInfo(Path.Combine(toolchain, "spcomp.exe"))
+            {
+                Arguments = $"\"{sp}\" -i\"{Path.Combine(toolchain, "include")}\" -i\"{Path.Combine(toolchain, "extra")}\" -o\"{outPath}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -488,8 +568,15 @@ namespace L4D2EightPlayer.Core
             log.Info("   compiling " + Path.GetFileName(sp));
             using (var p = Process.Start(psi))
             {
-                var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-                p.WaitForExit();
+                // both outputs read at once (one at a time can deadlock when the other fills up), and never forever
+                var stdout = p.StandardOutput.ReadToEndAsync();
+                var stderr = p.StandardError.ReadToEndAsync();
+                if (!p.WaitForExit(120000))
+                {
+                    try { p.Kill(); } catch { }
+                    throw new TimeoutException($"Compiling {Path.GetFileName(sp)} took over two minutes and was stopped.");
+                }
+                var output = stdout.Result + stderr.Result;
                 if (p.ExitCode != 0 || !File.Exists(outPath))
                 {
                     var errors = string.Join(Environment.NewLine, output.Split('\n').Where(l => l.Contains("error")).Take(5));
