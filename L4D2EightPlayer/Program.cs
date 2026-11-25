@@ -25,6 +25,8 @@ namespace L4D2EightPlayer
         ///   --flicker-test &lt;report&gt; [--legacy] [--composited]   glitches seen on screen while a dropdown repaints and tabs switch
         ///   --skins-test &lt;fixtures&gt; &lt;report&gt;                the skin picker's logic on tools\make_skin_fixtures.py's fake game
         ///   --skins-scroll &lt;report&gt; [shots]               the skin list scrolls to its last card (every target, several window sizes)
+        ///   --checkup &lt;report&gt;                            this PC's setup checked (components, scan, clashes); --apply installs the outdated components
+        ///   --server-sync-test &lt;report&gt;                   the server-behind-the-game check on throwaway folders
         ///   --tabs-test &lt;report&gt;                          the tab order: stored lists, clicks and keys in any order
         ///   --mods-test &lt;report&gt;                          the server mod list: parts, Steam details, downloads (needs the internet)
         ///   --update-shot &lt;dir&gt;                           the update window (out, and downloaded), off-screen, to PNGs
@@ -58,6 +60,8 @@ namespace L4D2EightPlayer
             if (args.Length >= 3 && args[0] == "--skins-shot") { Environment.Exit(SkinsTest.Shots(args[1], args[2])); return; }
             if (args.Length >= 3 && args[0] == "--skins-test") { Environment.Exit(SkinsTest.Run(args[1], args[2])); return; }
             if (args.Length >= 2 && args[0] == "--skins-scroll") { Environment.Exit(SkinsScrollTest.Run(args[1], args.Length >= 3 ? args[2] : null)); return; }
+            if (args.Length >= 2 && args[0] == "--checkup") { Environment.Exit(Checkup.Run(args[1], args.Contains("--apply"))); return; }
+            if (args.Length >= 2 && args[0] == "--server-sync-test") { Environment.Exit(ServerSyncTest.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--tabs-test") { Environment.Exit(TabsTest.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--mods-test") { Environment.Exit(ModsTest.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--update-shot") { UpdateShot(args[1]); return; }

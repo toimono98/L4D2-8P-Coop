@@ -334,6 +334,11 @@ namespace L4D2EightPlayer.UI
                     : $"The dedicated server will be downloaded with SteamCMD into {dir ?? "(choose a folder)"} (about 10 GB).";
             }
             lblServerStatus.ForeColor = Theme.Muted;
+            if (!listen && ServerBehind())
+            {
+                lblServerStatus.Text += " · behind your game (Steam updated it): Install / update, or starting the server, updates it";
+                lblServerStatus.ForeColor = Theme.Amber;
+            }
 
             RefreshComponents();
             UpdatePlayState();
@@ -410,6 +415,18 @@ namespace L4D2EightPlayer.UI
         bool updatesChecked, updatesKnown;
 
         /// <summary>The first time Setup is opened in a session: look for updates by itself.</summary>
+        /// <summary>
+        /// The dedicated server is behind your game: a different version, or the same version number with older game
+        /// files (a patch can leave the number alone). See GameLocator.CompareServer.
+        /// </summary>
+        bool ServerBehind()
+        {
+            if (settings.Mode != "dedicated" || !GameLocator.IsServerDir(settings.ServerInstallDir) || !GameLocator.IsGameDir(settings.GamePath)) return false;
+            var cv = GameLocator.PatchVersion(settings.GamePath);
+            var sv = GameLocator.PatchVersion(settings.ServerInstallDir);
+            return (cv != null && sv != null && cv != sv) || GameLocator.CompareServer(settings.GamePath, settings.ServerInstallDir) == GameLocator.ServerSync.ServerBehind;
+        }
+
         async Task MaybeCheckUpdates()
         {
             if (updatesChecked || Preview || busy || settings.TargetGameDir == null || !Directory.Exists(settings.TargetGameDir)) return;
@@ -527,11 +544,13 @@ namespace L4D2EightPlayer.UI
 
             var ids = lvComponents.Items.Cast<ListViewItem>().Where(i => i.Checked && i.Tag is Component).Select(i => ((Component)i.Tag).id);
             var list = manifest.Resolve(ids, settings.Mode);
-            bool needServer = settings.Mode == "dedicated" && !GameLocator.IsServerDir(settings.ServerInstallDir);
+            bool newServer = settings.Mode == "dedicated" && !GameLocator.IsServerDir(settings.ServerInstallDir);
+            bool needServer = newServer || ServerBehind();
 
             var hosts = list.Select(c => c.archive?.repo != null ? "github.com" : c.archive?.latest != null ? new Uri(c.archive.latest).Host : c.@base != null ? new Uri(c.@base).Host : null)
                             .Where(h => h != null).Distinct();
-            var msg = (needServer ? $"• Left 4 Dead 2 Dedicated Server from Valve via SteamCMD (about 10 GB) into:\n   {settings.ServerInstallDir}\n" : "")
+            var msg = (needServer ? (newServer ? $"• Left 4 Dead 2 Dedicated Server from Valve via SteamCMD (about 10 GB) into:\n   {settings.ServerInstallDir}\n"
+                                               : $"• The dedicated server's update from Valve via SteamCMD (only what changed), in:\n   {settings.ServerInstallDir}\n") : "")
                     + $"• {list.Count} mod component(s) into:\n   {settings.TargetGameDir}\n\n"
                     + string.Join("\n", list.Select(c => "   - " + c.name))
                     + $"\n\nDownloads come from: {string.Join(", ", hosts)}{(needServer ? ", Valve (Steam)" : "")}.\n"
@@ -609,12 +628,7 @@ namespace L4D2EightPlayer.UI
                     }
                     catch (Exception ex) { Warn($"{c.name}: could not check ({ex.Message})"); }
                 }
-                if (settings.Mode == "dedicated" && GameLocator.IsServerDir(settings.ServerInstallDir))
-                {
-                    var cv = GameLocator.PatchVersion(settings.GamePath);
-                    var sv = GameLocator.PatchVersion(settings.ServerInstallDir);
-                    if (cv != null && sv != null && cv != sv) { updates++; Warn($"Server is {sv} but your game is {cv}. Install will update the server with SteamCMD."); }
-                }
+                if (ServerBehind()) { updates++; Warn("The dedicated server is behind your game (Steam updated the game). Install / update updates the server with SteamCMD."); }
                 Info(updates == 0 ? "Everything is up to date."
                                   : $"{updates} update(s) available. Install / update on the Setup tab applies them.");
             });
@@ -1012,7 +1026,10 @@ namespace L4D2EightPlayer.UI
             ReapplySkins();   // before the add-on sync, which goes by what's on
             bool ok = await RunBusy("Preparing server", async ct =>
             {
-                if (settings.UpdateServerOnStart) await SteamCmd.UpdateServer(settings.ServerRoot, settings.ServerInstallDir, this, ct);
+                // Steam updated the game since the server: friends with the new game would be refused, so it's brought level first
+                bool behind = ServerBehind();
+                if (behind) Info("Steam updated Left 4 Dead 2 since the server was last updated: updating the server to match first (only what changed is downloaded).");
+                if (settings.UpdateServerOnStart || behind) await SteamCmd.UpdateServer(settings.ServerRoot, settings.ServerInstallDir, this, ct);
                 ServerConfig.Apply(settings, settings.TargetGameDir, customCampaigns);
                 var inst = new Installer(settings.TargetGameDir, this);
                 inst.ApplySourceModGuard(manifest);

@@ -299,12 +299,18 @@ namespace L4D2EightPlayer.Core
 
             if (ctx.Mode == "dedicated" && ctx.ServerRoot != null)
             {
-                var cv = GameLocator.PatchVersion(Path.GetDirectoryName(ctx.ClientGameDir));
+                var game = ctx.ClientGameDir == null ? null : Path.GetDirectoryName(ctx.ClientGameDir);
+                var cv = game == null ? null : GameLocator.PatchVersion(game);
                 var sv = GameLocator.PatchVersion(ctx.ServerRoot);
                 if (cv != null && sv != null)
                 {
-                    var f = new Finding { Kind = "Requirement", Name = "Game / server version", Summary = $"Game {cv}, server {sv}" };
-                    if (cv != sv) f.Raise(Severity.Problem, "The dedicated server is a different version from your game, so clients will be refused. Click 'Update server' on the Setup tab.");
+                    var sync = GameLocator.CompareServer(game, ctx.ServerRoot);
+                    var f = new Finding { Kind = "Requirement", Name = "Game / server version", Summary = $"Game {cv}, server {sv}" + (sync == GameLocator.ServerSync.Same ? " (same build)" : "") };
+                    if (cv != sv || sync == GameLocator.ServerSync.ServerBehind)
+                        f.Raise(Severity.Problem, "The dedicated server is behind your game" + (cv == sv ? " (Steam updated the game without changing its version number)" : "") +
+                            ", so friends with the updated game can be refused and the server can misbehave. It's updated the next time you start it, or now with Install / update on the Setup tab.");
+                    else if (sync == GameLocator.ServerSync.GameBehind)
+                        f.Raise(Severity.Warning, "The dedicated server is newer than your game: Steam hasn't updated Left 4 Dead 2 yet. Open Steam and let it update the game.");
                     findings.Add(f);
                 }
             }

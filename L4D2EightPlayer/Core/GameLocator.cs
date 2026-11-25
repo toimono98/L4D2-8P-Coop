@@ -110,6 +110,36 @@ namespace L4D2EightPlayer.Core
         public static bool IsServerDir(string dir) =>
             !string.IsNullOrEmpty(dir) && File.Exists(Path.Combine(dir, "srcds.exe")) && Directory.Exists(Path.Combine(dir, "left4dead2"));
 
+        public enum ServerSync { Same, ServerBehind, GameBehind, Unknown }
+
+        /// <summary>
+        /// Whether the dedicated server runs the same game code as your game. Valve ships the same server.dll and
+        /// engine.dll in both, so once both are current they're identical byte for byte. A patch can leave PatchVersion
+        /// as it was (November 2026's did), so the files themselves are compared; the side with the newer files is the
+        /// current one. Unknown when either is missing.
+        /// </summary>
+        public static ServerSync CompareServer(string gamePath, string serverDir)
+        {
+            try
+            {
+                if (!IsGameDir(gamePath) || !IsServerDir(serverDir)) return ServerSync.Unknown;
+                bool differ = false;
+                DateTime game = DateTime.MinValue, server = DateTime.MinValue;
+                foreach (var rel in new[] { @"left4dead2\bin\server.dll", @"bin\engine.dll" })
+                {
+                    var g = new FileInfo(Path.Combine(gamePath, rel));
+                    var s = new FileInfo(Path.Combine(serverDir, rel));
+                    if (!g.Exists || !s.Exists) return ServerSync.Unknown;
+                    if (g.LastWriteTimeUtc > game) game = g.LastWriteTimeUtc;
+                    if (s.LastWriteTimeUtc > server) server = s.LastWriteTimeUtc;
+                    if (!differ && (g.Length != s.Length || Hash.File(g.FullName) != Hash.File(s.FullName))) differ = true;
+                }
+                if (!differ) return ServerSync.Same;
+                return game >= server ? ServerSync.ServerBehind : ServerSync.GameBehind;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { return ServerSync.Unknown; }
+        }
+
         /// <summary>Reads PatchVersion from left4dead2\steam.inf (for example "2.2.4.3").</summary>
         public static string PatchVersion(string installDir)
         {

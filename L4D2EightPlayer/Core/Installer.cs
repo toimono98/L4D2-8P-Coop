@@ -78,6 +78,8 @@ namespace L4D2EightPlayer.Core
                 {
                     // Config files are meant to be edited; they do not count as tampering.
                     if ((c.keepExisting ?? new List<string>()).Any(k => f.path.StartsWith(k, StringComparison.OrdinalIgnoreCase))) continue;
+                    // nor do files the component refreshes itself (SourceMod's gamedata, updated when the server starts)
+                    if ((c.selfUpdating ?? new List<string>()).Any(k => f.path.StartsWith(k, StringComparison.OrdinalIgnoreCase))) continue;
                     var p = ExistingVariant(Paths.Join(gameDir, f.path));
                     if (p == null || Hash.File(p) != f.sha256) return ComponentStatus.Modified;
                 }

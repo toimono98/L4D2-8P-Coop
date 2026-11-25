@@ -87,6 +87,8 @@ namespace L4D2EightPlayer.Core
         public ArchiveSource archive { get; set; }
         public List<ExtractRule> extract { get; set; } = new List<ExtractRule>();
         public List<string> keepExisting { get; set; } = new List<string>();
+        /// <summary>Files the component keeps current itself (SourceMod's gamedata updater): a change there isn't "Modified". Updates still replace them.</summary>
+        public List<string> selfUpdating { get; set; } = new List<string>();
         public string detect { get; set; }
         public List<string> toggleFiles { get; set; } = new List<string>();
         public string @base { get; set; }

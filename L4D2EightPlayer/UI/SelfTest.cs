@@ -18,7 +18,7 @@ namespace L4D2EightPlayer.UI
     /// </summary>
     static class SelfTest
     {
-        sealed class FileLog : ILog
+        internal sealed class FileLog : ILog
         {
             readonly StringBuilder sb;
             public FileLog(StringBuilder sb) { this.sb = sb; }

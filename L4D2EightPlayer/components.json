@@ -57,6 +57,12 @@
         "addons/sourcemod/configs/",
         "cfg/sourcemod/"
       ],
+      "selfUpdating": [
+        "addons/sourcemod/gamedata/core.games/",
+        "addons/sourcemod/gamedata/sdkhooks.games/",
+        "addons/sourcemod/gamedata/sdktools.games/",
+        "addons/sourcemod/gamedata/sm-"
+      ],
       "detect": "addons/sourcemod/bin/sourcemod.logic.dll"
     },
     {
